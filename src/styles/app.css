@@ -1,0 +1,281 @@
+/* Layout + component styling for the CMS shell. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Shell grid: rail | explorer | main | (chat) ───────────────────────── */
+.ob-cms {
+  display: grid;
+  grid-template-columns: var(--rail-w) var(--explorer-w) 1fr;
+  height: 100%;
+}
+.ob-cms.chat-open {
+  grid-template-columns: var(--rail-w) var(--explorer-w) 1fr var(--chat-w);
+}
+
+/* ── Rail ──────────────────────────────────────────────────────────────── */
+.ob-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  background: var(--bg-1);
+  border-right: 1px solid var(--border-1);
+}
+.ob-rail-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--bg-0);
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-1);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.ob-rail-item {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ob-rail-item:hover {
+  background: var(--elev-1);
+  color: var(--text-1);
+}
+.ob-rail-item.is-active {
+  background: var(--action-primary-weak);
+  color: var(--action-primary);
+  border-color: var(--border-2);
+}
+.ob-rail-spacer {
+  flex: 1;
+}
+
+/* ── Section heads (Explorer / Chat) ───────────────────────────────────── */
+.ob-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 12px 12px 8px;
+}
+
+/* ── Explorer ──────────────────────────────────────────────────────────── */
+.ob-explorer {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-right: 1px solid var(--border-1);
+  min-height: 0;
+}
+.ob-explorer-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.ob-panel-host {
+  height: 100%;
+}
+
+.ob-tree {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
+}
+.ob-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ob-tree-row:hover {
+  background: var(--elev-1);
+  color: var(--text-1);
+}
+.ob-tree-caret {
+  color: var(--text-3);
+  width: 12px;
+  flex: none;
+  font-size: 10px;
+}
+.ob-tree-dir .ob-tree-name {
+  color: var(--text-1);
+  font-weight: 500;
+}
+.ob-tree-file.is-active {
+  background: var(--action-primary-weak);
+  color: var(--action-primary);
+}
+.ob-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Main / Preview ────────────────────────────────────────────────────── */
+.ob-main {
+  background: var(--bg-0);
+  overflow: auto;
+  min-height: 0;
+}
+.ob-preview {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 36px 80px;
+}
+.ob-preview-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-1);
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+.ob-preview-path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-cyan);
+}
+.ob-preview-rev {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.ob-preview-body {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  color: var(--text-1);
+}
+.ob-preview-empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+}
+
+/* ── Chat dock (stub) ──────────────────────────────────────────────────── */
+.ob-chat {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--border-1);
+  min-height: 0;
+}
+.ob-chat-close {
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 12px;
+}
+.ob-chat-close:hover {
+  color: var(--text-1);
+}
+.ob-chat-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0 12px;
+}
+.ob-chat-stub {
+  color: var(--text-3);
+  font-size: 13px;
+}
+.ob-chat-stub code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-magenta);
+}
+
+/* ── Panel states ──────────────────────────────────────────────────────── */
+.ob-panel-loading,
+.ob-panel-empty {
+  padding: 14px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.ob-panel-error {
+  padding: 14px;
+  color: var(--fb-error);
+  font-size: 13px;
+}
+
+/* ── Pre-flight notice (no token / no daemon) ──────────────────────────── */
+.ob-notice {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.ob-notice-card {
+  max-width: 460px;
+  background: var(--elev-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-2);
+  padding: 24px 28px;
+}
+.ob-notice-card h1 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0 0 10px;
+  color: var(--text-1);
+}
+.ob-notice-card p {
+  color: var(--text-2);
+  margin: 6px 0;
+}
+.ob-notice-card code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-cyan);
+  background: var(--bg-0);
+  padding: 1px 5px;
+  border-radius: 4px;
+}

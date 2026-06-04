@@ -1,0 +1,53 @@
+/*
+ * Design tokens — DS-aligned (dark-neon). These approximate the OneBrain Design
+ * System's semantic-intent layer (--bg-*, --elev-*, --action-*, accent set) so
+ * the WebUI is coherent NOW; they are to be reconciled against the canonical DS
+ * (onebrain-ai/onebrain-design-system: tokens.json + colors_and_type.css) and,
+ * where this surface finds a better value, promoted BACK to the DS (spec §9,
+ * two-way loop). Treat as a reference baseline, not a fork.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Backgrounds (deep → elevated) */
+  --bg-0: #0a0c10;
+  --bg-1: #0f131a;
+  --bg-2: #151b24;
+  --elev-1: #1a212c;
+  --elev-2: #222b38;
+
+  /* Borders / dividers */
+  --border-1: #232b37;
+  --border-2: #2e3947;
+
+  /* Text */
+  --text-1: #e6edf6;
+  --text-2: #9fb0c3;
+  --text-3: #6b7c91;
+
+  /* Neon accents (DS palette: cyan / magenta / violet / lime) */
+  --accent-cyan: #22d3ee;
+  --accent-magenta: #f037a5;
+  --accent-violet: #8b5cf6;
+  --accent-lime: #a3e635;
+
+  /* Semantic intents */
+  --action-primary: var(--accent-cyan);
+  --action-primary-weak: rgba(34, 211, 238, 0.14);
+  --focus-ring: rgba(34, 211, 238, 0.55);
+  --fb-error: #ff6b6b;
+  --fb-warn: #f7b955;
+
+  /* Typography (DS: Chakra Petch display · Inter body · JetBrains Mono code) */
+  --font-display: "Chakra Petch", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Geometry */
+  --radius-1: 6px;
+  --radius-2: 10px;
+  --rail-w: 52px;
+  --explorer-w: 256px;
+  --chat-w: 340px;
+}

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>OneBrain</title>
+    <!-- Token auth: the daemon injects a small script setting the token global
+         right before head-close when it serves this dist (server/static.rs). In
+         vite dev there is no daemon, so core/token.ts uses the URL token param.
+         NOTE: keep this file free of any literal head-close tag or the token
+         placeholder string, or both Vite and the daemon target the wrong spot. -->
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
