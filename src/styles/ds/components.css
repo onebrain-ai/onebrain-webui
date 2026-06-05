@@ -1,0 +1,1474 @@
+/* ============================================================================
+   OneBrain Design System — components.css
+   The reusable COMPONENT LAYER. Drop-in classes for the whole system, built on
+   the semantic intent tokens in colors_and_type.css. This is what turns the
+   package from a token kit into a system you can assemble surfaces from.
+
+   USAGE — load the tokens first, then this file:
+     <link rel="stylesheet" href="colors_and_type.css">      (from root)
+     <link rel="stylesheet" href="components.css">
+   (paths: ../ from preview/, ../../ from ui_kits/app/).
+
+   Every component references SEMANTIC intents (--action-primary, --fb-danger,
+   --bg-surface, --elev-2 …), never raw palette hexes — so a light/dark/re-skin
+   flows through automatically. Geometry stays cyber-sharp (radius 0, corner-cut
+   CTAs); "elevation" is hairline + glow on dark, real shadow on light.
+
+   Sections: 1 Buttons · 2 Pills/Badges/Tags · 3 Forms · 4 Nav · 5 Cards/Data
+   · 6 Feedback · 7 Overlays · 8 Reduced-motion.
+   Source classes (.btn-tech, .cyber-card, .cyber-pill, .nav-glass) trace to
+   onebrain-ai/website global.css; see DESIGN.md §6 + PROVENANCE.md.
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   1. BUTTONS
+   --------------------------------------------------------------------------- */
+/* Primary CTA — corner-cut gradient frame with a dark inner panel (source).
+   The corner cut comes from the global --clip-tech token, which is FIXED-size
+   (--clip-cut, 12px), NOT percentages — so the gradient frame stays an even
+   ~1.5px hairline with tasteful corners at ANY button width (percentage cuts
+   balloon into huge diagonal wedges as a button widens). The frame and the
+   inner panel reference the one token, so their corners always match. */
+.btn-tech {
+  position: relative; display: inline-block; border: 0; cursor: pointer;
+  clip-path: var(--clip-tech); background: var(--grad-button); padding: 1.5px;
+  text-decoration: none; transition: box-shadow var(--dur-fast) ease;
+}
+.btn-tech-inner {
+  display: block; clip-path: var(--clip-tech); background: var(--bg-base);
+  padding: 12px 26px; color: var(--color-white);
+  font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold);
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.85rem;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.btn-tech:hover { box-shadow: var(--glow-cta); }
+.btn-tech:hover .btn-tech-inner { background: #fff; color: #0a0a12; }
+.btn-tech[disabled], .btn-tech:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; box-shadow: none; }
+.btn-tech[disabled]:hover .btn-tech-inner { background: var(--bg-base); color: var(--color-white); }
+
+/* Secondary outline + tertiary quiet + destructive — share one mono shape. */
+.btn-ghost, .btn-quiet, .btn-danger {
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.18em;
+  text-transform: uppercase; cursor: pointer; padding: 12px 22px; text-decoration: none;
+  box-sizing: border-box; min-height: var(--control-h); background: transparent; border: 1px solid;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.btn-ghost { color: var(--action-primary); border-color: color-mix(in srgb, var(--action-primary) 40%, transparent); }
+.btn-ghost:hover { color: var(--color-white); border-color: var(--action-primary); box-shadow: 0 0 14px color-mix(in srgb, var(--action-primary) 35%, transparent); }
+.btn-quiet { color: var(--text-secondary); background: var(--bg-surface); border-color: var(--border-default); letter-spacing: 0.16em; }
+.btn-quiet:hover { color: var(--text-primary); background: var(--bg-elevated); border-color: var(--border-strong); }
+.btn-danger { color: var(--fb-danger); border-color: var(--fb-danger-bd); }
+.btn-danger:hover { color: #fff; background: var(--fb-danger-bg); border-color: var(--fb-danger); box-shadow: 0 0 14px var(--fb-danger-bg); }
+.btn-ghost[disabled], .btn-quiet[disabled], .btn-danger[disabled],
+.btn-ghost:disabled, .btn-quiet:disabled, .btn-danger:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; box-shadow: none; }
+
+/* Size + width modifiers */
+.btn-sm { padding: 8px 16px; min-height: var(--control-h-sm); font-size: 0.7rem; }
+/* btn-tech's padding IS its gradient frame thickness (1.5px) — the small
+   modifier must keep that thin frame and shrink the inner panel instead, or
+   the frame bloats into a thick outline. Higher specificity wins regardless of order. */
+.btn-tech.btn-sm, .btn-sm.btn-tech { padding: 1.5px; }
+.btn-sm.btn-tech .btn-tech-inner, .btn-tech.btn-sm .btn-tech-inner { padding: 8px 18px; font-size: 0.78rem; }
+.btn-block { display: flex; width: 100%; justify-content: center; }
+/* Full-width tech CTA: base .btn-tech now carries fixed-size corner cuts, so
+   block only needs to stretch the inner panel to fill the width — the gradient
+   stays an even hairline frame with the same tasteful corners at any width. */
+.btn-tech.btn-block .btn-tech-inner { flex: 1; width: 100%; text-align: center; }
+
+/* ---------------------------------------------------------------------------
+   2. PILLS · BADGES · TAGS
+   --------------------------------------------------------------------------- */
+/* Eyebrow / status pill — HUD kicker with L-bracket ticks + pulsing dot. */
+.cyber-pill {
+  display: inline-flex; align-items: center; gap: 10px; position: relative;
+  padding: 8px 14px; font-family: var(--font-mono); font-size: var(--eyebrow-size);
+  letter-spacing: var(--tracking-eyebrow); text-transform: uppercase;
+  color: var(--section-accent);
+  background: color-mix(in srgb, var(--section-accent) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 30%, transparent);
+}
+.cyber-pill::before, .cyber-pill::after { content: ''; position: absolute; width: 7px; height: 7px; border: 1px solid currentColor; }
+.cyber-pill::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+.cyber-pill::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+.cyber-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: var(--glow-sm); flex: none; }
+.cyber-dot.is-pulse { animation: cyber-pulse 1.5s ease-in-out infinite; }
+@keyframes cyber-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Badge / tag / status chip — tinted bg + accent text, per semantic state. */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-secondary);
+  background: var(--bg-elevated); border: 1px solid var(--border-default);
+}
+.badge-success { color: var(--fb-success); background: var(--fb-success-bg); border-color: var(--fb-success-bd); }
+.badge-info    { color: var(--fb-info);    background: var(--fb-info-bg);    border-color: var(--fb-info-bd); }
+.badge-warning { color: var(--fb-warning); background: var(--fb-warning-bg); border-color: var(--fb-warning-bd); }
+.badge-danger  { color: var(--fb-danger);  background: var(--fb-danger-bg);  border-color: var(--fb-danger-bd); }
+.badge-count { border-radius: var(--radius-pill); padding: 2px 8px; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+  font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-tertiary);
+  background: var(--action-primary-weak); border: 1px solid var(--border-subtle);
+}
+
+/* Chip — INTERACTIVE accent token (wikilink / filter / multi-select). Unlike the
+   static .tag, it carries hover glow + an .is-used spent state. Section-accent
+   keyed, so it re-tints with the surface accent. (promoted from surface-mobile) */
+.chip {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  padding: 7px 11px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em;
+  color: var(--section-accent); background: color-mix(in srgb, var(--section-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 32%, transparent);
+  transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast), opacity var(--dur-fast);
+}
+.chip svg { width: 13px; height: 13px; }
+.chip:hover { background: color-mix(in srgb, var(--section-accent) 14%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--section-accent) 28%, transparent); }
+.chip.is-used { opacity: var(--disabled-opacity); pointer-events: none; }
+
+/* Kbd — keyboard-key / shortcut badge (palettes, decks, tooltips, docs).
+   (promoted from surface-desktop) */
+.kbd {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 4px var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.kbd:hover { color: var(--section-accent); border-color: var(--section-accent); }
+.kbd svg { width: 16px; height: 16px; }
+
+/* ---------------------------------------------------------------------------
+   3. FORMS  (real, accessible controls — labels, validation, helper, states)
+   --------------------------------------------------------------------------- */
+.field { display: block; max-width: 520px; margin-bottom: 20px; }
+.field-label {
+  display: block; margin-bottom: 8px; font-family: var(--font-mono);
+  font-size: var(--eyebrow-size); letter-spacing: 0.25em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.field-label .req { color: var(--fb-danger); margin-left: 4px; }
+.field-help { margin-top: 7px; font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.04em; color: var(--text-tertiary); }
+.field-error { margin-top: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--fb-danger); }
+
+/* Text input, textarea, select — one shared shape. */
+.cyber-input {
+  width: 100%; box-sizing: border-box; min-height: var(--control-h);
+  background: var(--bg-surface); border: 1px solid var(--border-default);
+  color: var(--text-primary); font-family: var(--font-mono); font-size: 14px;
+  padding: 13px var(--control-pad-x); outline: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.cyber-input::placeholder { color: var(--text-secondary); }
+.cyber-input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 1px var(--focus-ring), 0 0 18px color-mix(in srgb, var(--focus-ring) 25%, transparent); }
+textarea.cyber-input { resize: vertical; min-height: 96px; line-height: 1.6; }
+.cyber-input:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+.cyber-input[aria-invalid="true"], .cyber-input.is-invalid { border-color: var(--fb-danger); }
+.cyber-input[aria-invalid="true"]:focus, .cyber-input.is-invalid:focus { box-shadow: 0 0 0 1px var(--fb-danger), 0 0 18px var(--fb-danger-bg); }
+
+/* Select — progressive-enhancement custom listbox.
+   The closed control shares ONE shape whether it's the native <select> or the
+   enhanced .cs-trigger button. cyber-select.js then swaps the OS-native option
+   popup (which CSS cannot reach — that bright OS-blue list) for an on-brand
+   .cs-list. No JS → the native <select> + caret still works and submits. */
+.cyber-select { position: relative; display: block; max-width: 520px; }
+.cyber-select select,
+.cyber-select .cs-trigger {
+  -webkit-appearance: none; appearance: none; width: 100%; box-sizing: border-box;
+  min-height: var(--control-h); padding: 13px 40px 13px var(--control-pad-x);
+  background: var(--bg-surface); border: 1px solid var(--border-default);
+  color: var(--text-primary); font-family: var(--font-mono); font-size: 14px;
+  text-align: left; outline: none; cursor: pointer;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.cyber-select select:focus,
+.cyber-select .cs-trigger:focus-visible { border-color: var(--border-focus); box-shadow: 0 0 0 1px var(--focus-ring); }
+.cyber-select .cs-trigger[disabled] { opacity: var(--disabled-opacity); cursor: not-allowed; }
+.cyber-select .cs-value { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Enhanced: native control kept for form submit / a11y name, taken out of flow. */
+.cyber-select select.cs-native {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+/* HUD caret — flips up while the listbox is open. */
+.cyber-select::after {
+  content: ''; position: absolute; top: 50%; right: 16px; width: 7px; height: 7px;
+  border-right: 1.5px solid var(--action-primary); border-bottom: 1.5px solid var(--action-primary);
+  transform: translateY(-65%) rotate(45deg); pointer-events: none;
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.cyber-select.is-open::after { transform: translateY(-30%) rotate(225deg); }
+
+/* The on-brand popup that replaces the OS-native option list. */
+.cyber-select .cs-list {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: var(--z-dropdown);
+  margin: 0; padding: 6px; list-style: none; max-height: 282px; overflow-y: auto;
+  background: var(--bg-elevated); border: 1px solid var(--border-default); box-shadow: var(--elev-3);
+  transform-origin: top; transform: translateY(-4px); opacity: 0;
+  transition: opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out-expo);
+}
+.cyber-select.is-open .cs-list { opacity: 1; transform: none; }
+.cyber-select .cs-list[hidden] { display: none; }
+.cyber-select .cs-opt {
+  position: relative; display: flex; align-items: center; gap: 9px;
+  padding: 9px 12px 9px 14px; font-family: var(--font-mono); font-size: 13px;
+  color: var(--text-secondary); cursor: pointer; user-select: none;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+/* Active (hover / keyboard) — weak accent tint + a 2px accent edge.
+   Deliberately NOT a solid accent fill (that OS-blue bar is the bug we're fixing). */
+.cyber-select .cs-opt.is-active { background: var(--action-primary-weak); color: var(--text-primary); }
+.cyber-select .cs-opt.is-active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--action-primary);
+}
+/* Selected — accent text + a check glyph (the check reserves space when hidden,
+   so labels stay aligned whether or not a row is the current value). */
+.cyber-select .cs-opt.is-selected { color: var(--action-primary); }
+.cyber-select .cs-opt .cs-check { flex: none; opacity: 0; color: var(--action-primary); }
+.cyber-select .cs-opt.is-selected .cs-check { opacity: 1; }
+.cyber-select .cs-opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cyber-select .cs-opt.is-disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+
+/* Checkbox + radio — appearance:none over real inputs, accent-driven. */
+.cyber-check, .cyber-radio {
+  display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); user-select: none;
+}
+.cyber-check input, .cyber-radio input {
+  -webkit-appearance: none; appearance: none; margin: 0; width: 18px; height: 18px; flex: none;
+  background: var(--bg-surface); border: 1px solid var(--border-strong); cursor: pointer;
+  display: grid; place-content: center; transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.cyber-radio input { border-radius: 50%; }
+.cyber-check input::before {
+  content: ''; width: 10px; height: 10px; transform: scale(0); transform-origin: center;
+  background: var(--action-primary); transition: transform var(--dur-fast) var(--ease-out-expo);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+}
+.cyber-radio input::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--action-primary); transform: scale(0); transition: transform var(--dur-fast) var(--ease-out-expo); }
+.cyber-check input:checked, .cyber-radio input:checked { border-color: var(--action-primary); box-shadow: var(--glow-sm); }
+.cyber-check input:checked::before, .cyber-radio input:checked::before { transform: scale(1); }
+.cyber-check input:focus-visible, .cyber-radio input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.cyber-check input:disabled, .cyber-radio input:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+
+/* Switch — sliding accent thumb on a real checkbox. */
+.cyber-switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); user-select: none; }
+.cyber-switch input { -webkit-appearance: none; appearance: none; margin: 0; position: relative; width: 42px; height: 22px; flex: none; cursor: pointer; background: var(--bg-elevated); border: 1px solid var(--border-strong); transition: background var(--dur-fast), border-color var(--dur-fast); }
+.cyber-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text-secondary); transition: transform var(--dur-base) var(--ease-out-expo), background var(--dur-fast); }
+.cyber-switch input:checked { background: var(--action-primary-weak); border-color: var(--action-primary); }
+.cyber-switch input:checked::after { transform: translateX(20px); background: var(--action-primary); box-shadow: var(--glow-sm); }
+.cyber-switch input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.cyber-switch input:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+
+/* Range slider — accent track + thumb. */
+.cyber-range { -webkit-appearance: none; appearance: none; width: 100%; max-width: 520px; height: 4px; background: var(--bg-elevated); border: 1px solid var(--border-default); outline: none; cursor: pointer; }
+.cyber-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--action-primary); box-shadow: var(--glow-sm); cursor: pointer; }
+.cyber-range::-moz-range-thumb { width: 16px; height: 16px; border: 0; background: var(--action-primary); box-shadow: var(--glow-sm); cursor: pointer; }
+.cyber-range:focus-visible { box-shadow: 0 0 0 1px var(--focus-ring); }
+
+/* Command composer — the agent input bar (slash affordance + .btn-tech submit). */
+.composer { display: flex; align-items: stretch; max-width: 640px; background: var(--bg-surface); border: 1px solid var(--border-default); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.composer:focus-within { border-color: var(--border-focus); box-shadow: 0 0 22px color-mix(in srgb, var(--focus-ring) 20%, transparent); }
+.composer .composer-slash { display: flex; align-items: center; padding: 0 14px; font-family: var(--font-mono); font-size: 16px; color: var(--action-primary); border-right: 1px solid var(--border-default); }
+.composer input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text-primary); font-family: var(--font-mono); font-size: 14px; padding: 14px 12px; }
+.composer input::placeholder { color: var(--text-secondary); }
+.composer .composer-send { clip-path: var(--clip-tech); background: var(--grad-button); padding: 1.5px; margin: 5px; border: 0; cursor: pointer; }
+.composer .composer-send span { display: block; clip-path: var(--clip-tech); background: var(--bg-base); color: #fff; font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 18px; font-size: 0.78rem; transition: background var(--dur-fast), color var(--dur-fast); }
+.composer .composer-send:hover span { background: #fff; color: #0a0a12; }
+
+/* ---------------------------------------------------------------------------
+   4. NAVIGATION  (nav-glass · tabs · breadcrumb · pagination)
+   --------------------------------------------------------------------------- */
+.nav-glass { display: flex; gap: 28px; align-items: center; padding: 14px 22px; background: var(--bg-sunken); border: 1px solid var(--border-default); }
+.nav-glass a { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color var(--dur-fast); }
+.nav-glass a .br { opacity: 0; color: var(--action-primary); transition: opacity var(--dur-fast); }
+.nav-glass a:hover, .nav-glass a.is-active { color: var(--color-white); }
+.nav-glass a:hover .br, .nav-glass a.is-active .br { opacity: 1; }
+
+.cyber-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-default); }
+.cyber-tabs button { position: relative; background: transparent; border: 0; cursor: pointer; padding: 12px 18px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-secondary); transition: color var(--dur-fast); }
+.cyber-tabs button::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--action-primary); transform: scaleX(0); transition: transform var(--dur-base) var(--ease-out-expo); }
+.cyber-tabs button:hover { color: var(--text-primary); }
+.cyber-tabs button[aria-selected="true"], .cyber-tabs button.is-active { color: var(--color-white); }
+.cyber-tabs button[aria-selected="true"]::after, .cyber-tabs button.is-active::after { transform: scaleX(1); }
+
+.breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
+.breadcrumb a { color: var(--text-secondary); text-decoration: none; transition: color var(--dur-fast); }
+.breadcrumb a:hover { color: var(--action-primary); }
+.breadcrumb li { list-style: none; display: inline-flex; align-items: center; gap: 10px; }
+.breadcrumb li + li::before { content: '/'; color: var(--text-disabled); }
+.breadcrumb [aria-current="page"] { color: var(--color-white); }
+
+.pagination { display: flex; gap: 4px; align-items: center; }
+/* min-width/height = --control-h (44px touch target; 36px under compact density). */
+.pagination a, .pagination button { display: inline-grid; place-content: center; min-width: var(--control-h); height: var(--control-h); padding: 0 12px; background: var(--bg-surface); border: 1px solid var(--border-default); color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; cursor: pointer; text-decoration: none; transition: color var(--dur-fast), border-color var(--dur-fast); }
+.pagination a:hover, .pagination button:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.pagination a:focus-visible, .pagination button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.pagination [aria-current="page"] { color: var(--text-on-accent); background: var(--action-primary); border-color: var(--action-primary); }
+
+/* Inline text link — gives links an accent signal (the audit gap) via --text-link,
+   with an accent underline that brightens on hover. Use on prose <a>. */
+.cyber-link { color: var(--text-link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--text-link) 40%, transparent); transition: color var(--dur-fast), border-color var(--dur-fast); }
+.cyber-link:hover { color: var(--text-link-hover); border-bottom-color: var(--text-link); }
+.cyber-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   5. CARDS · STATS · TABLE · LIST · AVATAR · EMPTY-STATE
+   --------------------------------------------------------------------------- */
+/* The workhorse card — solid dark fill, hover lights border + slides a 2px
+   accent bar in on the left, top-right meta turns accent. (source .cyber-card) */
+.cyber-card { position: relative; overflow: hidden; background: var(--color-surface-2); border: 1px solid var(--border-subtle); padding: var(--card-pad); transition: border-color var(--dur-base) ease, background var(--dur-base) ease; }
+.cyber-card:hover { border-color: color-mix(in srgb, var(--section-accent) 35%, transparent); }
+.cyber-card::before { content: ''; position: absolute; top: -1px; bottom: -1px; left: -1px; width: 2px; background: var(--section-accent); opacity: 0; transition: opacity var(--dur-base) ease; }
+.cyber-card:hover::before { opacity: 0.85; }
+.cyber-card .card-meta { position: absolute; top: 12px; right: 14px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-disabled); transition: color var(--dur-base); }
+.cyber-card:hover .card-meta { color: var(--section-accent); }
+.cyber-card .card-title { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); font-size: var(--text-md); letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-white); }
+.cyber-card .card-desc { margin-top: 10px; font-family: var(--font-mono); font-size: 11.5px; line-height: var(--leading-prose); color: var(--text-tertiary); }
+.cyber-card.is-interactive { cursor: pointer; }
+.cyber-card.is-interactive:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Stat module */
+.stat { background: var(--bg-surface); border: 1px solid var(--border-default); padding: 24px; }
+.stat .stat-n { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); font-size: var(--text-2xl); line-height: 1; color: var(--color-white); font-variant-numeric: tabular-nums; }
+.stat .stat-n em { color: var(--action-primary); font-style: italic; }
+.stat .stat-l { margin-top: 10px; font-family: var(--font-mono); font-size: var(--eyebrow-size); letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-secondary); }
+
+/* Data table — hairline borders, tabular numerics, hover row, sticky header. */
+.cyber-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12.5px; }
+.cyber-table th { position: sticky; top: 0; text-align: left; padding: var(--row-pad-y) 16px; font-size: var(--eyebrow-size); letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-disabled); background: var(--bg-surface); border-bottom: 1px solid var(--border-default); }
+.cyber-table td { padding: var(--row-pad-y) 16px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); }
+.cyber-table tbody tr { transition: background var(--dur-fast); }
+.cyber-table tbody tr:hover { background: var(--action-primary-weak); }
+.cyber-table td b, .cyber-table td strong { color: var(--text-primary); font-weight: 500; }
+.cyber-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* List / log rows */
+.cyber-list { background: var(--bg-surface); border: 1px solid var(--border-default); }
+.cyber-list .row { display: flex; align-items: center; gap: 12px; padding: var(--row-pad-y) 16px; border-bottom: 1px solid var(--border-subtle); font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); }
+.cyber-list .row:last-child { border-bottom: 0; }
+.cyber-list .row b { color: var(--text-primary); font-weight: 500; }
+.cyber-list .row .stamp { margin-left: auto; color: var(--text-disabled); font-size: 10px; letter-spacing: 0.2em; }
+.cyber-list .row.is-active { background: var(--action-primary-weak); color: var(--text-primary); border-left: 2px solid var(--action-primary); }
+
+/* Avatar */
+.avatar { display: inline-grid; place-content: center; width: 36px; height: 36px; flex: none; background: var(--action-primary-weak); border: 1px solid color-mix(in srgb, var(--action-primary) 40%, transparent); color: var(--action-primary); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar.avatar-lg { width: 52px; height: 52px; font-size: 16px; }
+
+/* Empty state */
+.empty-state { display: grid; gap: 12px; place-items: center; text-align: center; padding: 48px 24px; border: 1px dashed var(--border-default); }
+.empty-state .es-title { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-primary); font-size: var(--text-md); }
+.empty-state .es-desc { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-tertiary); max-width: 42ch; line-height: 1.6; }
+
+/* ---------------------------------------------------------------------------
+   5.5 CHARTS / DATA-VIZ — inline-SVG + CSS primitives keyed to --chart-*.
+   The palette + chrome tokens live in colors_and_type.css: --chart-1..6 alias
+   the accents + diagram colors (so they inherit the light re-ink), while grid /
+   axis / track stay low-contrast so the DATA is the signal, not the frame.
+   Build charts as inline SVG/CSS reading these tokens — never a chart library's
+   defaults. Series geometry (line paths, bars, areas) lives in the consumer;
+   these are the shared frame, legend, donut, sparkline + bar-meter. Use 1–3
+   series typically; the full six only for genuinely categorical data. See
+   preview/charts.html. (DESIGN.md §2 "Data-viz / chart palette")
+   --------------------------------------------------------------------------- */
+.chart-frame { background: var(--bg-surface); border: 1px solid var(--border-default); padding: 18px 18px 14px; }
+.chart-frame .chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.chart-frame .chart-title { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-white); font-size: var(--text-md); }
+.chart-frame .chart-meta { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-disabled); }
+
+/* SVG conventions — gridlines + axis text + sequential track via tokens.
+   Apply .chart-svg to the <svg>; the consumer draws series with var(--chart-N). */
+.chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-svg .grid line, .chart-svg line.grid { stroke: var(--chart-grid); stroke-width: 1; shape-rendering: crispEdges; }
+.chart-svg text, .chart-svg .axis { font-family: var(--font-mono); font-size: 10px; fill: var(--chart-axis); letter-spacing: 0.06em; }
+.chart-svg .track { fill: var(--chart-track); }
+.chart-svg .dot { fill: var(--bg-base); stroke-width: 2; }
+
+/* Legend — one shared component for every chart; each item carries --c. */
+.chart-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; }
+.chart-legend .lg { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--text-secondary); }
+.chart-legend .lg::before { content: ''; width: 10px; height: 10px; flex: 0 0 auto; background: var(--c, var(--chart-1)); box-shadow: 0 0 8px color-mix(in srgb, var(--c, var(--chart-1)) 45%, transparent); }
+.chart-legend .lg .lg-v { margin-left: 4px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+/* Sparkline — tiny inline trend; the consumer supplies the <svg> path(s). */
+.spark { display: inline-block; width: 96px; height: 26px; vertical-align: middle; }
+.spark path.line { fill: none; stroke: var(--c, var(--chart-1)); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.spark path.fill { fill: color-mix(in srgb, var(--c, var(--chart-1)) 16%, transparent); stroke: none; }
+
+/* CSS donut / ring — conic-gradient, no SVG. Set segments via --donut (a
+   conic-gradient value keyed to --chart-N) and the hole via --hole. */
+.donut-wrap { position: relative; display: inline-grid; place-items: center; }
+.donut { width: var(--donut-size, 140px); aspect-ratio: 1; border-radius: 50%;
+  background: conic-gradient(var(--donut, var(--chart-1) 0 100%));
+  -webkit-mask: radial-gradient(farthest-side, transparent var(--hole, 62%), #000 calc(var(--hole, 62%) + 0.5px));
+          mask: radial-gradient(farthest-side, transparent var(--hole, 62%), #000 calc(var(--hole, 62%) + 0.5px)); }
+.donut-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.donut-center .dn { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); font-size: var(--text-xl); color: var(--color-white); line-height: 1; font-variant-numeric: tabular-nums; }
+.donut-center .dl { margin-top: 4px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-disabled); }
+
+/* Horizontal bar-meter — labelled rows on a token track (e.g. skill usage). */
+.bar-meter { display: grid; gap: 12px; }
+.bar-meter .bm { display: grid; grid-template-columns: minmax(96px, 132px) 1fr auto; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-secondary); }
+.bar-meter .bm-track { position: relative; height: 8px; background: var(--chart-track); overflow: hidden; }
+.bar-meter .bm-fill { position: absolute; inset: 0 auto 0 0; width: var(--v, 0%); background: var(--c, var(--chart-1)); box-shadow: 0 0 10px color-mix(in srgb, var(--c, var(--chart-1)) 45%, transparent); }
+.bar-meter .bm-v { color: var(--text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------------------------------------------------------------------------
+   6. FEEDBACK  (alert · toast · progress · skeleton · spinner)
+   --------------------------------------------------------------------------- */
+.alert { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--border-default); background: var(--bg-surface); border-left-width: 2px; }
+.alert .alert-title { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-primary); }
+.alert .alert-body { margin-top: 4px; font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.6; color: var(--text-tertiary); }
+.alert-success { border-left-color: var(--fb-success); background: var(--fb-success-bg); }
+.alert-success .alert-title { color: var(--fb-success); }
+.alert-info { border-left-color: var(--fb-info); background: var(--fb-info-bg); }
+.alert-info .alert-title { color: var(--fb-info); }
+.alert-warning { border-left-color: var(--fb-warning); background: var(--fb-warning-bg); }
+.alert-warning .alert-title { color: var(--fb-warning); }
+.alert-danger { border-left-color: var(--fb-danger); background: var(--fb-danger-bg); }
+.alert-danger .alert-title { color: var(--fb-danger); }
+
+/* Toast — same anatomy, elevated; use aria-live="polite", auto-dismiss 3–5s. */
+.toast { display: flex; gap: 12px; align-items: center; padding: 13px 16px; min-width: 260px; max-width: 380px; background: var(--bg-elevated); border: 1px solid var(--border-default); box-shadow: var(--elev-3); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-secondary); }
+.toast .toast-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--action-primary); box-shadow: var(--glow-sm); }
+.toast.is-success .toast-dot { background: var(--fb-success); }
+.toast.is-danger .toast-dot { background: var(--fb-danger); }
+.toast b { color: var(--text-primary); font-weight: 500; }
+/* Fixed region that holds the live toasts — owns the toast stacking tier
+   (above modals so a confirmation shows over an open dialog). */
+.toast-stack { position: fixed; right: 20px; bottom: 20px; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast-stack .toast { pointer-events: auto; }
+
+/* Progress — determinate bar + thin track. */
+.progress { height: 6px; background: var(--bg-elevated); border: 1px solid var(--border-default); overflow: hidden; }
+.progress .bar { height: 100%; background: var(--grad-button); box-shadow: var(--glow-sm); transition: width var(--dur-slow) var(--ease-out-expo); }
+
+/* Skeleton shimmer (>1s loads) — animates background-position only. */
+.skeleton { background: linear-gradient(100deg, var(--bg-surface) 30%, var(--bg-elevated) 50%, var(--bg-surface) 70%); background-size: 220% 100%; animation: cyber-shimmer 1.4s ease-in-out infinite; min-height: 14px; }
+@keyframes cyber-shimmer { 0% { background-position: 180% 0; } 100% { background-position: -80% 0; } }
+
+/* Spinner — rotating conic ring, transform-only. */
+.spinner { width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 70%, var(--action-primary) 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); animation: cyber-spin 0.8s linear infinite; }
+@keyframes cyber-spin { to { transform: rotate(1turn); } }
+
+/* ---------------------------------------------------------------------------
+   7. OVERLAYS  (modal · drawer · tooltip · dropdown)
+   Provide your own open/close toggle (add .is-open). Scrim dims to 45–62%.
+   --------------------------------------------------------------------------- */
+.scrim { position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--scrim); opacity: 0; visibility: hidden; transition: opacity var(--dur-base) ease, visibility var(--dur-base); }
+.scrim.is-open { opacity: 1; visibility: visible; }
+
+.modal { width: min(520px, calc(100vw - 32px)); background: var(--bg-elevated); border: 1px solid var(--border-default); box-shadow: var(--elev-3); transform: scale(0.96) translateY(8px); transition: transform var(--dur-base) var(--ease-out-expo); }
+.scrim.is-open .modal { transform: none; }
+.modal .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border-default); }
+.modal .modal-title { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-white); font-size: var(--text-md); }
+/* Icon-only close — the glyph is not a label, so the button MUST carry
+   aria-label="Close" (and ideally a 44px tap area) in markup. */
+.modal .modal-x { display: grid; place-content: center; width: var(--control-h-sm); height: var(--control-h-sm); margin: -6px -6px -6px 0; background: transparent; border: 0; color: var(--text-secondary); font-family: var(--font-mono); font-size: 18px; cursor: pointer; line-height: 1; }
+.modal .modal-x:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.modal .modal-x:hover { color: var(--text-primary); }
+.modal .modal-body { padding: 18px; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.7; color: var(--text-tertiary); }
+.modal .modal-foot { display: flex; gap: 12px; justify-content: flex-end; padding: 14px 18px; border-top: 1px solid var(--border-default); }
+
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--z-modal); width: min(360px, 88vw); background: var(--bg-elevated); border-left: 1px solid var(--border-default); box-shadow: var(--elev-3); transform: translateX(100%); transition: transform var(--dur-base) var(--ease-out-expo); }
+.drawer.is-open { transform: none; }
+.drawer.drawer-left { right: auto; left: 0; border-left: 0; border-right: 1px solid var(--border-default); transform: translateX(-100%); }
+.drawer.drawer-left.is-open { transform: none; }
+
+.tooltip { position: relative; display: inline-flex; }
+.tooltip .tip { position: absolute; z-index: var(--z-tooltip); bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(4px); white-space: nowrap; padding: 6px 10px; background: var(--bg-sunken); border: 1px solid var(--border-default); box-shadow: var(--elev-2); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.04em; color: var(--text-primary); opacity: 0; pointer-events: none; transition: opacity var(--dur-fast), transform var(--dur-fast); }
+.tooltip:hover .tip, .tooltip:focus-within .tip { opacity: 1; transform: translateX(-50%); }
+
+/* Menu surface — the consumer positions it (absolute/fixed); z-index then
+   places it above content + nav. */
+.dropdown { min-width: 200px; z-index: var(--z-dropdown); background: var(--bg-elevated); border: 1px solid var(--border-default); box-shadow: var(--elev-3); padding: 6px; }
+.dropdown .item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); cursor: pointer; text-decoration: none; transition: background var(--dur-fast), color var(--dur-fast); }
+.dropdown .item:hover, .dropdown .item:focus-visible { background: var(--action-primary-weak); color: var(--text-primary); outline: none; }
+.dropdown .item.is-danger { color: var(--fb-danger); }
+.dropdown .sep { height: 1px; background: var(--border-subtle); margin: 6px 0; }
+
+/* ---------------------------------------------------------------------------
+   7.45 COMMAND PALETTE — the ⌘K skill launcher (operator-console heart).
+   OneBrain is driven by /skill slash-commands; this overlay finds + runs them.
+   Generalizes the inline palette prior-art in preview/surface-desktop.html into
+   one reusable component. Pair with preview/command-palette.js (builds the list
+   from a config, binds ⌘K + a trigger, handles filter / keyboard / ARIA).
+   Layering: the .cmdk-scrim dims + blurs the page at --z-overlay; the panel rides
+   --z-modal so it sits ABOVE the sticky nav. The panel is a dense pick-list, so it
+   takes the near-opaque menu fill (like the select/dropdown) for crisp rows on top
+   of the blurred scrim — the active row uses an accent left-bar + weak tint, never
+   a solid-accent fill (same anti-OS-blue rule as .cyber-select).
+   --------------------------------------------------------------------------- */
+.cmdk-scrim {
+  position: fixed; inset: 0; z-index: var(--z-overlay);
+  display: grid; align-items: start; justify-items: center;
+  padding: clamp(48px, 14vh, 160px) 16px 16px;
+  background: var(--scrim); opacity: 0; visibility: hidden;
+  transition: opacity var(--dur-base) ease, visibility var(--dur-base);
+}
+.cmdk-scrim.is-open { opacity: 1; visibility: visible; }
+.command-palette {
+  width: min(560px, 100%); background: var(--bg-elevated);
+  border: 1px solid var(--border-default); box-shadow: var(--elev-3);
+  transform: translateY(-8px) scale(0.985);
+  transition: transform var(--dur-base) var(--ease-out-expo);
+}
+.cmdk-scrim.is-open .command-palette { transform: none; }
+/* Search field — mono input, accent search glyph, slash affordance, hint kbd. */
+.cmdk-field { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border-default); }
+.cmdk-field > svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--section-accent); }
+.cmdk-input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text-primary); font-family: var(--font-mono); font-size: var(--text-md); letter-spacing: 0.01em; }
+.cmdk-input::placeholder { color: var(--text-secondary); }
+.cmdk-field .kbd { flex: 0 0 auto; cursor: default; pointer-events: none; }
+/* List — solid + internal scroll for legibility (a dense pick-list). */
+.cmdk-list { max-height: 48vh; overflow-y: auto; padding: 6px; }
+.cmdk-group { padding: 12px 12px 4px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--color-ghost); }
+.cmdk-group:first-child { padding-top: 6px; }
+.cmdk-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); cursor: pointer; scroll-margin: 6px; }
+.cmdk-item > svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--section-accent); opacity: 0.8; transition: opacity var(--dur-fast) ease; }
+.cmdk-item .cmdk-name { color: var(--text-primary); white-space: nowrap; }
+.cmdk-item .cmdk-hl { color: var(--color-white); font-weight: 600; }
+.cmdk-item .cmdk-desc { margin-left: auto; padding-left: 16px; color: var(--color-ghost); font-size: 11px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Active row — accent left-bar + weak tint (NOT a solid accent fill). */
+.cmdk-item.is-active { position: relative; background: var(--action-primary-weak); color: var(--text-primary); }
+.cmdk-item.is-active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--section-accent); }
+.cmdk-item.is-active > svg { opacity: 1; }
+.cmdk-empty { padding: 22px 16px; font-family: var(--font-mono); font-size: 12px; color: var(--color-muted); letter-spacing: 0.04em; text-align: center; }
+.cmdk-foot { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--border-default); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ghost); }
+.cmdk-foot .kbd { padding: 2px 7px; font-size: 10px; cursor: default; pointer-events: none; }
+
+/* ---------------------------------------------------------------------------
+   7.5 ACCENT PICKER — user-settable runtime accent (chrome strip).
+   A compact row of the four brand-accent swatches. Selecting one re-keys the
+   surface from --section-accent / --action-primary / --action-primary-weak /
+   --grad-button (driven by preview/accent-picker.js), so eyebrows, active tabs,
+   CTAs, chips, focus rings and glows all follow one source of truth. Each dot is
+   the ONE legitimate solid-accent fill in the system — it IS the color. Offer
+   only the four brand accents so any choice stays on-palette. See DESIGN.md §2.
+   --------------------------------------------------------------------------- */
+.accent-dots { display: inline-flex; align-items: center; gap: 7px; }
+.accent-dots .accent-dot {
+  appearance: none; -webkit-appearance: none; cursor: pointer; flex: 0 0 auto;
+  width: 18px; height: 18px; padding: 0; border: 1px solid var(--border-strong);
+  background: var(--sw); display: grid; place-content: center; position: relative;
+  transition: box-shadow var(--dur-fast) ease, transform var(--dur-fast) ease;
+}
+.accent-dots .accent-dot svg {
+  width: 11px; height: 11px; color: #050507; opacity: 0; transform: scale(0.3);
+  transition: opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out-expo);
+}
+.accent-dots .accent-dot:hover { transform: translateY(-1px); box-shadow: 0 0 10px color-mix(in srgb, var(--sw) 55%, transparent); }
+.accent-dots .accent-dot.is-sel { box-shadow: 0 0 0 1px var(--bg-base), 0 0 0 3px var(--sw), 0 0 14px color-mix(in srgb, var(--sw) 40%, transparent); }
+.accent-dots .accent-dot.is-sel svg { opacity: 1; transform: scale(1); }
+.accent-dots .accent-dot:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+/* Optional mono label preceding the dots in dense chrome. */
+.accent-dots .accent-lbl { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-disabled); margin-right: 3px; }
+
+/* ---------------------------------------------------------------------------
+   7.6 FROSTED GLASS — iOS-style translucency + backdrop blur for depth.
+   Re-skins PANEL + OVERLAY surfaces so the HUD grid / orb behind them shows
+   through faintly. Behind @supports so the opaque fills above stay the
+   fallback; geometry stays cyber-sharp (only the hero terminal rounds).
+   Tokens: --glass-* in colors_and_type.css (re-inked for the light theme).
+   Data-entry + dense-data surfaces (inputs, tables) intentionally stay solid.
+   --------------------------------------------------------------------------- */
+@supports ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  /* Panels — cards, stat modules, list / log panels */
+  .cyber-card, .stat, .cyber-list {
+    background: var(--glass-fill);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-highlight);
+  }
+  /* Sticky nav / tab bar — frosted like an iOS bar (was solid by name only) */
+  .nav-glass {
+    background: var(--glass-fill-nav);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-highlight);
+  }
+  /* Overlays over arbitrary content — stronger blur, more opaque for legibility */
+  .modal, .drawer, .toast {
+    background: var(--glass-fill-elevated);
+    -webkit-backdrop-filter: var(--glass-blur-strong); backdrop-filter: var(--glass-blur-strong);
+    box-shadow: var(--glass-highlight), var(--elev-3);
+  }
+  /* Dense pick-lists — scrim-less popup menus (dropdown / select listbox) float
+     directly over live page content, and the command palette is the same kind of
+     dense option list. They all take the near-opaque menu fill so page content
+     can't bleed through and clash with the rows; the strong blur softens whatever
+     still shows. The command palette ALSO has a dimming scrim behind it (below),
+     so its background recedes twice — blurred scrim + near-opaque panel. */
+  .dropdown, .cyber-select .cs-list, .command-palette {
+    background: var(--glass-fill-menu);
+    -webkit-backdrop-filter: var(--glass-blur-strong); backdrop-filter: var(--glass-blur-strong);
+    box-shadow: var(--glass-highlight), var(--elev-3);
+  }
+  .tooltip .tip {
+    background: var(--glass-fill-elevated);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  }
+  /* The scrim blurs the page behind an open modal / drawer / command palette
+     (iOS sheet) so the background recedes and can't compete with the overlay. */
+  .scrim, .cmdk-scrim {
+    -webkit-backdrop-filter: var(--glass-blur-scrim); backdrop-filter: var(--glass-blur-scrim);
+  }
+}
+
+/* a11y — users who request reduced transparency get the solid fills back. */
+@media (prefers-reduced-transparency: reduce) {
+  .cyber-card, .stat, .cyber-list, .nav-glass,
+  .modal, .drawer, .dropdown, .toast, .tooltip .tip, .scrim, .cmdk-scrim, .command-palette, .cyber-select .cs-list {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .cyber-card { background: var(--color-surface-2); }
+  .stat, .cyber-list { background: var(--bg-surface); }
+  .nav-glass { background: var(--bg-sunken); }
+  .modal, .drawer, .dropdown, .toast, .command-palette, .cyber-select .cs-list { background: var(--bg-elevated); }
+  .tooltip .tip { background: var(--bg-sunken); }
+}
+
+/* ---------------------------------------------------------------------------
+   8. REDUCED MOTION — honor the user preference everywhere.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .cyber-dot.is-pulse, .skeleton, .spinner { animation: none; }
+  .btn-tech, .btn-ghost, .btn-quiet, .btn-danger, .cyber-input, .cyber-card,
+  .cyber-tabs button::after, .composer, .modal, .drawer, .toast, .tooltip .tip,
+  .progress .bar, .accent-dots .accent-dot, .accent-dots .accent-dot svg,
+  .command-palette, .cmdk-scrim, .cmdk-item > svg,
+  .cyber-select::after, .cyber-select .cs-list { transition: none; }
+  .modal, .drawer.drawer-left, .drawer, .command-palette { transform: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   9. ICONS — the shared Lucide-line sprite (assets/icons.svg, DESIGN.md §6).
+   .ob-icon sets fill/stroke/width/caps ONCE; the geometry-only <symbol>s
+   inherit it, and currentColor makes each icon follow the surrounding text or
+   accent color. Three fixed sizes (16 / 20 / 24) per the spec.
+     <svg class="ob-icon ob-icon-20"><use href="assets/icons.svg#ob-vault"/></svg>
+   --------------------------------------------------------------------------- */
+.ob-icon {
+  display: inline-block; width: 20px; height: 20px; flex: none; vertical-align: middle;
+  fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;
+}
+.ob-icon-16 { width: 16px; height: 16px; }
+.ob-icon-20 { width: 20px; height: 20px; }
+.ob-icon-24 { width: 24px; height: 24px; }
+
+/* ---------------------------------------------------------------------------
+   10. DISCLOSURE / ACCORDION — native <details>/<summary>, styled cyber-sharp.
+   Accessible by default (keyboard + screen reader come from the element). The
+   chevron rotates and the row keys to the section accent when open; an open
+   item gets the same 2px left accent bar the cards use.
+     <div class="accordion">
+       <details class="accordion-item"><summary>… <svg class="ob-icon ob-icon-16 accordion-chevron"><use href="#ob-chevron-right"/></svg></summary>
+         <div class="accordion-body">…</div></details>
+     </div>
+   --------------------------------------------------------------------------- */
+.accordion { border: 1px solid var(--border-default); background: var(--bg-surface); max-width: 640px; }
+.accordion-item { position: relative; border-bottom: 1px solid var(--border-subtle); }
+.accordion-item:last-child { border-bottom: 0; }
+.accordion-item > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.03em;
+  color: var(--text-primary); user-select: none; transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.accordion-item > summary::-webkit-details-marker { display: none; }
+.accordion-item > summary:hover { background: var(--action-primary-weak); }
+.accordion-item > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.accordion-chevron { margin-left: auto; color: var(--text-tertiary); transition: transform var(--dur-base) var(--ease-out-expo), color var(--dur-fast) ease; }
+.accordion-item[open] > summary { color: var(--section-accent, var(--color-accent-2)); }
+.accordion-item[open] > summary .accordion-chevron { transform: rotate(90deg); color: var(--section-accent, var(--color-accent-2)); }
+.accordion-item[open]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--section-accent, var(--color-accent-2)); box-shadow: var(--glow-accent); }
+.accordion-body { padding: 2px 16px 16px; font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.65; }
+/* Smooth open/close — animate the disclosure height. Gated behind @supports so
+   browsers without interpolate-size keep today's instant snap (no regression). */
+@supports (interpolate-size: allow-keywords) {
+  .accordion { interpolate-size: allow-keywords; }   /* inherits → enables auto-height anim */
+  .accordion-item::details-content {
+    block-size: 0; overflow: clip; opacity: 0;
+    transition: block-size var(--dur-base) var(--ease-out-expo),
+                opacity var(--dur-fast) ease,
+                content-visibility var(--dur-base) allow-discrete;
+  }
+  .accordion-item[open]::details-content { block-size: auto; opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .accordion-item::details-content { transition: none; }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   11. SEGMENTED CONTROL — CSS-only radio group (no JS). The active segment
+   reads as accent TEXT on a weak tint + hairline accent ring, not a solid
+   accent fill (same anti-OS-blue rule as the select / command palette).
+     <div class="segmented" role="radiogroup" aria-label="View">
+       <input type="radio" id="seg-list" name="view" checked><label for="seg-list">List</label>
+       <input type="radio" id="seg-graph" name="view"><label for="seg-graph">Graph</label>
+     </div>
+   --------------------------------------------------------------------------- */
+.segmented { display: inline-flex; position: relative; background: var(--bg-elevated); border: 1px solid var(--border-default); padding: 3px; gap: 2px; }
+.segmented input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.segmented label {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 16px; min-height: var(--control-h-sm);
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary); cursor: pointer; white-space: nowrap; user-select: none;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.segmented label:hover { color: var(--text-secondary); }
+.segmented input:checked + label {
+  color: var(--section-accent, var(--color-accent-2)); background: var(--action-primary-weak);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--section-accent, var(--color-accent-2)) 42%, transparent);
+}
+.segmented input:focus-visible + label { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.segmented input:disabled + label { opacity: var(--disabled-opacity); cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------------
+   12. DROPZONE — file upload, progressively enhanced (preview/dropzone.js).
+   Ships a real <input type="file"> so it works with no JS; the enhancer adds
+   click/drag-drop + a synced file list. Dashed border keys to the accent on
+   hover / drag-over; the chosen-file rows stay solid for legibility.
+   --------------------------------------------------------------------------- */
+.dropzone {
+  position: relative; display: grid; place-items: center; gap: 10px; text-align: center;
+  padding: 32px 24px; max-width: 520px; cursor: pointer;
+  border: 1px dashed var(--border-strong); background: var(--bg-surface);
+  transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+.dropzone:hover, .dropzone:focus-visible { border-color: var(--section-accent, var(--color-accent-2)); outline: none; }
+.dropzone:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring) 60%, transparent); }
+.dropzone.is-drag { border-style: solid; border-color: var(--section-accent, var(--color-accent-2)); background: var(--action-primary-weak); }
+.dropzone .ob-icon { color: var(--text-tertiary); transition: color var(--dur-fast) ease; }
+.dropzone.is-drag .ob-icon { color: var(--section-accent, var(--color-accent-2)); }
+.dropzone-title { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.03em; color: var(--text-secondary); }
+.dropzone-title b { color: var(--text-link); font-weight: 600; }
+.dropzone-hint { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ghost); }
+.dropzone input[type="file"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+.dz-files { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; max-width: 520px; }
+.dz-file { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-default); font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+.dz-file .dz-ic { color: var(--text-tertiary); display: inline-grid; place-content: center; flex: none; }
+.dz-file .dz-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dz-file .dz-size { color: var(--text-tertiary); font-variant-numeric: tabular-nums; flex: none; }
+.dz-file .dz-remove { flex: none; background: none; border: 0; color: var(--text-tertiary); cursor: pointer; padding: 4px; display: inline-grid; place-content: center; transition: color var(--dur-fast) ease; }
+.dz-file .dz-remove:hover { color: var(--fb-danger); }
+.dz-file .dz-remove:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* ---------------------------------------------------------------------------
+   12.5  PAGE STATES — full-page 404 / 500 / 403 / offline / loading templates.
+   A centered operator-console state over the HUD ground: a huge corner-cut mono
+   status code, an italic Chakra headline, a mono sub-paragraph, primary + ghost
+   actions, and a mono status line. Keyed to --section-accent, so each state
+   re-tints by setting that one var on the .page-state element (danger magenta
+   for 500, warning amber for 403, info cyan for 404 / offline / loading).
+   --------------------------------------------------------------------------- */
+.page-state {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-7, 64px) var(--space-5, 32px);
+  position: relative;
+}
+.page-state-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4, 24px);
+  max-width: 540px;
+  width: 100%;
+}
+.page-state-code {
+  font-family: var(--font-mono);
+  font-size: clamp(4rem, 16vw, 9rem);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--section-accent);
+  text-shadow: 0 0 28px color-mix(in oklab, var(--section-accent) 35%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.page-state-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
+  color: var(--color-white);
+  margin: 0;
+}
+.page-state-sub {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  color: var(--color-faint);
+  max-width: 44ch;
+  margin: 0;
+}
+.page-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 16px);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+.page-state-status {
+  font-family: var(--font-mono);
+  font-size: var(--eyebrow-size);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--color-ghost);
+  margin-top: var(--space-5, 32px);
+}
+.page-state-status .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--section-accent);
+  box-shadow: 0 0 8px var(--section-accent);
+  margin-inline-end: 8px;
+  vertical-align: middle;
+  animation: cyber-pulse 1.5s var(--ease-out-expo, ease) infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   13. INTERNATIONALIZATION / RTL — see DESIGN.md §10.
+   The font stacks (--font-sans / --font-display) carry Thai · Arabic · CJK
+   system fallbacks after the Latin faces, so non-Latin text renders instead of
+   tofu. New work should author with LOGICAL properties (margin-inline, inset-
+   inline, border-inline, text-align:start) so it mirrors for free. This block
+   flips the handful of components that still use PHYSICAL left/right
+   decorations under [dir="rtl"].
+   --------------------------------------------------------------------------- */
+[dir="rtl"] { } /* hook for app-level direction; components below mirror their physical bits */
+/* card / accordion accent bar: left -> right */
+[dir="rtl"] .cyber-card::before,
+[dir="rtl"] .accordion-item[open]::before { left: auto; right: 0; }
+/* alert state bar: border-left -> border-right */
+[dir="rtl"] .alert { border-left-width: 1px; border-right-width: 2px; }
+[dir="rtl"] .alert-success { border-left-color: var(--border-default); border-right-color: var(--fb-success); }
+[dir="rtl"] .alert-info    { border-left-color: var(--border-default); border-right-color: var(--fb-info); }
+[dir="rtl"] .alert-warning { border-left-color: var(--border-default); border-right-color: var(--fb-warning); }
+[dir="rtl"] .alert-danger  { border-left-color: var(--border-default); border-right-color: var(--fb-danger); }
+/* default drawer docks to the right; mirror it to the left edge */
+[dir="rtl"] .drawer { right: auto; left: 0; border-left: 0; border-right: 1px solid var(--border-default); transform: translateX(-100%); }
+[dir="rtl"] .drawer.is-open { transform: translateX(0); }
+/* fixed corner stacks: right -> left */
+[dir="rtl"] .toast-stack { right: auto; left: 20px; }
+/* nav-link bracket reveal + chevrons read direction-correct */
+[dir="rtl"] .accordion-item[open] > summary .accordion-chevron { transform: rotate(-90deg); }
+[dir="rtl"] .breadcrumb, [dir="rtl"] .pagination { direction: rtl; }
+/* carousel prev/next chevrons point the direction-correct way */
+[dir="rtl"] .carousel-ctrl svg { transform: scaleX(-1); }
+
+/* a11y — the interactive components honor reduced motion too. */
+@media (prefers-reduced-motion: reduce) {
+  .accordion-item > summary, .accordion-chevron, .segmented label,
+  .dropzone, .dropzone .ob-icon, .dz-file .dz-remove { transition: none; }
+  .page-state-status .dot { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   14. STEPPER / WIZARD — horizontal numbered steps with done / active /
+   upcoming states; the connector fills with the section accent up to the
+   current step. For onboarding / setup flows (matches the /onboarding skill).
+   Authored with logical properties so it mirrors under [dir="rtl"] for free.
+     <ol class="stepper">
+       <li class="stepper-step is-done"><span class="stepper-num"><svg class="ob-icon ob-icon-16"><use href="#ob-check"/></svg></span><span class="stepper-label">Install</span></li>
+       <li class="stepper-step is-active"><span class="stepper-num">2</span><span class="stepper-label">Connect vault</span></li>
+       <li class="stepper-step"><span class="stepper-num">3</span><span class="stepper-label">First capture</span></li>
+     </ol>
+   --------------------------------------------------------------------------- */
+.stepper { display: flex; list-style: none; margin: 0; padding: 0; }
+.stepper-step { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; min-width: 0; }
+.stepper-step::before {           /* connector to the previous step */
+  content: ""; position: absolute; inset-block-start: 17px; z-index: 0;
+  inset-inline-start: -50%; inline-size: 100%; block-size: 2px; background: var(--border-default);
+}
+.stepper-step:first-child::before { display: none; }
+.stepper-num {
+  position: relative; z-index: 1; inline-size: 36px; block-size: 36px; flex: none;
+  display: grid; place-content: center; background: var(--bg-base);
+  border: 1.5px solid var(--border-strong); color: var(--text-tertiary);
+  font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums;
+  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.stepper-num .ob-icon { stroke-width: 2.25; }
+.stepper-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; line-height: 1.4; color: var(--text-tertiary); max-width: 16ch; }
+.stepper-step.is-done .stepper-num,
+.stepper-step.is-active .stepper-num { border-color: var(--section-accent); color: var(--section-accent); }
+.stepper-step.is-active .stepper-num { box-shadow: 0 0 0 3px var(--action-primary-weak), var(--glow-accent); }
+.stepper-step.is-active .stepper-label { color: var(--text-primary); }
+.stepper-step.is-done .stepper-label { color: var(--text-secondary); }
+.stepper-step.is-done::before,
+.stepper-step.is-active::before { background: var(--section-accent); }
+/* Vertical variant — stacks for narrow / sidebar contexts. */
+.stepper.stepper-vertical { flex-direction: column; align-items: stretch; }
+.stepper-vertical .stepper-step { flex-direction: row; align-items: flex-start; gap: 14px; text-align: start; padding-block-end: 16px; }
+.stepper-vertical .stepper-step::before { inset-block-start: 0; inset-inline-start: 17px; inline-size: 2px; block-size: 100%; }
+.stepper-vertical .stepper-label { max-width: none; padding-block-start: 9px; }
+
+/* ---------------------------------------------------------------------------
+   15. TIMELINE / ACTIVITY FEED — vertical run of timestamped events with a
+   connector spine and an accent node per item; state variants recolor the node
+   (success / warning / danger). For session logs, the co-evolution loop,
+   history. Logical properties mirror it under RTL.
+     <ul class="timeline">
+       <li class="timeline-item is-success"><span class="timeline-node"></span>
+         <div class="timeline-time">2m ago</div><div class="timeline-title">…</div><div class="timeline-body">…</div></li>
+     </ul>
+   --------------------------------------------------------------------------- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline-item { position: relative; padding-inline-start: 30px; padding-block-end: 22px; }
+.timeline-item::before {           /* spine */
+  content: ""; position: absolute; inset-inline-start: 6px; inset-block-start: 6px;
+  inline-size: 2px; block-size: 100%; background: var(--border-default);
+}
+.timeline-item:last-child::before { display: none; }
+.timeline-node {
+  position: absolute; inset-inline-start: 0; inset-block-start: 3px; z-index: 1;
+  inline-size: 14px; block-size: 14px; border-radius: var(--radius-pill);
+  background: var(--bg-base); border: 2px solid var(--section-accent); box-shadow: var(--glow-accent);
+}
+.timeline-time { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-disabled); }
+.timeline-title { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); margin-block: 3px 4px; }
+.timeline-title b { color: var(--section-accent); font-weight: 500; }
+.timeline-body { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.timeline-item.is-success .timeline-node { border-color: var(--fb-success); box-shadow: 0 0 8px color-mix(in srgb, var(--fb-success) 55%, transparent); }
+.timeline-item.is-warning .timeline-node { border-color: var(--fb-warning); box-shadow: 0 0 8px color-mix(in srgb, var(--fb-warning) 55%, transparent); }
+.timeline-item.is-danger  .timeline-node { border-color: var(--fb-danger);  box-shadow: 0 0 8px color-mix(in srgb, var(--fb-danger) 55%, transparent); }
+
+/* ---------------------------------------------------------------------------
+   16. TREE VIEW — the vault's PARA folder tree (00-inbox … 07-logs). Folders
+   are native <details> (keyboard + a11y free); the chevron rotates and an
+   active leaf gets the same accent inline-start bar the sidebar/cards use. The
+   indent guide is an inline-start hairline, so it mirrors under RTL.
+   --------------------------------------------------------------------------- */
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree { font-family: var(--font-mono); font-size: 13px; max-width: 360px; }
+.tree ul { padding-inline-start: 16px; margin-inline-start: 9px; border-inline-start: 1px solid var(--border-subtle); }
+.tree-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-height: 32px;
+  color: var(--text-secondary); cursor: pointer; user-select: none;
+  border-inline-start: 2px solid transparent;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.tree-row:hover { background: var(--action-primary-weak); color: var(--text-primary); }
+.tree-row .ob-icon { color: var(--text-tertiary); flex: none; }
+.tree-spacer { display: inline-block; inline-size: 16px; flex: none; }
+.tree-count { margin-inline-start: auto; font-size: 10px; letter-spacing: 0.1em; color: var(--text-disabled); font-variant-numeric: tabular-nums; }
+.tree-row.is-active { color: var(--section-accent); background: var(--action-primary-weak); border-inline-start-color: var(--section-accent); }
+.tree-row.is-active .ob-icon { color: var(--section-accent); }
+.tree details > summary { list-style: none; }
+.tree details > summary::-webkit-details-marker { display: none; }
+.tree-chevron { color: var(--text-tertiary); flex: none; transition: transform var(--dur-base) var(--ease-out-expo); }
+.tree details[open] > summary .tree-chevron { transform: rotate(90deg); }
+[dir="rtl"] .tree details[open] > summary .tree-chevron { transform: rotate(-90deg); }
+
+/* ---------------------------------------------------------------------------
+   17. CODE BLOCK — a titled, copyable block for config / commands (onebrain.yml,
+   /slash-commands). Header carries the filename + a language tag + a copy button
+   (preview/code-copy.js, zero-dep). Optional line numbers via .code-lines. The
+   syntax token colors are SEMANTIC (like the chart / state palette) so they stay
+   fixed; only the language tag + copy hover follow the section accent.
+   --------------------------------------------------------------------------- */
+.code-block { border: 1px solid var(--border-default); background: var(--bg-sunken); max-width: 720px; }
+.code-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 14px; border-bottom: 1px solid var(--border-default); background: var(--bg-surface); }
+.code-name { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-secondary); }
+.code-lang { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--section-accent); border: 1px solid color-mix(in srgb, var(--section-accent) 32%, transparent); padding: 1px 6px; }
+.code-copy {
+  margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: 1px solid var(--border-default); color: var(--text-tertiary);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 4px 9px; cursor: pointer; transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.code-copy:hover { color: var(--section-accent); border-color: var(--section-accent); }
+.code-copy:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.code-copy.is-copied { color: var(--fb-success); border-color: color-mix(in srgb, var(--fb-success) 40%, transparent); }
+.code-block pre { margin: 0; padding: 16px; overflow-x: auto; }
+.code-block pre code { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+.code-lines { counter-reset: cl; margin: 0; padding: 14px 0; overflow-x: auto; }
+.code-lines .cl { display: block; position: relative; padding-inline: 50px 16px; white-space: pre; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); }
+.code-lines .cl::before { counter-increment: cl; content: counter(cl); position: absolute; inset-inline-start: 0; inline-size: 34px; text-align: end; color: var(--text-disabled); }
+/* semantic syntax tokens — fixed, not accent-keyed (like chart / state colors) */
+.code-block .tok-com { color: var(--text-disabled); font-style: italic; }
+.code-block .tok-key { color: var(--color-accent-2); }
+.code-block .tok-str { color: var(--color-success); }
+.code-block .tok-fn  { color: var(--color-accent-3); }
+.code-block .tok-num { color: var(--color-accent-4); }
+
+/* ---------------------------------------------------------------------------
+   18. METRIC / KPI TILE — a dashboard stat with a trend delta (↑/↓ %, success /
+   danger) and an optional inline sparkline (.spark, §5.5). Numbers are tabular.
+   Extends the plain .stat with a labelled top row + a trend foot.
+   --------------------------------------------------------------------------- */
+.metric { background: var(--bg-surface); border: 1px solid var(--border-default); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.metric-top { display: flex; align-items: center; gap: 10px; }
+.metric-label { font-family: var(--font-mono); font-size: var(--eyebrow-size); letter-spacing: 0.26em; text-transform: uppercase; color: var(--text-secondary); }
+.metric-ic { margin-inline-start: auto; color: var(--text-tertiary); }
+.metric-n { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold); font-size: var(--text-2xl); line-height: 1; color: var(--color-white); font-variant-numeric: tabular-nums; }
+.metric-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.metric-trend { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.metric-trend .ob-icon { width: 14px; height: 14px; }
+.metric-trend.is-up { color: var(--fb-success); }
+.metric-trend.is-down { color: var(--fb-danger); }
+.metric-trend.is-flat { color: var(--text-tertiary); }
+.metric-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text-disabled); }
+.metric .spark { width: 100%; height: 34px; margin-top: 2px; }
+
+/* ---------------------------------------------------------------------------
+   19. BANNER / ANNOUNCEMENT — a full-width inline message strip for system
+   notices (new version, vault offline, blocked signup). Icon + message + an
+   optional action + dismiss. The default keys to --section-accent; semantic
+   variants (.is-info / .is-success / .is-warning / .is-danger) override the
+   inline-start bar + icon to the fixed state color. Dismiss via preview/ui-actions.js.
+     <div class="banner is-warning" role="status">
+       <svg class="banner-ic ob-icon ob-icon-20"><use href="assets/icons.svg#ob-harness"/></svg>
+       <p class="banner-body"><b>Vault offline.</b> Working locally; changes sync on reconnect.</p>
+       <div class="banner-actions"><a class="cyber-link" href="#">Reconnect</a>
+         <button class="banner-x" data-dismiss aria-label="Dismiss"> … </button></div>
+     </div>
+   --------------------------------------------------------------------------- */
+.banner { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: var(--bg-surface); border: 1px solid var(--border-default); border-inline-start: 2px solid var(--section-accent); }
+.banner-ic { flex: none; color: var(--section-accent); display: grid; place-items: center; }
+.banner-body { flex: 1 1 auto; min-width: 0; margin: 0; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); }
+.banner-body b { color: var(--text-primary); font-weight: 500; }
+.banner-actions { display: flex; align-items: center; gap: 12px; flex: none; font-family: var(--font-mono); font-size: 12.5px; }
+.banner-x { display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; background: transparent; border: 0; color: var(--text-tertiary); cursor: pointer; transition: color var(--dur-fast), background var(--dur-fast); }
+.banner-x:hover, .banner-x:focus-visible { color: var(--text-primary); background: var(--action-primary-weak); outline: none; }
+.banner-x:focus-visible { box-shadow: 0 0 0 2px var(--section-accent); }
+.banner.is-info    { border-inline-start-color: var(--fb-info); }    .banner.is-info .banner-ic    { color: var(--fb-info); }
+.banner.is-success { border-inline-start-color: var(--fb-success); } .banner.is-success .banner-ic { color: var(--fb-success); }
+.banner.is-warning { border-inline-start-color: var(--fb-warning); } .banner.is-warning .banner-ic { color: var(--fb-warning); }
+.banner.is-danger  { border-inline-start-color: var(--fb-danger); }  .banner.is-danger .banner-ic  { color: var(--fb-danger); }
+.banner[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   20. TOOLBAR — a dense action bar for editor / console headers: grouped icon
+   buttons split by hairline separators, with a flexible spacer. Active reads
+   --section-accent (a state the app drives); preview/ui-actions.js toggles it.
+     <div class="toolbar" role="toolbar">
+       <div class="toolbar-group">
+         <button class="toolbar-btn is-active" data-toggle-active aria-pressed="true"> … </button> … </div>
+       <span class="toolbar-sep"></span> …
+       <span class="toolbar-spacer"></span>
+       <button class="toolbar-btn"> … </button>
+     </div>
+   --------------------------------------------------------------------------- */
+.toolbar { display: flex; align-items: center; gap: 4px; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border-default); flex-wrap: wrap; }
+.toolbar-group { display: flex; align-items: center; gap: 2px; }
+.toolbar-sep { inline-size: 1px; align-self: stretch; min-block-size: 24px; background: var(--border-default); margin-inline: 6px; }
+.toolbar-spacer { flex: 1 1 auto; }
+.toolbar-btn { display: inline-grid; place-items: center; inline-size: 36px; block-size: 36px; flex: none; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; transition: color var(--dur-fast), background var(--dur-fast); }
+.toolbar-btn:hover { color: var(--text-primary); background: var(--action-primary-weak); }
+.toolbar-btn:focus-visible { outline: none; color: var(--text-primary); box-shadow: 0 0 0 2px var(--section-accent); }
+.toolbar-btn[aria-pressed="true"], .toolbar-btn.is-active { color: var(--section-accent); background: var(--action-primary-weak); }
+.toolbar-btn[disabled] { opacity: var(--disabled-opacity); pointer-events: none; }
+.toolbar-label { padding-inline: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-tertiary); }
+
+/* ---------------------------------------------------------------------------
+   21. MENU — a richer dropdown body: section labels, an icon + title + optional
+   description per row, a trailing .kbd shortcut, checkable + danger items. Wrap
+   it in native <details class="menu-wrap"><summary> for a no-JS disclosure, or
+   drop the .menu inside a JS-positioned .dropdown shell. Icons key to accent on
+   hover; checked rows show an accent inline-start bar (never a solid fill).
+     <details class="menu-wrap">
+       <summary class="btn-ghost"> Actions </summary>
+       <div class="menu" role="menu">
+         <div class="menu-label">Capture</div>
+         <button class="menu-item" role="menuitem">
+           <svg class="ob-icon ob-icon-20"><use href="assets/icons.svg#ob-capture"/></svg>
+           <span class="menu-text"><span class="menu-title">New note</span>
+             <span class="menu-desc">Save a titled idea</span></span>
+           <kbd class="kbd">C</kbd></button> … </div>
+     </details>
+   --------------------------------------------------------------------------- */
+.menu-wrap { position: relative; display: inline-block; }
+.menu-wrap > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; }
+.menu-wrap > summary::-webkit-details-marker { display: none; }
+.menu-wrap[open] > .menu { animation: menu-in var(--dur-fast) var(--ease-out-expo); }
+.menu-wrap[open] > summary ~ .menu { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-start: 0; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.menu { min-width: 248px; z-index: var(--z-dropdown); background: var(--bg-elevated); border: 1px solid var(--border-default); box-shadow: var(--elev-3); padding: 6px; }
+.menu-label { padding: 8px 12px 4px; font-family: var(--font-mono); font-size: var(--eyebrow-size); letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-disabled); }
+.menu-item { position: relative; display: flex; align-items: center; gap: 12px; inline-size: 100%; padding: 9px 12px; background: transparent; border: 0; text-align: start; color: var(--text-secondary); font-family: var(--font-mono); font-size: 12.5px; cursor: pointer; text-decoration: none; transition: background var(--dur-fast), color var(--dur-fast); }
+.menu-item > .ob-icon { flex: none; color: var(--text-tertiary); transition: color var(--dur-fast); }
+.menu-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.menu-title { color: var(--text-primary); }
+.menu-desc { font-size: 11px; color: var(--text-tertiary); line-height: 1.4; }
+.menu-item .kbd { margin-inline-start: auto; flex: none; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--action-primary-weak); color: var(--text-primary); outline: none; }
+.menu-item:hover > .ob-icon, .menu-item:focus-visible > .ob-icon { color: var(--section-accent); }
+.menu-item.is-checked { color: var(--text-primary); }
+.menu-item.is-checked::before { content: ""; position: absolute; inset-block: 6px; inset-inline-start: 0; inline-size: 2px; background: var(--section-accent); }
+.menu-item.is-checked > .ob-icon { color: var(--section-accent); }
+.menu-item.is-danger { color: var(--fb-danger); }
+.menu-item.is-danger:hover { background: color-mix(in srgb, var(--fb-danger) 14%, transparent); color: var(--fb-danger); }
+.menu-sep { block-size: 1px; background: var(--border-subtle); margin: 6px 0; }
+
+/* ---------------------------------------------------------------------------
+   22. COMBOBOX / MULTI-SELECT — a token field for picking many values (skills,
+   PARA folders, a blocklist). Selected values render as removable .combobox-token
+   chips beside a type-to-filter input; the option listbox reuses the menu look.
+   Progressively enhanced by preview/combobox.js from a native <select multiple>
+   (form submit + no-JS fallback intact). Field focus + tokens key to accent.
+     <label class="field-label" for="cb-skills">Skills</label>
+     <select id="cb-skills" name="skills" multiple data-combobox
+             data-placeholder="Add a skill…"> <option>capture</option> … </select>
+   --------------------------------------------------------------------------- */
+.combobox { position: relative; }
+.combobox-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-block-size: var(--control-h); padding: 6px 8px; background: var(--bg-surface); border: 1px solid var(--border-default); cursor: text; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.combobox-field:focus-within { border-color: var(--section-accent); box-shadow: 0 0 0 1px var(--section-accent), 0 0 18px color-mix(in srgb, var(--section-accent) 28%, transparent); }
+.combobox-token { display: inline-flex; align-items: center; gap: 6px; padding-block: 3px; padding-inline: 9px 5px; background: var(--action-primary-weak); border: 1px solid color-mix(in srgb, var(--section-accent) 40%, transparent); color: var(--section-accent); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; }
+.combobox-token button { display: inline-grid; place-items: center; inline-size: 16px; block-size: 16px; padding: 0; background: transparent; border: 0; color: inherit; cursor: pointer; opacity: 0.75; transition: opacity var(--dur-fast); }
+.combobox-token button:hover, .combobox-token button:focus-visible { opacity: 1; outline: none; }
+.combobox-token button svg { inline-size: 12px; block-size: 12px; }
+.combobox-input { flex: 1 1 90px; min-inline-size: 90px; border: 0; background: transparent; color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; padding: 4px 2px; outline: none; }
+.combobox-input::placeholder { color: var(--text-tertiary); }
+.combobox-list { position: absolute; inset-block-start: calc(100% + 6px); inset-inline: 0; max-block-size: 248px; overflow-y: auto; z-index: var(--z-dropdown); background: var(--bg-elevated); border: 1px solid var(--border-default); box-shadow: var(--elev-3); padding: 6px; }
+.combobox-list[hidden] { display: none; }
+.combobox-opt { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+.combobox-opt .opt-check { inline-size: 16px; block-size: 16px; flex: none; opacity: 0; color: var(--section-accent); }
+.combobox-opt[aria-selected="true"] { color: var(--text-primary); }
+.combobox-opt[aria-selected="true"] .opt-check { opacity: 1; }
+.combobox-opt.is-active { background: var(--action-primary-weak); color: var(--text-primary); }
+.combobox-empty { padding: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--text-tertiary); text-align: center; }
+
+/* ---------------------------------------------------------------------------
+   23. AVATAR GROUP — overlapping avatars for collaborators / sub-agents, with a
+   +N overflow tile. Each avatar rings in the page ground so the stack reads as
+   layered; set --avatar-ring to the surface behind it. Extends .avatar (§5).
+     <div class="avatar-group" style="--avatar-ring: var(--color-surface)">
+       <span class="avatar" title="Inbox Classifier">IC</span> …
+       <span class="avatar avatar-more">+3</span>
+     </div>
+   --------------------------------------------------------------------------- */
+/* Square (sharp-corner) tiles read as a clean gapped cluster, not an overlap —
+   overlapping square edges stack their 2px rings into doubled hairlines. */
+.avatar-group { display: inline-flex; align-items: center; gap: 8px; }
+.avatar-group .avatar { box-shadow: 0 0 0 2px var(--avatar-ring, var(--color-bg)); }
+.avatar-group .avatar-more { background: var(--bg-elevated); border-color: var(--border-strong); color: var(--text-secondary); }
+
+/* ===========================================================================
+   24. PRICING TABLE — tiered plan cards for a marketing / upgrade surface. One
+   tier is .is-featured (accent frame + glow + a RECOMMENDED tab); the rest are
+   plain panels. A CSS-only billing toggle — a .segmented with #bill-monthly /
+   #bill-annual radios inside .pricing — swaps the .mo / .yr amounts via :has(),
+   no JS. Prices are mono tabular; the CTA reuses .btn-tech / .btn-ghost (§1).
+     <div class="pricing">
+       <div class="segmented price-bill"> <input id="bill-monthly" …> … </div>
+       <div class="price-grid">
+         <article class="price-tier is-featured"> <span class="price-rec">…</span> … </article>
+       </div>
+     </div>
+   --------------------------------------------------------------------------- */
+.pricing { max-width: 940px; }
+.price-bill { width: max-content; margin-block-end: 22px; }
+.price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); gap: 16px; align-items: start; }
+.price-tier { position: relative; display: flex; flex-direction: column; gap: 15px;
+  background: var(--color-surface-2); border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-0); padding: 22px 20px; }
+.price-tier.is-featured { border-color: var(--section-accent);
+  box-shadow: 0 0 0 1px var(--section-accent), 0 0 26px -8px color-mix(in srgb, var(--section-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--section-accent) 5%, var(--color-surface-2)); }
+.price-rec { position: absolute; inset-block-start: -1px; inset-inline-end: -1px;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--text-on-accent); background: var(--section-accent); padding: 4px 9px; }
+.price-name { font-family: var(--font-display); font-style: italic; font-weight: 700; text-transform: uppercase;
+  letter-spacing: var(--tracking-tight); font-size: 18px; color: var(--color-white); }
+.price-amt { display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
+.price-amt .cur { align-self: flex-start; margin-block-start: 5px; font-family: var(--font-mono); font-size: 15px; color: var(--color-muted); }
+.price-amt .num { font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 42px; line-height: 1; color: var(--color-white); }
+.price-amt .num .yr { display: none; }
+.price-amt .per { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); }
+.pricing:has(#bill-annual:checked) .price-amt .num .mo { display: none; }
+.pricing:has(#bill-annual:checked) .price-amt .num .yr { display: inline; }
+.price-desc { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; color: var(--color-faint); }
+.price-feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.price-feats li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--color-text); line-height: 1.45; }
+.price-feats li .ob-icon { flex: none; margin-block-start: 1px; color: var(--section-accent); }
+.price-feats li.is-off { color: var(--color-ghost); }
+.price-feats li.is-off .ob-icon { color: var(--color-ghost); }
+.price-tier .btn-tech, .price-tier .btn-ghost { margin-block-start: auto; }
+
+/* ===========================================================================
+   25. DATE PICKER — a calendar popover for scheduled skills (📅 task dates). The
+   selected day reads as an accent ring + weak tint + accent text (never a solid
+   accent fill — §2); today carries a small accent dot under the numeral. Numerals
+   are mono tabular. Rendered by preview/datepicker.js (zero-dependency); the
+   markup degrades to a static <input type="date"> with no JS.
+     <div class="datepicker" data-datepicker> <div class="dp-head">…</div>
+       <div class="dp-grid">…</div> <div class="dp-foot">…</div> </div>
+   --------------------------------------------------------------------------- */
+.datepicker { width: 286px; max-width: 100%; box-sizing: border-box;
+  background: var(--bg-elevated); border: 1px solid var(--color-border);
+  border-radius: var(--radius-0); padding: 14px; box-shadow: var(--shadow-overlay); }
+.dp-head { display: flex; align-items: center; justify-content: space-between; margin-block-end: 12px; }
+.dp-title { font-family: var(--font-display); font-style: italic; font-weight: 700; text-transform: uppercase;
+  letter-spacing: var(--tracking-tight); font-size: 14px; color: var(--color-white); }
+.dp-nav { display: flex; gap: 4px; }
+.dp-nav button { width: 30px; height: 30px; display: grid; place-content: center; cursor: pointer;
+  background: transparent; border: 1px solid var(--color-border); color: var(--color-muted);
+  border-radius: var(--radius-0); transition: border-color var(--dur-fast) var(--ease-out-expo), color var(--dur-fast) var(--ease-out-expo); }
+.dp-nav button:hover { border-color: var(--section-accent); color: var(--section-accent); }
+.dp-nav button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-dow { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--color-ghost); text-align: center; padding: 4px 0; }
+.dp-day { position: relative; aspect-ratio: 1; display: grid; place-content: center; cursor: pointer;
+  font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--color-text);
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-0);
+  transition: background var(--dur-fast) var(--ease-out-expo), border-color var(--dur-fast) var(--ease-out-expo); }
+.dp-day:hover { border-color: var(--color-border); background: var(--color-surface-2); }
+.dp-day.is-out { color: var(--color-ghost); }
+.dp-day.is-today::after { content: ''; position: absolute; inset-block-end: 3px; inset-inline-start: 50%;
+  transform: translateX(-50%); width: 3px; height: 3px; border-radius: 50%; background: var(--section-accent); }
+.dp-day.is-selected { border-color: var(--section-accent); color: var(--section-accent); font-weight: 600;
+  background: color-mix(in srgb, var(--section-accent) 14%, transparent); }
+.dp-day:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -1px; }
+.dp-foot { display: flex; align-items: center; justify-content: space-between; margin-block-start: 12px;
+  padding-block-start: 10px; border-top: 1px solid var(--color-border-2);
+  font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); }
+.dp-foot b { color: var(--section-accent); font-weight: 500; }
+
+/* ===========================================================================
+   26. NOTIFICATION CENTER — a panel listing activity / sub-agent events. Unread
+   rows carry an accent-ringed icon + an accent dot; read rows dim the dot. The
+   header shows an unread count pill + a "Mark all read" action. Dismiss + mark
+   read are wired by preview/ui-actions.js ([data-dismiss] / [data-notif-read]).
+     <div class="notif-center"> <div class="notif-head">…</div>
+       <div class="notif-list"> <article class="notif is-unread">…</article> </div> </div>
+   --------------------------------------------------------------------------- */
+.notif-center { width: 360px; max-width: 100%; box-sizing: border-box; overflow: hidden;
+  background: var(--bg-elevated); border: 1px solid var(--color-border);
+  border-radius: var(--radius-0); box-shadow: var(--shadow-overlay); }
+.notif-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--color-border); }
+.notif-head .nh-title { font-family: var(--font-display); font-style: italic; font-weight: 700; text-transform: uppercase;
+  letter-spacing: var(--tracking-tight); font-size: 14px; color: var(--color-white); }
+.notif-head .nh-count { font-family: var(--font-mono); font-size: 10px; min-width: 18px; padding: 2px 6px; text-align: center;
+  color: var(--text-on-accent); background: var(--section-accent); border-radius: var(--radius-pill); }
+.notif-head .nh-action { margin-inline-start: auto; font-family: var(--font-mono); font-size: 11px; cursor: pointer;
+  color: var(--text-link); background: transparent; border: 0; }
+.notif-head .nh-action:hover { color: var(--section-accent); }
+.notif-list { max-height: 348px; overflow-y: auto; }
+.notif { position: relative; display: flex; gap: 11px; padding: 12px 14px; border-bottom: 1px solid var(--color-border-2);
+  transition: background var(--dur-fast) var(--ease-out-expo); }
+.notif:hover { background: var(--color-surface-2); }
+.notif-ic { flex: none; width: 30px; height: 30px; display: grid; place-content: center;
+  border: 1px solid var(--color-border); color: var(--color-muted); }
+.notif.is-unread .notif-ic { border-color: var(--section-accent); color: var(--section-accent); }
+.notif-body { flex: 1; min-width: 0; }
+.notif-title { font-size: 13px; line-height: 1.4; color: var(--color-text); }
+.notif-title b { font-weight: 600; color: var(--color-white); }
+.notif-meta { margin-block-start: 3px; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ghost); }
+.notif-dot { flex: none; align-self: center; width: 7px; height: 7px; border-radius: 50%; background: var(--section-accent); }
+.notif:not(.is-unread) .notif-dot { visibility: hidden; }
+.notif-x { flex: none; align-self: flex-start; width: 24px; height: 24px; display: grid; place-content: center; cursor: pointer;
+  background: transparent; border: 1px solid transparent; color: var(--color-ghost); border-radius: var(--radius-0);
+  transition: color var(--dur-fast) var(--ease-out-expo), border-color var(--dur-fast) var(--ease-out-expo); }
+.notif-x:hover { color: var(--section-accent); border-color: var(--color-border); }
+.notif-x:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* ===========================================================================
+   27. RESIZABLE PANES — a draggable split layout for console / inspector views.
+   The .resizer splitter brightens to the section accent on hover / drag and has
+   a fat invisible hit area. Drag is wired by preview/resizable.js (pointer
+   events, honors a pane min-width); with no JS the panes simply sit side by side.
+     <div class="resizable" data-resizable>
+       <div class="pane">…</div> <div class="resizer" role="separator"></div> <div class="pane">…</div>
+     </div>
+   --------------------------------------------------------------------------- */
+.resizable { display: flex; align-items: stretch; height: 280px; overflow: hidden;
+  border: 1px solid var(--color-border); border-radius: var(--radius-0); background: var(--color-surface); }
+.resizable .pane { min-width: 84px; overflow: auto; padding: 14px; }
+.resizable .pane-fixed { flex: none; }
+.resizable .pane-fill { flex: 1; }
+.resizer { position: relative; flex: none; width: 7px; cursor: col-resize; touch-action: none;
+  background: var(--color-border-2); transition: background var(--dur-fast) var(--ease-out-expo); }
+.resizer::before { content: ''; position: absolute; inset: 0 -4px; }
+.resizer::after { content: ''; position: absolute; inset-block-start: 50%; inset-inline-start: 50%;
+  transform: translate(-50%, -50%); width: 2px; height: 22px; border-radius: 2px; background: var(--color-ghost);
+  transition: background var(--dur-fast) var(--ease-out-expo); }
+.resizer:hover, .resizer.is-drag { background: color-mix(in srgb, var(--section-accent) 32%, transparent); }
+.resizer:hover::after, .resizer.is-drag::after { background: var(--section-accent); }
+.resizer:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* ===========================================================================
+   28. EMOJI PICKER — a category-tabbed emoji grid for reactions / note tagging.
+   Emoji here are content (the picker's whole purpose), not UI chrome — the tabs,
+   search, and footer stay on the system's type + accent language, while the grid
+   holds real emoji. Rendered by preview/emoji-picker.js (search, categories,
+   recents, keyboard). Degrades to a plain text input with no JS.
+     <div class="emoji-picker" data-emoji-picker> <div class="ep-search">…</div>
+       <div class="ep-cats">…</div> <div class="ep-grid">…</div> <div class="ep-foot">…</div> </div>
+   --------------------------------------------------------------------------- */
+.emoji-picker { display: flex; flex-direction: column; width: 320px; max-width: 100%; box-sizing: border-box; overflow: hidden;
+  background: var(--bg-elevated); border: 1px solid var(--color-border);
+  border-radius: var(--radius-0); box-shadow: var(--shadow-overlay); }
+.ep-search { padding: 10px; border-bottom: 1px solid var(--color-border-2); }
+.ep-search input { width: 100%; box-sizing: border-box; height: 34px; padding: 0 10px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--color-text);
+  background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-0);
+  transition: border-color var(--dur-fast) var(--ease-out-expo), box-shadow var(--dur-fast) var(--ease-out-expo); }
+.ep-search input::placeholder { color: var(--color-muted); }
+.ep-search input:focus { outline: none; border-color: var(--section-accent);
+  box-shadow: 0 0 0 1px var(--section-accent), 0 0 14px -4px var(--section-accent); }
+.ep-cats { display: flex; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--color-border-2); }
+.ep-cat { flex: 1; height: 30px; display: grid; place-content: center; font-size: 15px; cursor: pointer; opacity: .55;
+  background: transparent; border: 0; border-block-end: 2px solid transparent;
+  transition: opacity var(--dur-fast) var(--ease-out-expo), border-color var(--dur-fast) var(--ease-out-expo); }
+.ep-cat:hover { opacity: 1; }
+.ep-cat.is-active { opacity: 1; border-block-end-color: var(--section-accent); }
+.ep-cat:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.ep-cat-label { grid-column: 1 / -1; padding: 6px 4px 2px; font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--color-ghost); }
+.ep-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; padding: 8px; max-height: 196px; overflow-y: auto; }
+.ep-emoji { aspect-ratio: 1; display: grid; place-content: center; font-size: 19px; line-height: 1; cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-0);
+  transition: background var(--dur-fast) var(--ease-out-expo), border-color var(--dur-fast) var(--ease-out-expo); }
+.ep-emoji:hover { background: color-mix(in srgb, var(--section-accent) 14%, transparent); border-color: var(--section-accent); }
+.ep-emoji:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -1px; }
+.ep-empty { grid-column: 1 / -1; padding: 18px 8px; text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--color-ghost); }
+.ep-foot { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px; border-top: 1px solid var(--color-border-2); }
+.ep-foot .ep-prev { font-size: 20px; line-height: 1; }
+.ep-foot .ep-name { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); }
+
+/* ---------------------------------------------------------------------------
+   29. RATING — a star rating for note / resource quality. Every glyph is the
+   same ★; .is-on colors it with the accent (the rating value follows the theme
+   accent like the rest of the chrome) while empty stars stay on the border
+   neutral. Interactive (hover preview + click + ←/→ keyboard) via preview/extras.js;
+   add data-readonly for a static display rating. Stars are buttons → no JS = still
+   semantic radio-like markup.
+     <div class="rating" data-rating data-value="4"><span class="rating-stars">…★…</span>
+       <span class="rating-value">4.0</span></div>
+   --------------------------------------------------------------------------- */
+.rating { display: inline-flex; align-items: center; }
+.rating-stars { display: inline-flex; gap: 2px; }
+.rating-star { width: 30px; height: 30px; display: grid; place-content: center; font-size: 21px; line-height: 1;
+  padding: 0; background: transparent; border: 0; cursor: pointer; color: var(--color-border-strong, var(--color-border));
+  transition: color var(--dur-fast) var(--ease-out-expo), transform var(--dur-fast) var(--ease-out-expo); }
+.rating-star.is-on { color: var(--section-accent); text-shadow: 0 0 8px color-mix(in srgb, var(--section-accent) 50%, transparent); }
+.rating-star:hover { transform: scale(1.15); }
+.rating-star:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.rating[data-readonly] .rating-star { cursor: default; pointer-events: none; }
+.rating-value { margin-inline-start: 8px; font-family: var(--font-mono); font-size: var(--text-sm);
+  color: var(--color-muted); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------------
+   30. COLOR PICKER — a generic swatch + hex field for tagging notes / projects
+   (distinct from the theme accent picker, which re-keys the whole surface). The
+   swatch IS the color, so a solid fill here is sanctioned (same exception as the
+   accent picker); the SELECTED ring uses the accent so selection follows the
+   theme. Synced by preview/extras.js; degrades to a plain hex <input> + native
+   swatches with no JS.
+     <div class="color-picker" data-color-picker><div class="cp-head">…</div>
+       <div class="cp-swatches">…</div></div>
+   --------------------------------------------------------------------------- */
+.color-picker { display: inline-flex; flex-direction: column; gap: 12px; width: 252px; max-width: 100%; box-sizing: border-box;
+  padding: 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-0); }
+.cp-head { display: flex; align-items: center; gap: 10px; }
+.cp-preview { width: 38px; height: 38px; flex: none; border: 1px solid var(--color-border-2); border-radius: var(--radius-0);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.cp-hex { flex: 1; min-width: 0; height: 36px; box-sizing: border-box; padding: 0 10px; text-transform: uppercase; letter-spacing: .04em;
+  font-family: var(--font-mono); font-size: 12px; color: var(--color-text); background: var(--color-bg);
+  border: 1px solid var(--color-border); border-radius: var(--radius-0);
+  transition: border-color var(--dur-fast) var(--ease-out-expo), box-shadow var(--dur-fast) var(--ease-out-expo); }
+.cp-hex:focus { outline: none; border-color: var(--section-accent); box-shadow: 0 0 0 1px var(--section-accent); }
+.cp-swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.cp-swatch { aspect-ratio: 1; padding: 0; cursor: pointer; position: relative; border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-0); transition: transform var(--dur-fast) var(--ease-out-expo); }
+.cp-swatch:hover { transform: scale(1.12); }
+.cp-swatch.is-sel { box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 3px var(--section-accent); }
+.cp-swatch:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   31. POPOVER — a click-triggered rich overlay (title + body + optional actions),
+   distinct from the hover .tooltip. Built on native <details> so it works with no
+   JS (click the summary to toggle); preview/extras.js adds outside-click + Esc
+   dismiss. The arrow mirrors automatically (logical inset). Use for "what is this"
+   affordances and inline confirmations.
+     <details class="popover"><summary class="btn-ghost">Why?</summary>
+       <div class="popover-panel"><div class="popover-title">…</div>…</div></details>
+   --------------------------------------------------------------------------- */
+.popover { position: relative; display: inline-block; }
+.popover > summary { display: inline-flex; align-items: center; list-style: none; cursor: pointer; }
+.popover > summary::-webkit-details-marker { display: none; }
+.popover-panel { position: absolute; z-index: var(--z-dropdown); inset-block-start: calc(100% + 10px); inset-inline-start: 0;
+  width: 264px; max-width: 80vw; box-sizing: border-box; padding: 14px 16px; background: var(--glass-fill-menu, var(--bg-elevated));
+  backdrop-filter: var(--glass-blur-strong); -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--color-border); border-radius: var(--radius-0); box-shadow: var(--shadow-overlay);
+  animation: pop-in var(--dur-fast) var(--ease-out-expo); }
+.popover-panel::before { content: ""; position: absolute; inset-block-start: -5px; inset-inline-start: 18px; width: 9px; height: 9px;
+  background: inherit; border-inline-start: 1px solid var(--color-border); border-block-start: 1px solid var(--color-border);
+  transform: rotate(45deg); }
+.popover-title { margin-block-end: 6px; font-family: var(--font-display); font-style: italic; text-transform: uppercase;
+  font-size: var(--text-sm); letter-spacing: .02em; color: var(--color-white); }
+.popover-body { font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.6; color: var(--color-faint); }
+.popover-actions { display: flex; gap: 8px; margin-block-start: 12px; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------------------------------------------------------------------------
+   32. CAROUSEL — a scroll-snap track of slides with prev/next + dot indicators,
+   for testimonials / feature galleries / onboarding peeks. The track is CSS
+   scroll-snap; preview/extras.js wires the buttons, dots, active sync, keyboard,
+   and disables ctrls at the ends. Chevrons mirror under RTL (see §13). Honors
+   reduced motion (no smooth scroll).
+     <div class="carousel" data-carousel><div class="carousel-track">…slides…</div>
+       <button class="carousel-ctrl carousel-prev">…</button>… <div class="carousel-dots"></div></div>
+   --------------------------------------------------------------------------- */
+.carousel { position: relative; box-sizing: border-box; padding-inline: 52px; }
+.carousel-track { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+  scrollbar-width: none; -ms-overflow-style: none; }
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-slide { flex: 0 0 100%; box-sizing: border-box; scroll-snap-align: start; }
+.carousel-ctrl { position: absolute; inset-block-start: 50%; transform: translateY(-50%); width: 40px; height: 40px; z-index: 2;
+  display: grid; place-content: center; padding: 0; cursor: pointer; color: var(--color-text);
+  background: var(--glass-fill-menu, var(--bg-elevated)); backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong); border: 1px solid var(--color-border); border-radius: var(--radius-0);
+  transition: border-color var(--dur-fast) var(--ease-out-expo), color var(--dur-fast) var(--ease-out-expo); }
+.carousel-ctrl:hover { border-color: var(--section-accent); color: var(--section-accent); }
+.carousel-ctrl:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.carousel-ctrl[disabled] { opacity: .3; cursor: default; }
+.carousel-prev { inset-inline-start: 6px; }
+.carousel-next { inset-inline-end: 6px; }
+.carousel-ctrl svg { width: 20px; height: 20px; }
+.carousel-dots { display: flex; justify-content: center; gap: 8px; margin-block-start: 16px; }
+.carousel-dot { width: 8px; height: 8px; padding: 0; cursor: pointer; border: 0; border-radius: var(--radius-pill);
+  background: var(--color-border-strong, var(--color-border));
+  transition: background var(--dur-fast) var(--ease-out-expo), transform var(--dur-fast) var(--ease-out-expo); }
+.carousel-dot.is-active { background: var(--section-accent); transform: scale(1.3); box-shadow: var(--glow-accent); }
+.carousel-dot:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+
+/* ---------------------------------------------------------------------------
+   33. KEYBOARD SHORTCUT SHEET — a grouped reference of shortcuts (the kind a
+   `?` overlay shows), reusing the .kbd primitive for the keys. Pure CSS, no JS.
+   Numerals / keys stay LTR even inside RTL prose. Use inside a .modal for a real
+   "keyboard help" surface.
+     <div class="shortcut-sheet"><div class="shortcut-group"><div class="shortcut-group-label">…</div>
+       <div class="shortcut-row"><span class="shortcut-label">…</span><span class="shortcut-keys">…</span></div></div></div>
+   --------------------------------------------------------------------------- */
+.shortcut-sheet { width: 100%; max-width: 520px; overflow: hidden; background: var(--color-surface-2);
+  border: 1px solid var(--color-border); border-radius: var(--radius-0); }
+.shortcut-group + .shortcut-group { border-block-start: 1px solid var(--color-border); }
+.shortcut-group-label { padding: 13px 16px 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--color-ghost); }
+.shortcut-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 16px; }
+.shortcut-row + .shortcut-row { border-block-start: 1px solid color-mix(in srgb, var(--color-border-2) 60%, transparent); }
+.shortcut-label { font-size: var(--text-sm); color: var(--color-text); }
+.shortcut-keys { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.shortcut-keys .sk-plus { font-family: var(--font-mono); font-size: 11px; color: var(--color-ghost); }
+
+/* a11y — the structure / content / common / advanced components honor reduced motion too. */
+@media (prefers-reduced-motion: reduce) {
+  .stepper-num, .tree-row, .tree-chevron, .code-copy,
+  .banner-x, .toolbar-btn, .menu-item, .menu-item > .ob-icon,
+  .combobox-field, .combobox-token button,
+  .dp-nav button, .dp-day, .notif, .resizer, .resizer::after, .ep-cat, .ep-emoji, .ep-search input,
+  .rating-star, .cp-swatch, .cp-hex, .carousel-ctrl, .carousel-dot { transition: none; }
+  .menu-wrap[open] > .menu { animation: none; }
+  .popover-panel { animation: none; }
+  .carousel-track { scroll-behavior: auto; }
+}

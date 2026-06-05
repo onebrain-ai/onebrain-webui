@@ -7,7 +7,7 @@ import { useSignal } from "@preact/signals";
 import { buildTree } from "../core/tree";
 import type { TreeNode } from "../core/tree";
 import { DaemonError } from "../core/types";
-import { openFile } from "../core/stores";
+import { openFile, vaultIndex } from "../core/stores";
 import { registerPanel } from "./panel";
 import type { PanelContext } from "./panel";
 import { mountComponent } from "./mount";
@@ -21,7 +21,16 @@ function ExplorerView({ ctx }: { ctx: PanelContext }) {
     ctx.daemon
       .tree()
       .then((tree) => {
-        if (live) setNodes(buildTree(tree.entries));
+        if (!live) return;
+        setNodes(buildTree(tree.entries));
+        // Build the basename→path index for wikilink resolution in Preview.
+        const idx = new Map<string, string>();
+        for (const e of tree.entries) {
+          if (e.kind === "file" && e.name.endsWith(".md")) {
+            idx.set(e.name.replace(/\.md$/i, "").toLowerCase(), e.path);
+          }
+        }
+        vaultIndex.value = idx;
       })
       .catch((e: unknown) => {
         if (live) setError(describe(e));

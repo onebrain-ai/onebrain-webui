@@ -1,13 +1,15 @@
 // Preview panel — reads the `openFile` signal, fetches the note via
-// `GET /api/vault/file?path=`, and shows its content read-only.
+// `GET /api/vault/file?path=`, and renders it (frontmatter + markdown reading
+// view). Clicking a [[wikilink]] resolves it against the vault index and opens
+// the target in place.
 //
-// v1 renders the raw markdown source in a readable reading pane (no rich
-// markdown render / editing yet). The Obsidian-replacement editor — live
-// preview + wikilink autocomplete + backlinks on CodeMirror 6 — is the next
-// PKM step (spec §7, open item #5); this panel is the seam it slots into.
+// Editing (CodeMirror 6 live preview) + the `PUT` write path are the next PKM
+// step (needs daemon step 2b); this panel is the read seam they slot into.
 
-import { useEffect, useState } from "preact/hooks";
-import { openFile } from "../core/stores";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { openFile, resolveWikilink } from "../core/stores";
+import { renderMarkdown } from "../core/markdown";
+import type { ParsedNote } from "../core/markdown";
 import { DaemonError } from "../core/types";
 import type { VaultFile } from "../core/types";
 import { registerPanel } from "./panel";
@@ -31,18 +33,14 @@ function PreviewView({ ctx }: { ctx: PanelContext }) {
     setError(null);
     ctx.daemon
       .file(path)
-      .then((f) => {
-        if (live) setFile(f);
-      })
+      .then((f) => live && setFile(f))
       .catch((e: unknown) => {
         if (live) {
           setFile(null);
           setError(describe(e));
         }
       })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
+      .finally(() => live && setLoading(false));
     return () => {
       live = false;
     };
@@ -64,8 +62,42 @@ function PreviewView({ ctx }: { ctx: PanelContext }) {
       </header>
       {loading && <div class="ob-panel-loading">Loading…</div>}
       {error && <div class="ob-panel-error">⚠ {error}</div>}
-      {file && !loading && !error && <pre class="ob-preview-body">{file.content}</pre>}
+      {file && !loading && !error && <NoteBody content={file.content} />}
     </article>
+  );
+}
+
+/** Render parsed markdown + frontmatter, and delegate [[wikilink]] clicks to
+ *  open the resolved note (a missing target is a no-op, visually inert). */
+function NoteBody({ content }: { content: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const parsed: ParsedNote = renderMarkdown(content);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onClick = (ev: Event) => {
+      const target = ev.target as HTMLElement;
+      const link = target.closest<HTMLElement>(".ob-wikilink");
+      if (!link) return;
+      ev.preventDefault();
+      // `data-wikilink` is always set by the renderer (markdown.ts), and carries
+      // the link TARGET (not the alias) — so aliased [[Target|Alias]] resolves
+      // on Target, not the visible text.
+      const resolved = resolveWikilink(link.dataset.wikilink ?? "");
+      if (resolved) openFile.value = resolved;
+    };
+    el.addEventListener("click", onClick);
+    return () => el.removeEventListener("click", onClick);
+  }, [content]);
+
+  return (
+    <>
+      {parsed.frontmatter && <pre class="ob-frontmatter">{parsed.frontmatter}</pre>}
+      {/* eslint-disable-next-line react/no-danger -- HTML is built by our own
+          escape-first renderer (core/markdown.ts); no source markup passes through. */}
+      <div class="ob-md" ref={ref} dangerouslySetInnerHTML={{ __html: parsed.html }} />
+    </>
   );
 }
 

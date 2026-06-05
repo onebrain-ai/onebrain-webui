@@ -3,7 +3,7 @@
 // captured, no daemon client) with a clear notice instead of silent 401s.
 
 import type { ComponentChildren } from "preact";
-import { daemon as daemonStore, openFile } from "./core/stores";
+import { daemon as daemonStore, openFile, mainView } from "./core/stores";
 import { ModeRouter } from "./shells/ModeRouter";
 import type { PanelContext, HostEnv, PanelNav } from "./panels/panel";
 
@@ -44,6 +44,7 @@ export function App({ hasToken }: { hasToken: boolean }) {
     },
     openInPreview: (path: string) => {
       openFile.value = path;
+      mainView.value = "preview";
     },
   };
 

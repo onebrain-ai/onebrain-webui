@@ -1,0 +1,474 @@
+/* ============================================================================
+   OneBrain Design System — colors_and_type.css
+   Canonical, reusable design tokens. Every value here is extracted from real
+   source evidence (onebrain-ai/website src/styles/global.css, brand SVGs, and
+   the onebrain-ai/onebrain plugin), not invented. See DESIGN.md + PROVENANCE.md.
+
+   Palette name (from source): "Cyber Palette — Operator Console".
+   Aesthetic: futuristic, minimal, professional — cyberpunk / Tron operator
+   console for an AI product. Dark-first.
+
+   Paste this file's :root into the first <style> of any artifact, or link it:
+     <link rel="stylesheet" href="colors_and_type.css">      (from root)
+     <link rel="stylesheet" href="../colors_and_type.css">   (from preview/)
+     <link rel="stylesheet" href="../../colors_and_type.css"> (from ui_kits/app/)
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   1. FONT BINDINGS — preserved brand typefaces (fonts/*.ttf)
+   url() is resolved relative to THIS css file (project root), so the same
+   bindings work whether the importer is at root, preview/, or ui_kits/app/.
+   --------------------------------------------------------------------------- */
+
+/* Chakra Petch — DISPLAY face (headlines, titles, brand wordmark). Used
+   italic + uppercase for the cinematic operator-console headline voice. */
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-Light.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: italic;
+  font-weight: 300;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-LightItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-Italic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-MediumItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-SemiBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-SemiBoldItalic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-Bold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/ChakraPetch-BoldItalic.ttf") format("truetype");
+}
+
+/* JetBrains Mono — MONO face (eyebrows/pills, metadata, code, IDs, body in
+   dense console contexts). Variable font: one file covers 100–800. */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("fonts/JetBrainsMono-VariableFont_wght.ttf") format("truetype");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: italic;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("fonts/JetBrainsMono-Italic-VariableFont_wght.ttf") format("truetype");
+}
+
+/* ---------------------------------------------------------------------------
+   2. TOKENS
+   --------------------------------------------------------------------------- */
+:root {
+  /* -- Type families (source: global.css @theme) ----------------------------
+     Inter is the body sans (not shipped as a file — system/Google fallback).
+     Chakra Petch + JetBrains Mono are bound above from preserved .ttf files.
+     Thai · Arabic · CJK system fallbacks trail the Latin faces (DESIGN.md §10)
+     so non-Latin text renders instead of tofu. Keep these in sync with
+     tokens/tokens.json font.family.* (the drift-check asserts it). */
+  --font-sans:    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "Chakra Petch", "Inter", ui-sans-serif, system-ui, "Noto Sans Thai", sans-serif;
+
+  /* -- Core surfaces & text (source: --color-* in global.css) --------------- */
+  --color-bg:        #050507;  /* near-black operator canvas            */
+  --color-bg-deep:   #020204;  /* nav-glass base (rgba(2,2,4,.92))       */
+  --color-surface:   #0a0a12;  /* raised panel / surface                 */
+  --color-surface-2: #08080e;  /* card fill, derived from rgba(8,8,14,…) */
+  --color-border:    rgba(255, 255, 255, 0.08); /* hairline border       */
+  --color-border-2:  rgba(255, 255, 255, 0.06); /* card hairline border  */
+  --color-text:      #f0f0f2;  /* primary text                           */
+  --color-muted:     #a1a1aa;  /* secondary / muted text                 */
+  --color-faint:     rgba(255, 255, 255, 0.62); /* sub-paragraph text     */
+  --color-ghost:     rgba(255, 255, 255, 0.18); /* card meta / 9px labels */
+  --color-white:     #ffffff;  /* brand-emphasis (.brand) + headlines    */
+
+  /* -- Accents — the four neon signals (source: --color-accent*) -----------
+     ONE accent per surface, used at most twice. accent-2 (cyan) is the
+     system-default section accent and the focus-ring color. */
+  --color-accent:    #bc13fe;  /* neon violet  — primary / gradient start */
+  --color-accent-2:  #00f3ff;  /* electric cyan — default section accent  */
+  --color-accent-3:  #ff2d92;  /* hot magenta  — brand glow / dot / CTA   */
+  --color-accent-4:  #ffb000;  /* amber        — warnings / highlights    */
+
+  /* Section-accent system: components read --section-accent so a whole
+     region can be re-tinted by overriding one variable (source pattern). */
+  --section-accent:  var(--color-accent-2);
+
+  /* Diagram / domain accents preserved from the real brand SVGs.
+     vault-hub = Obsidian purple, harness-os = teal-cyan, coevo = lime. */
+  --color-vault:     #7c3aed;  /* Obsidian vault hub spokes/core          */
+  --color-vault-2:   #a78bfa;
+  --color-harness:   #00cce0;  /* harness layer gradient top              */
+  --color-harness-2: #00646e;  /* harness layer gradient bottom           */
+  --color-loop:      #a8d000;  /* co-evolution loop nodes                 */
+  --color-loop-2:    #d4ff45;
+
+  /* -- Chart / data-viz tokens ---------------------------------------------
+     Categorical series ALIAS the accents + diagram colors, so they inherit the
+     light re-inking automatically. Use 1–3 series typically; the full 6 only
+     for genuinely categorical data. Gridlines/axes stay low-contrast — the
+     data is the signal, not the chrome. (var() resolves at use-time, so the
+     forward reference to --color-success below is fine.) */
+  --chart-1: var(--color-accent-2);  /* cyan / teal    — primary series   */
+  --chart-2: var(--color-accent);    /* violet / orchid                   */
+  --chart-3: var(--color-accent-3);  /* magenta / rose                    */
+  --chart-4: var(--color-accent-4);  /* amber / ochre                     */
+  --chart-5: var(--color-success);   /* lime / moss                       */
+  --chart-6: var(--color-vault-2);   /* vault light purple                */
+  --chart-grid:  rgba(255, 255, 255, 0.06); /* low-contrast gridline       */
+  --chart-axis:  var(--color-muted);         /* axis labels / ticks        */
+  --chart-track: rgba(255, 255, 255, 0.05); /* bar track / sequential base */
+
+  /* -- Semantic states (derived from accent roles) -------------------------- */
+  --color-success:  var(--color-loop);     /* #a8d000 lime  */
+  --color-info:     var(--color-accent-2); /* #00f3ff cyan  */
+  --color-warning:  var(--color-accent-4); /* #ffb000 amber */
+  --color-danger:   var(--color-accent-3); /* #ff2d92 pink  */
+
+  /* Brand gradient lifted from brain.svg (logo) + .btn-tech (button frame). */
+  --grad-brand:  linear-gradient(135deg, #ff2d92 0%, #ff5aa3 55%, #00f3ff 100%);
+  --grad-button: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
+
+  /* -- Type scale ----------------------------------------------------------
+     Base 16px / line-height 1.5 (source: html font-size:16px, body 1.5).
+     Display sizes use the source clamp() so headlines stay fluid + bounded. */
+  --text-xs:    0.6875rem;  /* 11px — card desc, fine print            */
+  --text-sm:    0.8125rem;  /* 13px — mono metadata                    */
+  --text-base:  1rem;       /* 16px — body                             */
+  --text-md:    1.0625rem;  /* 17px — card title                       */
+  --text-lg:    1.25rem;    /* 20px                                    */
+  --text-xl:    1.5rem;     /* 24px                                    */
+  --text-2xl:   2rem;       /* 32px                                    */
+  --text-h2:    clamp(2.4rem, 5.6vw, 5rem);   /* section headline      */
+  --text-hero:  clamp(3rem, 9vw, 8rem);       /* hero display          */
+
+  --eyebrow-size:  0.625rem; /* 10px — pill / kicker (mono uppercase)   */
+  --leading-tight: 0.95;     /* display line-height (source .cyber-h2)  */
+  --leading-snug:  1.2;
+  --leading-body:  1.5;
+  --leading-prose: 1.65;     /* mono sub-paragraphs                     */
+
+  --tracking-tight:   -0.02em; /* display headlines                     */
+  --tracking-normal:  0;
+  --tracking-wide:    0.04em;  /* card titles                           */
+  --tracking-eyebrow: 0.4em;   /* pills / status lines                  */
+  --tracking-label:   0.3em;   /* small uppercase labels                */
+
+  --weight-light:    300;
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* -- Spacing scale (4px base) -------------------------------------------- */
+  --space-0:   0;
+  --space-1:   0.25rem;  /* 4px  */
+  --space-2:   0.5rem;   /* 8px  */
+  --space-3:   0.75rem;  /* 12px */
+  --space-4:   1rem;     /* 16px */
+  --space-5:   1.5rem;   /* 24px — card padding x, section padding x    */
+  --space-6:   2rem;     /* 32px */
+  --space-7:   2.5rem;   /* 40px — section padding y (mobile)           */
+  --space-8:   4rem;     /* 64px — section padding (desktop), nav height */
+  --space-9:   6rem;     /* 96px */
+
+  --card-pad:    1.4rem 1.5rem;       /* source .cyber-card padding      */
+  --section-pad: 2.5rem 1.5rem 2rem;  /* source .cyber-section (mobile)  */
+  --section-pad-lg: 4rem 4rem 3rem;   /* source .cyber-section (>=1024)  */
+  --nav-height:  64px;                /* source scroll-padding-top       */
+  --content-max: 1280px;              /* source .cyber-section-shell     */
+  --prose-max:   640px;               /* source .cyber-sub max-width     */
+
+  /* -- Radius — deliberately sharp (cyber/Tron). Corners are cut with
+     clip-path, not rounded. (source: code 2px, dots 50%, no card radius) */
+  --radius-0:    0;
+  --radius-xs:   2px;     /* inline code, tiny chips                    */
+  --radius-sm:   4px;     /* skip link, small controls                 */
+  --radius-pill: 999px;   /* counter, status dots                      */
+  /* Angled "tech" corner cut (source: .btn-tech clip-path). Corners are a
+     FIXED size (--clip-cut), NOT percentages — percentage cuts balloon into
+     huge diagonal wedges as a button widens (a long full-width CTA got
+     ~10%-of-width cuts that read as a clumsy outline). Fixed cuts stay an even,
+     tasteful 12px at ANY width. Every .btn-tech / framed CTA / composer-send in
+     the system references this ONE token, so the shape is identical everywhere
+     and width-independent. */
+  --clip-cut:  12px;
+  --clip-tech: polygon(var(--clip-cut) 0, 100% 0, 100% calc(100% - var(--clip-cut)), calc(100% - var(--clip-cut)) 100%, 0 100%, 0 var(--clip-cut));
+
+  /* -- Borders ------------------------------------------------------------- */
+  --border-hairline: 1px solid var(--color-border);
+  --border-card:     1px solid var(--color-border-2);
+  --border-accent:   1px solid color-mix(in srgb, var(--section-accent) 30%, transparent);
+
+  /* -- Glow shadows (source: box-shadow glows on btn-tech, pills, dots) ----
+     This system has almost no drop-shadows; "elevation" is neon glow. */
+  --glow-sm:    0 0 12px currentColor;
+  --glow-cta:   0 0 14px rgba(255, 45, 146, 0.5);          /* btn-tech hover */
+  --glow-cyan:  0 0 22px color-mix(in srgb, var(--color-accent-2) 55%, transparent);
+  --glow-accent: 0 0 10px var(--section-accent), 0 0 22px var(--section-accent);
+  --glow-brand: drop-shadow(0 0 32px rgba(255, 45, 146, 0.45))
+                drop-shadow(0 0 70px rgba(0, 243, 255, 0.18));
+  /* Only true elevation in the system: dropdowns / modals. */
+  --shadow-overlay: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  /* -- Motion (source: easings + durations from global.css) ---------------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);   /* .reveal          */
+  --ease-boot:     cubic-bezier(0.22, 1, 0.36, 1);  /* section entry     */
+  --ease-drain:    cubic-bezier(0.55, 0, 0.45, 1);  /* headline color drain */
+  --dur-fast:   0.2s;
+  --dur-base:   0.25s;
+  --dur-slow:   0.45s;
+  --dur-reveal: 1.2s;
+
+  /* -- HUD grid backdrop (source: .cyber-section-grid 56px lattice) -------- */
+  --grid-size: 56px;
+  --grid-line: rgba(255, 255, 255, 0.022);
+
+  /* -- Breakpoints (REFERENCE values) --------------------------------------
+     CSS @media cannot read custom properties — author media queries with the
+     literal px below. These vars exist for JS (getComputedStyle / RN) and to
+     document the one canonical scale every surface shares. */
+  --bp-sm:    360px;   /* mobile compact                                    */
+  --bp-md:    600px;   /* large phone / foldable                            */
+  --bp-lg:    768px;   /* tablet portrait                                   */
+  --bp-xl:    1024px;  /* tablet landscape / small laptop (console multi-col) */
+  --bp-2xl:   1280px;  /* laptop / content shell                            */
+  --bp-wide:  1440px;  /* desktop                                           */
+  --bp-ultra: 1920px;  /* wide                                              */
+
+  /* -- Z layers ------------------------------------------------------------
+     Overlays sit ABOVE the sticky nav (50). Order: dropdown < overlay(scrim)
+     < modal/drawer < toast < tooltip. counter (deck presenter chrome) is top.
+     Without this tier, scrim/modal/drawer shared --z-nav and a sticky nav could
+     paint over an open modal; menus/toasts/tooltips had no defined order. */
+  --z-bg: -1; --z-grid: 1; --z-content: 10; --z-spine: 30; --z-warp: 45; --z-nav: 50;
+  --z-dropdown: 60;  /* menus / select popovers          */
+  --z-overlay:  70;  /* scrim / dimming layer            */
+  --z-modal:    80;  /* modal + drawer (above scrim)     */
+  --z-toast:    90;  /* transient notifications          */
+  --z-tooltip: 100;  /* tooltips / hints (always on top) */
+  --z-counter: 1000; /* deck presenter chrome            */
+}
+
+/* ---------------------------------------------------------------------------
+   2.5 SEMANTIC / INTENT TOKENS  (alias layer)
+   Components in components.css reference THESE intents, never raw palette
+   hexes. Re-theme or re-skin a whole surface by remapping intents here (or
+   per-region by overriding one var) — both dark + light inherit automatically
+   because every intent points at a primitive above (which the light theme
+   re-inks). This is the layer that turns "tokens" into a "system".
+   --------------------------------------------------------------------------- */
+:root {
+  /* Text intents */
+  --text-primary:   var(--color-text);
+  --text-secondary: var(--color-muted);
+  --text-tertiary:  var(--color-faint);
+  --text-disabled:  var(--color-ghost);
+  --text-on-accent: var(--color-bg);    /* dark ink reads on a filled neon accent */
+  /* Inline text links — follow the action accent so a link reads as a link.
+     Cyan default on dark; inherits the re-inked deep-teal #007a90 (AA 5:1) on
+     light. Override --action-primary per region and links re-key with it. */
+  --text-link:       var(--action-primary);
+  --text-link-hover: var(--color-white);
+
+  /* Surface intents */
+  --bg-base:     var(--color-bg);
+  --bg-surface:  var(--color-surface);
+  --bg-elevated: var(--color-surface-2);
+  --bg-sunken:   var(--color-bg-deep);
+
+  /* Border intents */
+  --border-subtle:  var(--color-border-2);
+  --border-default: var(--color-border);
+  --border-strong:  color-mix(in srgb, var(--color-text) 24%, transparent);
+  --border-focus:   var(--color-accent-2);
+
+  /* Action / interactive intents (default = cyan; override --action-* per region) */
+  --action-primary:      var(--color-accent-2);
+  --action-primary-weak: color-mix(in srgb, var(--color-accent-2) 12%, transparent);
+  --action-secondary:    var(--color-accent);
+  --focus-ring:          var(--action-primary);
+
+  /* Feedback intents — text / tint-bg / border per semantic state */
+  --fb-success:    var(--color-success);
+  --fb-success-bg: color-mix(in srgb, var(--color-success) 12%, transparent);
+  --fb-success-bd: color-mix(in srgb, var(--color-success) 45%, transparent);
+  --fb-info:       var(--color-info);
+  --fb-info-bg:    color-mix(in srgb, var(--color-info) 10%, transparent);
+  --fb-info-bd:    color-mix(in srgb, var(--color-info) 45%, transparent);
+  --fb-warning:    var(--color-warning);
+  --fb-warning-bg: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  --fb-warning-bd: color-mix(in srgb, var(--color-warning) 45%, transparent);
+  --fb-danger:     var(--color-danger);
+  --fb-danger-bg:  color-mix(in srgb, var(--color-danger) 12%, transparent);
+  --fb-danger-bd:  color-mix(in srgb, var(--color-danger) 45%, transparent);
+
+  /* Elevation scale — dark-first = hairline + glow, almost no soft shadow.
+     The light theme overrides these with real drop-shadows (see §3). */
+  --elev-1: 0 0 0 1px var(--color-border);
+  --elev-2: 0 0 0 1px var(--color-border), 0 18px 40px rgba(0, 0, 0, 0.45);
+  --elev-3: 0 0 0 1px var(--color-border), var(--shadow-overlay);
+
+  /* Disabled affordance (0.38–0.5 per Material) + scrim for modals/drawers */
+  --disabled-opacity: 0.42;
+  --scrim: rgba(2, 2, 4, 0.62);
+
+  /* Density + control sizing. Default is comfortable / touch-safe (>=44px).
+     Set [data-density="compact"] on a container to tighten data-dense UIs. */
+  --control-h:     44px;   /* min touch target          */
+  --control-h-sm:  36px;
+  --control-pad-x: 15px;
+  --row-pad-y:     13px;
+
+  /* -- Frosted glass (iOS-style depth) ------------------------------------
+     Translucent fill + backdrop blur so the HUD grid / orb behind a surface
+     shows through faintly — adds real depth without breaking the dark-first,
+     glow-not-shadow language. Applied (in components.css, behind
+     @supports(backdrop-filter)) to PANEL + OVERLAY surfaces — cards, stats,
+     lists, nav, modals, drawers, dropdowns, toasts — while data-entry and
+     dense-data surfaces (inputs, tables) stay solid for legibility. Geometry
+     stays cyber-sharp; only the hero terminal rounds (see DESIGN.md §1/§6).
+     Opaque fills remain the fallback; prefers-reduced-transparency opts out. */
+  --glass-blur:          blur(16px) saturate(1.4);   /* panels (cards / nav)  */
+  --glass-blur-strong:   blur(26px) saturate(1.7);   /* overlays over content */
+  --glass-blur-scrim:    blur(16px) saturate(1.2);   /* page behind a scrim (modal / command palette) — recedes the background so it can't steal focus */
+  --glass-fill:          rgba(12, 12, 20, 0.55);     /* card / stat / list    */
+  --glass-fill-elevated: rgba(14, 14, 24, 0.72);     /* modal / drawer (scrim-backed) */
+  --glass-fill-menu:     rgba(10, 10, 18, 0.99);     /* dense pick-lists (select / dropdown / command palette) — effectively solid so live page content can't bleed through and clash with the rows; the frost reads only at the edges */
+  --glass-fill-nav:      rgba(2, 2, 4, 0.6);         /* sticky nav / tab bar  */
+  --glass-highlight:     inset 0 1px 0 rgba(255, 255, 255, 0.07); /* top sheen */
+}
+
+[data-density="compact"] {
+  --control-h:    36px;
+  --control-h-sm: 30px;
+  --row-pad-y:    9px;
+}
+
+/* ---------------------------------------------------------------------------
+   3. OPTIONAL LIGHT THEME (documentation / print contexts)
+   The product is dark-first; this inverted scale exists so spec sheets and
+   light embeds stay legible. Apply with <html data-theme="light">.
+   --------------------------------------------------------------------------- */
+[data-theme="light"] {
+  --color-bg:        #f4f4f7;
+  --color-bg-deep:   #ffffff;
+  --color-surface:   #ffffff;
+  --color-surface-2: #fafafe;
+  --color-border:    rgba(8, 8, 16, 0.18);  /* bumped from .12 — clearer hairline / input outline on white, still subtle */
+  --color-border-2:  rgba(8, 8, 16, 0.08);
+  --color-text:      #0a0a12;
+  --color-muted:     #52525b;
+  --color-faint:     rgba(10, 10, 18, 0.6);
+  --color-ghost:     rgba(10, 10, 18, 0.35);
+  --color-white:     #0a0a12;
+  --grid-line:       rgba(8, 8, 16, 0.04);
+
+  /* Accents are RE-INKED for the light ground. The neon signals are tuned
+     for near-black: on white, electric cyan (#00f3ff) and amber (#ffb000)
+     wash out and the rest glare. These deeper, slightly-desaturated "ink"
+     variants stay subtle yet hit AA (>=4.5:1 on #fff) so accent text, the
+     `/`-command arrows, focus rings, and active rows read clearly.
+     Dark-first product is untouched — these apply only under data-theme=light.
+     Contrast on #fff: violet 6.8 · cyan 5.0 · magenta 5.8 · amber 5.0 · moss 4.8. */
+  --color-accent:    #9500c7;  /* neon violet  -> deep orchid ink */
+  --color-accent-2:  #007a90;  /* electric cyan -> deep teal ink  */
+  --color-accent-3:  #c2186a;  /* hot magenta  -> deep rose ink   */
+  --color-accent-4:  #9a6400;  /* amber        -> ochre ink       */
+
+  /* --section-accent, --color-info/-warning/-danger reference the accent
+     vars above, so they inherit the inked values automatically. --color-success
+     points at --color-loop (a diagram color we keep neon), so re-ink it here. */
+  --color-success:   #5f7d00;  /* lime -> moss ink (states + section-05 / green accent) */
+
+  /* Chart: categorical c1–c5 inherit the re-inked accents/success above;
+     only the vault purple + low-contrast chrome need a white-ground tune. */
+  --chart-6:     #6d28d9;                /* vault light -> deeper purple    */
+  --chart-grid:  rgba(8, 8, 16, 0.07);
+  --chart-track: rgba(8, 8, 16, 0.05);
+
+  /* Elevation on white reads as real drop-shadow, not neon glow. */
+  --elev-1: 0 1px 2px rgba(10, 10, 18, 0.06), 0 0 0 1px var(--color-border);
+  --elev-2: 0 4px 14px rgba(10, 10, 18, 0.10), 0 0 0 1px var(--color-border);
+  --elev-3: 0 18px 44px rgba(10, 10, 18, 0.16), 0 0 0 1px var(--color-border);
+  --scrim:  rgba(10, 10, 18, 0.45);
+
+  /* Glass on white = translucent light fills (the dark fills would muddy). */
+  --glass-fill:          rgba(255, 255, 255, 0.6);
+  --glass-fill-elevated: rgba(255, 255, 255, 0.78);
+  --glass-fill-menu:     rgba(255, 255, 255, 0.99);  /* dense pick-lists — effectively solid on white too */
+  --glass-fill-nav:      rgba(255, 255, 255, 0.68);
+  --glass-highlight:     inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* ---------------------------------------------------------------------------
+   4. BASE ELEMENT DEFAULTS (opt-in helpers — safe to include in any artifact)
+   --------------------------------------------------------------------------- */
+.ob-root {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.ob-display { font-family: var(--font-display); font-style: italic; font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); text-transform: uppercase; }
+.ob-mono { font-family: var(--font-mono); }
+*:focus-visible { outline: 2px solid var(--color-accent-2); outline-offset: 3px; }
