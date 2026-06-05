@@ -4,6 +4,7 @@
 // code changes.
 
 import { registerPanel } from "./registry";
+import { filesPanel } from "./files/files";
 import { explorerPanel } from "./explorer/explorer";
 import { previewPanel } from "./preview/preview";
 import { chatPanel } from "./chat/chat";
@@ -15,10 +16,12 @@ import { skillsPanel } from "./skills/skills";
 import { logPanel } from "./log/log";
 import { tasksPanel } from "./tasks/tasks";
 
-// TYPE_ORDER (prototype): explorer · preview · chat · cli · search · status ·
-// composer · skills · log · tasks. The 5 SEED panels (explorer/preview/chat/
-// composer/log) form the default cockpit arc; the rest spawn via add-panel / ⌘K.
+// Display order for the add-menu / ⌘K. The combined File Browser leads; the
+// standalone Explorer + Preview remain available (spawnable) but are no longer
+// seeded. The 4 SEED panels (files / chat / composer / log) form the default
+// cockpit arc; the rest spawn via add-panel / ⌘K.
 const PANELS = [
+  filesPanel,
   explorerPanel,
   previewPanel,
   chatPanel,

@@ -5,7 +5,9 @@
 // engine owns the snapshot + restore orchestration; this module is just the
 // typed read/write/clear over localStorage.
 
-const STORE_KEY = "ob-spatial-layout-v2";
+// v3: the default desk changed (Explorer + Preview folded into the combined File
+// Browser). Bumping the key makes pre-v3 saved desks fall through to a fresh seed.
+const STORE_KEY = "ob-spatial-layout-v3";
 
 export interface SavedPanel {
   type: string;

@@ -55,7 +55,9 @@ function FileIcon({ type }: { type: FileType }) {
   );
 }
 
-function Explorer({ ctx }: { ctx: PanelContext }) {
+/** The PARA tree + filter — the reusable body (no panel header), shared by the
+ *  standalone Explorer panel and the combined File Browser. */
+export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
   const filter = useSignal("");
   // open-dir set; the prototype defaults a few PARA folders open.
   const open = useSignal<Set<string>>(new Set(["00-inbox", "01-projects", "01-projects/onebrain"]));
@@ -133,13 +135,6 @@ function Explorer({ ctx }: { ctx: PanelContext }) {
 
   return (
     <>
-      <div class="w-head">
-        <span class="pill">
-          <span class="dot" />
-          Vault · Explorer
-        </span>
-        <span class="w-meta">PARA</span>
-      </div>
       <div class="fx-tools">
         <input
           class="fx-filter"
@@ -161,11 +156,26 @@ function Explorer({ ctx }: { ctx: PanelContext }) {
   );
 }
 
+function Explorer({ ctx }: { ctx: PanelContext }) {
+  return (
+    <>
+      <div class="w-head">
+        <span class="pill">
+          <span class="dot" />
+          Vault · Explorer
+        </span>
+        <span class="w-meta">PARA</span>
+      </div>
+      <ExplorerTree ctx={ctx} />
+    </>
+  );
+}
+
 export const explorerPanel: PanelDef = {
   type: "explorer",
   name: "File Explorer",
   width: 286,
   placement: { t: -0.64, y: 0.26, r: 6.9, s: 0.005 },
-  seed: true,
+  seed: false, // folded into the combined File Browser; still spawnable standalone
   Component: Explorer,
 };

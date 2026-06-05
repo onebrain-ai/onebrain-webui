@@ -1,15 +1,17 @@
-/* File Explorer (PARA tree). Ported from the prototype (lines 312–330),
-   scoped under .w-explorer. */
+/* File Explorer (PARA tree). Ported from the prototype (lines 312–330). The
+   .fx-* content classes are global (the `fx-` prefix is the namespace) so the
+   ExplorerTree body renders identically in the standalone panel and the combined
+   File Browser. Only the panel-width rule is panel-scoped. */
 .w-explorer {
   width: 286px;
 }
-.w-explorer .fx-tools {
+.fx-tools {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
 }
-.w-explorer .fx-filter {
+.fx-filter {
   flex: 1;
   min-width: 0;
   background: rgba(2, 2, 6, 0.6);
@@ -20,32 +22,32 @@
   padding: 6px 9px;
   outline: none;
 }
-.w-explorer .fx-filter:focus {
+.fx-filter:focus {
   border-color: var(--section-accent);
 }
-.w-explorer .fx-filter::placeholder {
+.fx-filter::placeholder {
   color: var(--color-muted);
 }
-.w-explorer .fx-count {
+.fx-count {
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--color-ghost);
   letter-spacing: 0.08em;
   flex: 0 0 auto;
 }
-.w-explorer .fx-tree {
+.fx-tree {
   max-height: 336px;
   overflow: auto;
   margin: 0 -6px;
   padding: 0 4px;
 }
-.w-explorer .fx-note {
+.fx-note {
   padding: 8px 7px;
   color: var(--color-muted);
   font-family: var(--font-mono);
   font-size: 11px;
 }
-.w-explorer .fx-row {
+.fx-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -57,43 +59,43 @@
   color: var(--color-faint);
   white-space: nowrap;
 }
-.w-explorer .fx-row:hover {
+.fx-row:hover {
   background: var(--accent-weak);
   border-color: var(--accent-line);
 }
-.w-explorer .fx-row.active {
+.fx-row.active {
   background: var(--accent-weak);
   border-color: var(--accent-line);
   color: #fff;
 }
-.w-explorer .fx-row.dir {
+.fx-row.dir {
   color: var(--color-text);
 }
-.w-explorer .fx-row .fx-ic {
+.fx-row .fx-ic {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
   opacity: 0.85;
 }
-.w-explorer .fx-row.dir .fx-ic {
+.fx-row.dir .fx-ic {
   color: var(--section-accent);
   opacity: 1;
 }
-.w-explorer .fx-row .fx-tw {
+.fx-row .fx-tw {
   width: 10px;
   height: 10px;
   flex: 0 0 auto;
   color: var(--color-muted);
   transition: transform 0.15s;
 }
-.w-explorer .fx-row.dir.open .fx-tw {
+.fx-row.dir.open .fx-tw {
   transform: rotate(90deg);
 }
-.w-explorer .fx-row .fx-nm {
+.fx-row .fx-nm {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.w-explorer .fx-row .fx-ext {
+.fx-row .fx-ext {
   margin-left: auto;
   font-size: 8px;
   color: var(--color-ghost);

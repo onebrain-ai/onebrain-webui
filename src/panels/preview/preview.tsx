@@ -3,7 +3,7 @@
 // renderPreview 2767–2780). Markdown (frontmatter + body), YAML (pre), HTML
 // (sandboxed iframe), image (placeholder). Wikilinks open in-place (cross-panel).
 
-import { useSignal } from "@preact/signals";
+import { useSignal, computed } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import type { PanelDef, PanelContext } from "../contract";
 import { renderMarkdown } from "../../core/markdown";
@@ -51,7 +51,17 @@ function frontmatterBlock(fm: string | null) {
   );
 }
 
-function Preview({ ctx }: { ctx: PanelContext }) {
+/** the current preview file's extension (uppercased) for a header meta, or "—".
+ *  A computed so the subscription is explicit + component-boundary-independent. */
+export const previewExt = computed(() => {
+  const path = previewPath.value;
+  if (!path) return "—";
+  return (path.split(".").pop() ?? "").toUpperCase();
+});
+
+/** The path line + rendered file body — the reusable preview body (no panel
+ *  header), shared by the standalone Preview panel and the combined File Browser. */
+export function PreviewBody({ ctx }: { ctx: PanelContext }) {
   const path = previewPath.value;
   const data = useSignal<{ content: string | null; error: string | null; loading: boolean }>({
     content: null,
@@ -141,17 +151,25 @@ function Preview({ ctx }: { ctx: PanelContext }) {
 
   return (
     <>
+      <div class="pv-path">{path || "no file open"}</div>
+      <div class="pv-body" ref={bodyRef}>
+        {body}
+      </div>
+    </>
+  );
+}
+
+function Preview({ ctx }: { ctx: PanelContext }) {
+  return (
+    <>
       <div class="w-head">
         <span class="pill">
           <span class="dot" />
           Preview
         </span>
-        <span class="w-meta pv-meta">{path ? ext.toUpperCase() : "—"}</span>
+        <span class="w-meta pv-meta">{previewExt.value}</span>
       </div>
-      <div class="pv-path">{path || "no file open"}</div>
-      <div class="pv-body" ref={bodyRef}>
-        {body}
-      </div>
+      <PreviewBody ctx={ctx} />
     </>
   );
 }
@@ -161,6 +179,6 @@ export const previewPanel: PanelDef = {
   name: "File Preview",
   width: 446,
   placement: { t: 0.0, y: 0.24, r: 5.7, s: 0.005 },
-  seed: true,
+  seed: false, // folded into the combined File Browser; still spawnable standalone
   Component: Preview,
 };
