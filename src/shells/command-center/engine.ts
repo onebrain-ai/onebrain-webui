@@ -22,6 +22,7 @@ import { createCmdK } from "./hud/cmdk";
 import { createSettings } from "./hud/settings";
 import { createAddMenu } from "./hud/add-panel";
 import { createHelp } from "./hud/help";
+import { toggleFullscreen } from "./hud/fullscreen";
 import { fps, clock, radarCount, radarHeading } from "./hud/store";
 import { toast } from "./boot/store";
 import { seedPanels, getPanel } from "../../panels";
@@ -159,7 +160,7 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     resetLayout,
   });
   const addMenu = createAddMenu({ addPanel: (type) => ctx.addPanel(type) });
-  const input = attachInput(look, rig, { focus, expose, views, onHelp: help.toggle });
+  const input = attachInput(look, rig, { focus, expose, views, onHelp: help.toggle, onFullscreen: toggleFullscreen });
 
   // ── HUD canvases ──────────────────────────────────────────────────────────────
   const radarCtx = document.querySelector<HTMLCanvasElement>("#radar canvas")?.getContext("2d") ?? null;

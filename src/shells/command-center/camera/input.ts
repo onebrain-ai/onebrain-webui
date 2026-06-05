@@ -27,6 +27,8 @@ export interface InputDeps {
   views?: { recallView(i: number): void };
   /** toggle the help sheet (H) — M5c. */
   onHelp?: () => void;
+  /** toggle fullscreen (F) — M5c. */
+  onFullscreen?: () => void;
 }
 
 export interface Input {
@@ -122,6 +124,12 @@ export function attachInput(surface: HTMLElement, rig: Rig, deps: InputDeps): In
     if (typingInField()) return;
     if (e.code === "KeyH") {
       deps.onHelp?.();
+      e.preventDefault();
+      return;
+    }
+    if (e.code === "KeyF") {
+      // F — toggle fullscreen (works in any mode), matching the prototype
+      deps.onFullscreen?.();
       e.preventDefault();
       return;
     }
