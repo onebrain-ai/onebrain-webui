@@ -113,6 +113,71 @@
 .widget.depth .w-head {
   cursor: ns-resize;
 }
+
+/* ── corner resize grips (the decorative bracket IS the handle) ──────────────── */
+.w-handle {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  z-index: 2;
+  pointer-events: auto;
+  touch-action: none;
+}
+.w-handle.tl {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.w-handle.tr {
+  right: 0;
+  top: 0;
+  cursor: nesw-resize;
+}
+.w-handle.bl {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+}
+.w-handle.br {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+/* grabbing/hovering a corner locks the targeting frame on */
+.widget:has(.w-handle:hover)::after,
+.widget:has(.w-handle.resizing)::after {
+  --brk: var(--section-accent);
+  --arm: 20px;
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--section-accent) 70%, transparent));
+}
+body.exposemode .w-handle {
+  display: none;
+}
+body.focusmode .widget:not(.focused) .w-handle {
+  display: none;
+}
+
+/* ── focused panel — frame locks on, full-accent brackets + glow ─────────────── */
+.widget.focused {
+  border-color: var(--accent-line);
+  box-shadow:
+    0 40px 92px -26px rgba(0, 0, 0, 0.92),
+    0 15px 34px -16px rgba(0, 0, 0, 0.68),
+    0 0 84px -16px color-mix(in oklab, var(--section-accent) 74%, transparent),
+    inset 0 1.4px 0 0 rgba(255, 255, 255, 0.42),
+    inset 0 18px 26px -26px rgba(255, 255, 255, 0.18),
+    inset 0 -1.4px 0 0 rgba(0, 0, 0, 0.5),
+    inset 0 -20px 34px -30px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px color-mix(in oklab, var(--section-accent) 40%, transparent);
+}
+.widget.focused::after {
+  --brk: var(--section-accent);
+  --arm: 20px;
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--section-accent) 70%, transparent));
+}
+body.focusmode #look {
+  cursor: default;
+}
 .pill {
   display: inline-flex;
   align-items: center;

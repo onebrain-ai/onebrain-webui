@@ -6,13 +6,17 @@
 import { render, h } from "preact";
 import { Vector3, Color } from "three";
 import { createSceneWorld } from "./world/scene";
-import { attachControls } from "./camera/controls";
+import { createRig, updateMovement, stepFocus, stepView, advanceDrag, easeFocusDof } from "./camera/rig";
+import { attachInput } from "./camera/input";
+import { createFocus } from "./camera/focus";
+import { makeWidgetInteractive } from "./interact";
 import { projectWidgets, type WidgetRecord } from "./layout";
 import { createStars } from "./world/stars";
 import { createShadows } from "./world/shadows";
 import { drawRadar } from "./hud/radar";
 import { createHeading } from "./hud/heading";
 import { fps, clock, radarCount, radarHeading } from "./hud/store";
+import { toast } from "./boot/store";
 import { seedPanels } from "../../panels";
 import { initVault, openFile } from "../../panels/bus";
 import { lowMotion } from "../../core/motion";
@@ -41,18 +45,20 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
   }
 
   const world = createSceneWorld(glCanvas);
-  const controls = attachControls(look);
+  const rig = createRig();
 
   // load the vault tree once (fire-and-forget) — panels react to the signals
   void initVault(opts.daemon);
 
   // ── mount panel plugins as billboards ──────────────────────────────────────
   const widgets: WidgetRecord[] = [];
+  // focus actions close over the widgets array (populated just below)
+  const focus = createFocus({ rig, camera: world.camera, widgets, focal: () => world.focal, toast });
   const ctx: PanelContext = {
     daemon: opts.daemon,
     openFile, // → bus.openFile: sets previewPath, the Preview panel reacts
     addPanel(type) {
-      // add-panel / ⌘K spawn lands with the HUD (M5).
+      // add-panel / ⌘K spawn lands with the HUD (M5c).
       if (import.meta.env?.DEV) console.warn(`[command-center] addPanel("${type}") not wired yet`);
     },
   };
@@ -62,14 +68,20 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     el.style.width = `${def.width}px`;
     stage.appendChild(el);
     render(h(def.Component, { ctx }), el);
-    widgets.push({
+    const rec: WidgetRecord = {
       type: def.type,
+      key: def.type,
       label: def.type.slice(0, 3).toUpperCase(),
+      t: def.placement.t,
       world: placeWorld(def.placement),
       s: def.placement.s,
       el,
-    });
+    };
+    widgets.push(rec);
+    makeWidgetInteractive(rec, { rig, camera: world.camera, focus });
   }
+
+  const input = attachInput(look, rig, { focus });
 
   // ── HUD canvases (HudChrome is mounted into #app first — see main.tsx) ───────
   const radarCtx = document.querySelector<HTMLCanvasElement>("#radar canvas")?.getContext("2d") ?? null;
@@ -114,16 +126,21 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     if (acc < FRAME_MS) return;
     acc %= FRAME_MS;
 
-    controls.update();
     const { camera } = world;
-    camera.position.copy(controls.pos);
+    // advance camera + interaction state
+    updateMovement(rig);
+    easeFocusDof(rig, camera);
+    advanceDrag(rig);
+    stepFocus(rig);
+    stepView(rig, widgets);
+    camera.position.copy(rig.pos);
     const t = (now - start) / 1000;
     if (!lowMotion()) camera.position.y += Math.sin(t * 0.7) * 0.03; // idle breathing
-    camera.rotation.set(controls.pitch(), controls.yaw(), 0);
+    camera.rotation.set(rig.pitch, rig.yaw, 0);
 
     world.recenterWorld(camera.position.x, camera.position.z);
     world.render();
-    projectWidgets(widgets, camera, world.focal);
+    projectWidgets(widgets, camera, world.focal, rig);
 
     // HUD: fps (refresh ~2×/s), radar, heading tape, panel shadows
     fpsFrames++;
@@ -133,9 +150,17 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
       fpsFrames = 0;
       fpsLast = now;
     }
-    const yaw = controls.yaw();
+    const yaw = rig.yaw;
     if (radarCtx) {
-      const r = drawRadar(radarCtx, { yaw, camX: camera.position.x, camZ: camera.position.z, widgets, accentHex, t });
+      const r = drawRadar(radarCtx, {
+        yaw,
+        camX: camera.position.x,
+        camZ: camera.position.z,
+        widgets,
+        accentHex,
+        t,
+        focused: rig.focusedRec,
+      });
       radarCount.value = r.inRange;
       radarHeading.value = r.heading;
     }
@@ -145,7 +170,7 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     // sky + stars track the camera pitch in lockstep with the 3D horizon.
     // Throttle to real pitch changes — an unconditional write forces a style
     // recalc on the 260vh #bg-base / #stars every frame even at rest.
-    const skyY = world.focal * Math.tan(controls.pitch());
+    const skyY = world.focal * Math.tan(rig.pitch);
     if (Math.abs(skyY - lastSkyY) > 0.3) {
       document.documentElement.style.setProperty("--sky-y", `${skyY.toFixed(1)}px`);
       lastSkyY = skyY;
@@ -165,7 +190,7 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
       cancelAnimationFrame(raf);
       clearInterval(clockTimer);
       window.removeEventListener("resize", onResize);
-      controls.dispose();
+      input.dispose();
       stars?.dispose();
       shadows.dispose();
       for (const w of widgets) {
