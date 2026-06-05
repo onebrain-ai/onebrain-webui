@@ -1,0 +1,94 @@
+/* Status panel — system status lines + 3-metric grid + OneBrain brand mark.
+   Ported from the prototype (lines 214–234). Panel-specific content classes are
+   scoped under `.w-status` so a panel plugin can't leak styles into its
+   neighbours; the shared DS chrome (.widget/.w-head/.pill/.btn-tech) stays
+   global in widget.css. `.ob-mark` base stays global — it is the brand asset
+   used across panels + HUD. */
+
+/* OneBrain brand mark — fixed brand gradient, never accent-keyed (global asset) */
+.ob-mark {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.w-status .brand {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 21px;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 14px;
+}
+.w-status .brand b {
+  color: #fff;
+  font-weight: 700;
+}
+.w-status .brand .ob-mark {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--acc-magenta) 45%, transparent));
+}
+
+.w-status .stat-lines {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.w-status .stat-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-2);
+}
+.w-status .stat-lines li:last-child {
+  border-bottom: 0;
+}
+.w-status .stat-lines span {
+  color: var(--color-muted);
+  letter-spacing: 0.14em;
+}
+.w-status .stat-lines b {
+  color: var(--color-faint);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.w-status .stat-lines b em {
+  color: var(--section-accent);
+  font-style: normal;
+}
+.w-status .metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+.w-status .metric {
+  border: 1px solid var(--color-border-2);
+  padding: 9px 8px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.015);
+}
+.w-status .m-val {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 24px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.w-status .m-lab {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-top: 5px;
+}
