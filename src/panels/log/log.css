@@ -1,0 +1,76 @@
+/* Session Log. Ported from the prototype (lines 272–286), scoped under .w-log. */
+.w-log {
+  width: 330px;
+}
+.w-log .loop-rail {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 11px;
+}
+.w-log .phase {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  padding: 5px 0;
+  border: 1px solid var(--color-border-2);
+  color: var(--color-muted);
+}
+.w-log .phase.on {
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  background: var(--accent-weak);
+}
+.w-log .log-feed {
+  max-height: 250px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+.w-log .log-row {
+  display: flex;
+  gap: 9px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.w-log .log-row .lt {
+  color: var(--color-ghost);
+  flex: 0 0 auto;
+}
+.w-log .log-row .lk {
+  flex: 0 0 auto;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 9.5px;
+  align-self: flex-start;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  opacity: 0.9;
+}
+.w-log .log-row .lm {
+  color: var(--color-faint);
+}
+.w-log .log-row .lm .wl {
+  color: var(--section-accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-line);
+  cursor: pointer;
+}
+.w-log .k-capture {
+  color: var(--acc-cyan);
+}
+.w-log .k-connect {
+  color: var(--acc-violet);
+}
+.w-log .k-evolve {
+  color: var(--c-success);
+}
+.w-log .k-tasks {
+  color: var(--acc-amber);
+}
+.w-log .k-daily {
+  color: var(--acc-magenta);
+}

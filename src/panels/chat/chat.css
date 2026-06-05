@@ -1,0 +1,72 @@
+/* Chat (จิโอ้ assistant). Ported from the prototype (lines 363–373),
+   scoped under .w-chat. */
+.w-chat {
+  width: 360px;
+}
+.w-chat .chat-feed {
+  max-height: 300px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.w-chat .cm {
+  max-width: 88%;
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 8px 11px;
+  border: 1px solid var(--color-border-2);
+}
+.w-chat .cm.you {
+  align-self: flex-end;
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+  color: var(--color-text);
+}
+.w-chat .cm.ai {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-faint);
+}
+.w-chat .cm .cm-who {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ghost);
+  margin-bottom: 4px;
+}
+.w-chat .cm.ai .cm-who {
+  color: var(--section-accent);
+}
+.w-chat .cm .wl {
+  color: var(--section-accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-line);
+  cursor: pointer;
+}
+.w-chat .chat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: rgba(2, 2, 6, 0.7);
+  padding: 6px 6px 6px 11px;
+}
+.w-chat .chat-input:focus-within {
+  border-color: var(--section-accent);
+}
+.w-chat .chat-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+}
+.w-chat .chat-input input::placeholder {
+  color: var(--color-muted);
+}

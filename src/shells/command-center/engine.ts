@@ -9,6 +9,7 @@ import { createSceneWorld } from "./world/scene";
 import { attachControls } from "./camera/controls";
 import { projectWidgets, type WidgetRecord } from "./layout";
 import { seedPanels } from "../../panels";
+import { initVault, openFile } from "../../panels/bus";
 import type { PanelContext, PanelDef } from "../../panels/contract";
 import type { DaemonClient } from "../../core/daemon";
 
@@ -36,15 +37,14 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
   const world = createSceneWorld(glCanvas);
   const controls = attachControls(look);
 
+  // load the vault tree once (fire-and-forget) — panels react to the signals
+  void initVault(opts.daemon);
+
   // ── mount panel plugins as billboards ──────────────────────────────────────
   const widgets: WidgetRecord[] = [];
   const ctx: PanelContext = {
     daemon: opts.daemon,
-    openFile(path) {
-      // cross-panel preview wiring lands with the preview panel (M4). Warn in
-      // dev so that wiring discovers the gap instead of silently no-op'ing.
-      if (import.meta.env?.DEV) console.warn(`[command-center] openFile("${path}") not wired yet`);
-    },
+    openFile, // → bus.openFile: sets previewPath, the Preview panel reacts
     addPanel(type) {
       // add-panel / ⌘K spawn lands with the HUD (M5).
       if (import.meta.env?.DEV) console.warn(`[command-center] addPanel("${type}") not wired yet`);

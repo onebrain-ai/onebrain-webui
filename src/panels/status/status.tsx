@@ -66,6 +66,6 @@ export const statusPanel: PanelDef = {
   name: "Status",
   width: 362,
   placement: { t: -1.3, y: 0.7, r: 7.0, s: 0.005 },
-  seed: true, // seeded in M1 to verify the field; final seed set is the SEED arc
+  seed: false, // not in the prototype's SEED arc; spawn via add-panel / ⌘K
   Component: Status,
 };
