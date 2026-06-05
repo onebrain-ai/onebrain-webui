@@ -128,6 +128,16 @@ export function releaseDrag(rec: WidgetRecord): void {
   rec._grab = false;
 }
 
+/** Snap any in-progress drag to its target and free it — call before a camera
+ *  tween (focus / view / exposé) takes over, so the panel is included in the
+ *  tween instead of being skipped by stepView and left stranded. */
+export function settleDrag(rig: Rig): void {
+  if (!rig.dragRec) return;
+  if (rig.dragRec.wTarget) rig.dragRec.world.copy(rig.dragRec.wTarget);
+  rig.dragRec._grab = false;
+  rig.dragRec = null;
+}
+
 const _up = new Vector3(0, 1, 0);
 const _fwd = new Vector3();
 const _right = new Vector3();

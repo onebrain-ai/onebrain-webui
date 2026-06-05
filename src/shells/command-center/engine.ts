@@ -9,6 +9,8 @@ import { createSceneWorld } from "./world/scene";
 import { createRig, updateMovement, stepFocus, stepView, advanceDrag, easeFocusDof } from "./camera/rig";
 import { attachInput } from "./camera/input";
 import { createFocus } from "./camera/focus";
+import { createViews } from "./camera/views";
+import { createExpose } from "./camera/expose";
 import { makeWidgetInteractive } from "./interact";
 import { projectWidgets, type WidgetRecord } from "./layout";
 import { createStars } from "./world/stars";
@@ -52,8 +54,9 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
 
   // ── mount panel plugins as billboards ──────────────────────────────────────
   const widgets: WidgetRecord[] = [];
-  // focus actions close over the widgets array (populated just below)
+  // focus / exposé close over the widgets array (populated just below)
   const focus = createFocus({ rig, camera: world.camera, widgets, focal: () => world.focal, toast });
+  const expose = createExpose({ rig, widgets, focus, focal: () => world.focal, toast });
   const ctx: PanelContext = {
     daemon: opts.daemon,
     openFile, // → bus.openFile: sets previewPath, the Preview panel reacts
@@ -78,10 +81,12 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
       el,
     };
     widgets.push(rec);
-    makeWidgetInteractive(rec, { rig, camera: world.camera, focus });
+    makeWidgetInteractive(rec, { rig, camera: world.camera, focus, focusFromExpose: expose.focusFromExpose });
   }
 
-  const input = attachInput(look, rig, { focus });
+  // workspaces drawer (loads saved views, wires the radar-handle telescope)
+  const views = createViews({ rig, widgets, clearFocus: focus.clearFocus, toast });
+  const input = attachInput(look, rig, { focus, expose, views });
 
   // ── HUD canvases (HudChrome is mounted into #app first — see main.tsx) ───────
   const radarCtx = document.querySelector<HTMLCanvasElement>("#radar canvas")?.getContext("2d") ?? null;
@@ -191,6 +196,7 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
       clearInterval(clockTimer);
       window.removeEventListener("resize", onResize);
       input.dispose();
+      views.dispose();
       stars?.dispose();
       shadows.dispose();
       for (const w of widgets) {

@@ -3,7 +3,7 @@
 // Ported from the prototype (1803–1901). Operates on the shared rig.
 
 import { Vector3, type PerspectiveCamera } from "three";
-import { clamp, nearestAngle, clearKeys, PITCH_MIN, PITCH_MAX, type Rig } from "./rig";
+import { clamp, nearestAngle, clearKeys, settleDrag, PITCH_MIN, PITCH_MAX, type Rig } from "./rig";
 import type { WidgetRecord } from "../layout";
 
 export interface FocusDeps {
@@ -65,13 +65,7 @@ export function createFocus(deps: FocusDeps): FocusActions {
 
   function focusWidget(rec: WidgetRecord): void {
     if (rig.exposeActive) return;
-    // snap any in-progress drag to rest — a locked focus framing must not keep
-    // easing a panel's world underneath it.
-    if (rig.dragRec) {
-      if (rig.dragRec.wTarget) rig.dragRec.world.copy(rig.dragRec.wTarget);
-      rig.dragRec._grab = false;
-      rig.dragRec = null;
-    }
+    settleDrag(rig); // a locked focus framing must not keep easing a panel underneath it
     if (!rig.focusedRec && !rig.exposeReturn) {
       // remember the view to return to
       rig.focusReturn = {
