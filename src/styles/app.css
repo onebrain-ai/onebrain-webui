@@ -445,6 +445,20 @@ body {
   padding: 1px 5px;
 }
 
+/* Command-center lazy-load fallback (the cc.css chunk isn't loaded yet). */
+.cc-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-bg);
+  color: var(--section-accent);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  font-size: var(--text-sm);
+}
+
 /* Respect reduced motion — kill our transitions (DESIGN.md motion rule). */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

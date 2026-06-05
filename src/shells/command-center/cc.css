@@ -1,0 +1,141 @@
+/* Command center chrome — DS tokens throughout. The WebGL canvas sits behind
+   and owns drag-look; the CSS3D layer is pointer-transparent except the panels;
+   the HUD overlay is pointer-transparent except its controls. */
+
+.cc-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 30%, #0a0e18 0%, var(--color-bg) 70%);
+}
+
+.cc-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  cursor: grab;
+}
+
+/* CSS3DRenderer fills this; empty space is click-through to the canvas behind. */
+.cc-css {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── Floating panel (a CSS3DObject's DOM) ──────────────────────────────────── */
+.cc-panel {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 30%, var(--color-border));
+  box-shadow: 0 0 0 1px var(--color-border), 0 0 40px color-mix(in srgb, var(--section-accent) 14%, transparent);
+  overflow: hidden;
+}
+.cc-panel-head {
+  flex: none;
+  font-family: var(--font-display);
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  font-size: var(--text-md);
+  color: var(--color-white);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--section-accent) 25%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--section-accent) 8%, transparent), transparent);
+}
+.cc-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── HUD overlay ───────────────────────────────────────────────────────────── */
+.cc-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  font-family: var(--font-mono);
+}
+.cc-hud-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg-deep) 70%, transparent), transparent);
+}
+.cc-hud-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--color-white);
+  font-size: var(--text-sm);
+}
+.cc-exit {
+  pointer-events: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--section-accent);
+  background: color-mix(in srgb, var(--section-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 35%, transparent);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.cc-exit:hover {
+  background: color-mix(in srgb, var(--section-accent) 16%, transparent);
+  box-shadow: var(--glow-cyan);
+}
+
+.cc-hud-bottom {
+  position: absolute;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.cc-heading {
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-muted);
+}
+.cc-heading span {
+  color: var(--section-accent);
+  font-variant-numeric: tabular-nums;
+}
+.cc-radar {
+  width: 132px;
+  height: 132px;
+  background: color-mix(in srgb, var(--color-bg-deep) 80%, transparent);
+  border: 1px solid var(--color-border);
+}
+.cc-help {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--space-4);
+  text-align: center;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-ghost);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The render loop still runs (needed to draw panels), but the scene avoids
+     idle motion; nothing here animates via CSS. */
+}

@@ -8,12 +8,13 @@
 // Chat dock is a stub: the agent runtime (ChatTransport) isn't wired yet, so the
 // dock shows a "coming soon" placeholder rather than a dead input.
 
-import { chatOpen, setChatOpen, mainView } from "../core/stores";
+import { chatOpen, setChatOpen, mainView, setMode, hasWebGL2 } from "../core/stores";
 import { PanelHost } from "../panels/host";
 import type { PanelContext } from "../panels/panel";
 
 export function CmsShell({ ctx }: { ctx: PanelContext }) {
   const view = mainView.value;
+  const canGo3d = hasWebGL2();
   return (
     <div class={`ob-cms${chatOpen.value ? " chat-open" : ""}`}>
       <aside class="ob-rail" aria-label="Primary">
@@ -32,6 +33,11 @@ export function CmsShell({ ctx }: { ctx: PanelContext }) {
         >
           ⚙
         </button>
+        {canGo3d && (
+          <button class="ob-rail-item" title="Command center (3D)" onClick={() => setMode("command-center")}>
+            3D
+          </button>
+        )}
         <div class="ob-rail-spacer" />
         <button
           class={`ob-rail-item${chatOpen.value ? " is-active" : ""}`}
