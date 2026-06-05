@@ -74,3 +74,27 @@
 .w-log .k-daily {
   color: var(--acc-magenta);
 }
+.w-log .k-run {
+  color: #fff;
+}
+.w-log .k-done {
+  color: var(--c-success);
+}
+/* phase pulse — flashes the lit rail segment when a skill runs */
+.w-log .loop-rail .phase.pulse {
+  animation: phasePulse 0.9s ease;
+}
+@keyframes phasePulse {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  40% {
+    box-shadow: 0 0 12px color-mix(in oklab, var(--section-accent) 70%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .w-log .loop-rail .phase.pulse {
+    animation: none;
+  }
+}

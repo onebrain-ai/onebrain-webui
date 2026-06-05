@@ -1,33 +1,47 @@
 // Session Log panel — the live activity feed + CAPTURE→EVOLVE→WRAPUP phase rail.
-// Seeded mock matching the prototype (lines 1229–1233, SEED_LOG 2374–2380). The
-// live feed wires to real session events later.
+// Renders from the shared `activity` bus so a skill run from anywhere (CLI /
+// Skills / ⌘K) streams in here and pulses the rail. Ported from the prototype
+// (template 1229–1233, SEED_LOG 2374–2380, pushLog/pulsePhase 2405–2424).
 
+import { useRef, useEffect } from "preact/hooks";
 import type { PanelDef, PanelContext } from "../contract";
 import { resolveWikilink } from "../bus";
+import { logFeed, activePhase, pulseSeq } from "../activity";
 import "./log.css";
 
-interface LogRow {
-  time: string;
-  kind: string;
-  /** trusted HTML (our own seed). */
-  html: string;
-}
-
-const SEED: LogRow[] = [
-  { time: "09:14", kind: "capture", html: '"Spatial HUD concept" → <span class="wl" data-wl="Command Center">Command Center</span>' },
-  { time: "09:15", kind: "connect", html: 'linked <span class="wl" data-wl="Command Center">Command Center</span> ↔ <span class="wl" data-wl="OneBrain">OneBrain</span>' },
-  { time: "09:18", kind: "evolve", html: "memory +1 · spatial-ui preference" },
-  { time: "09:21", kind: "tasks", html: "3 due today · 1 overdue" },
-  { time: "09:24", kind: "daily", html: "briefing ready · 6 sessions logged" },
-];
+const PHASES = ["CAPTURE", "EVOLVE", "WRAPUP"] as const;
 
 function Log({ ctx }: { ctx: PanelContext }) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
+  const phase = activePhase.value;
+  const rows = logFeed.value;
+  const pulse = pulseSeq.value;
+
+  // re-trigger the CSS flash on the lit phase whenever a skill runs (remove →
+  // reflow → add, like the prototype). Skip the initial mount (pulse === 0).
+  useEffect(() => {
+    if (pulse === 0) return;
+    const el = railRef.current?.querySelector<HTMLElement>(".phase.on");
+    if (!el) return;
+    el.classList.remove("pulse");
+    void el.offsetWidth;
+    el.classList.add("pulse");
+  }, [pulse]);
+
+  // keep the newest row in view as the feed grows
+  useEffect(() => {
+    const f = feedRef.current;
+    if (f) f.scrollTop = f.scrollHeight;
+  }, [rows]);
+
   const onClick = (e: MouseEvent) => {
     const a = (e.target as HTMLElement).closest(".wl[data-wl]");
     if (!a) return;
     const target = resolveWikilink(a.getAttribute("data-wl") ?? "");
     if (target) ctx.openFile(target);
   };
+
   return (
     <>
       <div class="w-head">
@@ -37,13 +51,13 @@ function Log({ ctx }: { ctx: PanelContext }) {
         </span>
         <span class="w-meta">LIVE</span>
       </div>
-      <div class="loop-rail">
-        <span class="phase on">CAPTURE</span>
-        <span class="phase">EVOLVE</span>
-        <span class="phase">WRAPUP</span>
+      <div class="loop-rail" ref={railRef}>
+        {PHASES.map((p) => (
+          <span class={`phase${p === phase ? " on" : ""}`}>{p}</span>
+        ))}
       </div>
-      <div class="log-feed" onClick={onClick}>
-        {SEED.map((r) => (
+      <div class="log-feed" ref={feedRef} onClick={onClick}>
+        {rows.map((r) => (
           <div class="log-row">
             <span class="lt">{r.time}</span>
             <span class={`lk k-${r.kind}`}>{r.kind}</span>

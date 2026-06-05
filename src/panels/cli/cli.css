@@ -1,0 +1,72 @@
+/* CLI Console. Ported verbatim from the prototype (lines 375–386), scoped to .w-cli. */
+.w-cli {
+  width: 414px;
+}
+.w-cli .cli-out {
+  max-height: 296px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  background: rgba(2, 2, 6, 0.55);
+  border: 1px solid var(--color-border-2);
+  padding: 10px 12px;
+  margin-bottom: 9px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.w-cli .cli-out > div {
+  margin-bottom: 7px;
+}
+.w-cli .cli-out > div:last-child {
+  margin-bottom: 0;
+}
+.w-cli .cli-out .ci-cmd {
+  color: #fff;
+}
+.w-cli .cli-out .ci-cmd::before {
+  content: "onebrain ❯ ";
+  color: var(--section-accent);
+}
+.w-cli .cli-out .ci-ok {
+  color: var(--c-success);
+}
+.w-cli .cli-out .ci-dim {
+  color: var(--color-muted);
+}
+.w-cli .cli-out .ci-acc {
+  color: var(--section-accent);
+}
+.w-cli .cli-out .ci-warn {
+  color: var(--acc-amber);
+}
+.w-cli .cli-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: rgba(2, 2, 6, 0.7);
+  padding: 7px 10px;
+}
+.w-cli .cli-line:focus-within {
+  border-color: var(--section-accent);
+}
+.w-cli .cli-ps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--section-accent);
+  flex: 0 0 auto;
+}
+.w-cli .cli-in {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  outline: none;
+}
+.w-cli .cli-in::placeholder {
+  color: var(--color-muted);
+}

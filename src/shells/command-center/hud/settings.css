@@ -1,0 +1,265 @@
+/* Settings popover. Ported verbatim from the prototype (lines 200–206, 494–567).
+   #settings-btn itself lives in topbar.css; .hud-lab is shared there too. */
+
+/* shared accent swatch (global + per-panel pickers) */
+.acc-sw {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-border);
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  position: relative;
+  transition:
+    transform 0.12s,
+    border-color 0.12s;
+}
+.acc-sw:hover {
+  transform: scale(1.12);
+}
+.acc-sw.on {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.18),
+    0 0 12px -2px currentColor;
+}
+
+#settings-pop {
+  position: fixed;
+  right: 18px;
+  top: 56px;
+  z-index: 8;
+  width: 258px;
+  padding: 14px 15px 15px;
+  background: linear-gradient(180deg, rgba(13, 13, 21, 0.95), rgba(6, 6, 12, 0.96));
+  border: 1px solid var(--color-border);
+  clip-path: var(--clip-tech);
+  transform-origin: top right;
+  -webkit-backdrop-filter: blur(17px) saturate(1.25);
+  backdrop-filter: blur(17px) saturate(1.25);
+  box-shadow:
+    0 26px 62px -28px rgba(0, 0, 0, 0.94),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  transition:
+    clip-path 0.34s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.24s ease,
+    transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#settings-pop::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--section-accent) 55%, transparent), transparent);
+}
+#settings-pop:not(.open) {
+  clip-path: inset(0 0 100% 0);
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+.set-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 11px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border-2);
+}
+.set-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+.set-title svg {
+  width: 15px;
+  height: 15px;
+  stroke: var(--section-accent);
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px var(--section-accent));
+}
+.set-ver {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--section-accent);
+  padding: 3px 8px;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-weak);
+}
+.set-grp {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 13px 0 9px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--section-accent);
+}
+.set-grp:first-of-type {
+  margin-top: 2px;
+}
+.set-grp::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  flex: 0 0 auto;
+  background: var(--section-accent);
+  box-shadow: 0 0 6px var(--section-accent);
+}
+.set-grp::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-line), transparent);
+}
+.set-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.set-tg-lab {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.set-tg-sub {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.set-tg-sub .k {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  color: var(--color-faint);
+  background: rgba(255, 255, 255, 0.05);
+}
+.cyber-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  background: rgba(2, 2, 6, 0.6);
+  cursor: pointer;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
+}
+.cyber-switch .cs-knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background: var(--color-muted);
+  transition:
+    left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.2s,
+    box-shadow 0.2s;
+  clip-path: polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px);
+}
+.cyber-switch.on {
+  border-color: var(--accent-line);
+  background: var(--accent-weak);
+  box-shadow:
+    0 0 16px -5px color-mix(in oklab, var(--section-accent) 75%, transparent),
+    inset 0 0 12px -6px var(--section-accent);
+}
+.cyber-switch.on .cs-knob {
+  left: 27px;
+  background: var(--section-accent);
+  box-shadow: 0 0 10px -1px var(--section-accent);
+}
+.cyber-switch:focus-visible {
+  outline: 2px solid var(--section-accent);
+  outline-offset: 2px;
+}
+.acc-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.set-hint {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin-top: 11px;
+}
+.set-block {
+  display: block;
+}
+.set-seg {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+}
+.seg-btn {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  height: 25px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: rgba(2, 2, 6, 0.6);
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.seg-btn:hover {
+  color: var(--color-faint);
+  border-color: var(--accent-line);
+}
+.seg-btn.on {
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  background: var(--accent-weak);
+  box-shadow: 0 0 14px -6px color-mix(in oklab, var(--section-accent) 70%, transparent);
+}
+.seg-btn:focus-visible {
+  outline: 2px solid var(--section-accent);
+  outline-offset: 2px;
+}

@@ -5,7 +5,9 @@
 // per-tile controls), like the prototype.
 
 import { Vector3 } from "three";
+import { effect } from "@preact/signals";
 import { nearestAngle, clearKeys, settleDrag, type Rig } from "./rig";
+import { accentHex, accentName } from "../../../core/accent";
 import type { WidgetRecord } from "../layout";
 
 const SLOTS = 9;
@@ -29,13 +31,10 @@ export interface Views {
   setActiveView(i: number | null): void;
   /** re-sync the drawer's active highlight (called when the drawer opens). */
   syncActive(): void;
+  /** saved (non-empty) slots, for ⌘K's Workspace group. */
+  list(): { i: number; name: string }[];
   dispose(): void;
 }
-
-const accentHex = () => {
-  const v = getComputedStyle(document.documentElement).getPropertyValue("--section-accent").trim();
-  return v.startsWith("#") ? v : "#00f3ff";
-};
 
 export function createViews(deps: ViewsDeps): Views {
   const { rig, widgets } = deps;
@@ -225,6 +224,11 @@ export function createViews(deps: ViewsDeps): Views {
 
   function renderViews(): void {
     if (!viewList) return;
+    // never rebuild mid-rename — the accent re-key effect (or any other caller)
+    // would detach the live contentEditable tile and lose the half-typed name.
+    // finish() flips contentEditable off before it calls renderViews, so the
+    // normal rename→save path still rebuilds.
+    if (viewList.querySelector('[contenteditable="true"]')) return;
     viewList.innerHTML = "";
     for (let i = 0; i < SLOTS; i++) {
       const v = slots[i];
@@ -333,12 +337,25 @@ export function createViews(deps: ViewsDeps): Views {
 
   loadViews();
   renderViews();
+  // re-key the thumbnail constellations when the accent changes
+  const stopAccent = effect(() => {
+    accentName.value;
+    renderViews();
+  });
 
   return {
     recallView,
     setActiveView,
     syncActive,
+    list() {
+      const out: { i: number; name: string }[] = [];
+      slots.forEach((v, i) => {
+        if (v) out.push({ i, name: v.name });
+      });
+      return out;
+    },
     dispose() {
+      stopAccent();
       setPeek(false); // clear the drawer's visual state before tearing down
       for (const el of targets) {
         el.removeEventListener("pointerenter", onEnter);

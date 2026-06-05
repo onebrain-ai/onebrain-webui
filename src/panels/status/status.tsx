@@ -3,6 +3,7 @@
 // pass. Ported from the prototype template (lines 1194–1211).
 
 import type { PanelDef } from "../contract";
+import { dueCount } from "../tasks-store";
 import "./status.css";
 
 function Status() {
@@ -49,7 +50,7 @@ function Status() {
           <div class="m-lab">sessions</div>
         </div>
         <div class="metric">
-          <div class="m-val">3</div>
+          <div class="m-val">{dueCount.value}</div>
           <div class="m-lab">due</div>
         </div>
         <div class="metric">
