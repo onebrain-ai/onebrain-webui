@@ -3,7 +3,8 @@
 // the OS reduced-motion preference so every site reads one helper. Ported from
 // the prototype (lines 1284–1290).
 
-const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** OS "reduce motion" preference, evaluated once at load. */
+export const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let ambient = true;
 try {

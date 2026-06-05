@@ -1,0 +1,438 @@
+/* Boot — OneBrain operator boot sequence. Ported from the prototype (676–784). */
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  background: var(--color-bg-deep);
+  display: grid;
+  place-items: center;
+  transition: opacity 0.55s ease;
+}
+#boot.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+/* faint 56px HUD lattice — same scaffolding language as the live field */
+.boot-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background:
+    repeating-linear-gradient(0deg, color-mix(in oklab, var(--section-accent) 8%, transparent) 0 1px, transparent 1px 56px),
+    repeating-linear-gradient(90deg, color-mix(in oklab, var(--section-accent) 8%, transparent) 0 1px, transparent 1px 56px);
+  -webkit-mask: radial-gradient(125% 95% at 50% 40%, #000 0%, transparent 78%);
+  mask: radial-gradient(125% 95% at 50% 40%, #000 0%, transparent 78%);
+}
+/* receding perspective floor — a quiet preview of the 3D field */
+.boot-floor {
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  bottom: -10vh;
+  height: 56vh;
+  pointer-events: none;
+  opacity: 0.4;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(0deg, color-mix(in oklab, var(--section-accent) 36%, transparent) 0 1.5px, transparent 1.5px 54px),
+    repeating-linear-gradient(90deg, color-mix(in oklab, var(--section-accent) 20%, transparent) 0 1.5px, transparent 1.5px 68px);
+  transform: perspective(440px) rotateX(76deg);
+  transform-origin: bottom center;
+  -webkit-mask: linear-gradient(transparent 4%, #000 74%);
+  mask: linear-gradient(transparent 4%, #000 74%);
+  animation: bootpan 6s linear infinite;
+}
+@keyframes bootpan {
+  to {
+    background-position:
+      0 54px,
+      0 0;
+  }
+}
+.boot-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 180px;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(transparent, color-mix(in oklab, var(--section-accent) 8%, transparent), transparent);
+  animation: bootscan 4.6s linear infinite;
+}
+@keyframes bootscan {
+  0% {
+    transform: translateY(-180px);
+  }
+  100% {
+    transform: translateY(104vh);
+  }
+}
+.boot-frame {
+  position: absolute;
+  inset: 20px;
+  pointer-events: none;
+  z-index: 2;
+}
+.boot-frame i {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid color-mix(in oklab, var(--section-accent) 50%, transparent);
+}
+.boot-frame i:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+.boot-frame i:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-left: 0;
+  border-bottom: 0;
+}
+.boot-frame i:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-right: 0;
+  border-top: 0;
+}
+.boot-frame i:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-left: 0;
+  border-top: 0;
+}
+
+.boot-card {
+  position: relative;
+  z-index: 4;
+  width: min(600px, 93vw);
+  max-height: 96vh;
+  overflow: auto;
+  text-align: center;
+  padding: 18px 30px 20px;
+  scrollbar-width: none;
+}
+.boot-card::-webkit-scrollbar {
+  display: none;
+}
+@keyframes bootlift {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.boot-card > * {
+  animation: bootlift 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.boot-top {
+  animation-delay: 0s;
+}
+.boot-lock {
+  animation-delay: 0.07s;
+}
+.boot-sub2 {
+  animation-delay: 0.15s;
+}
+.boot-tag {
+  animation-delay: 0.23s;
+}
+.boot-loadrow {
+  animation-delay: 0.31s;
+}
+.boot-stream {
+  animation-delay: 0.39s;
+}
+.boot-enter {
+  animation-delay: 0.47s;
+}
+.boot-tips {
+  animation-delay: 0.55s;
+}
+.boot-foot {
+  animation-delay: 0.61s;
+}
+
+.boot-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 26px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+.boot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--section-accent);
+  padding: 5px 10px;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-weak);
+  position: relative;
+}
+.boot-pill::before,
+.boot-pill::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--section-accent);
+  opacity: 0.7;
+}
+.boot-pill::before {
+  left: -1px;
+  top: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.boot-pill::after {
+  right: -1px;
+  bottom: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+.boot-ver {
+  color: var(--color-ghost);
+}
+
+.boot-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2vw, 18px);
+  margin: 0;
+}
+.boot-mark {
+  width: clamp(44px, 6vw, 62px);
+  height: clamp(44px, 6vw, 62px);
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 16px color-mix(in oklab, var(--acc-magenta) 42%, transparent))
+    drop-shadow(0 0 30px color-mix(in oklab, var(--acc-cyan) 22%, transparent));
+}
+.boot-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(44px, 9vw, 94px);
+  line-height: 0.84;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.boot-title .one {
+  color: #fff;
+  text-shadow: 0 0 26px rgba(255, 255, 255, 0.26);
+}
+.boot-title .brain {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 22px color-mix(in oklab, var(--acc-magenta) 28%, transparent));
+}
+.boot-sub2 {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: clamp(11px, 1.5vw, 13px);
+  letter-spacing: 0.5em;
+  margin: 12px 0 2px;
+  color: var(--section-accent);
+  text-indent: 0.5em;
+}
+.boot-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--color-faint);
+  max-width: 430px;
+  margin: 13px auto 24px;
+}
+
+.boot-loadrow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+.boot-bar-wrap {
+  flex: 1;
+  position: relative;
+  height: 14px;
+  border: 1px solid var(--accent-line);
+  background: rgba(255, 255, 255, 0.022);
+  overflow: hidden;
+  clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
+}
+.boot-bar-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 16px, var(--color-bg-deep) 16px 19px);
+}
+#boot-bar {
+  height: 100%;
+  width: 0;
+  background: var(--section-accent);
+  box-shadow: 0 0 16px var(--section-accent);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.boot-pct {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  min-width: 100px;
+  text-align: right;
+  text-shadow: 0 0 22px color-mix(in oklab, var(--section-accent) 40%, transparent);
+}
+.boot-pct i {
+  font-style: normal;
+  font-size: 18px;
+  color: var(--section-accent);
+  margin-left: 3px;
+}
+
+.boot-stream {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  height: 108px;
+  overflow: hidden;
+  border-left: 1px solid var(--accent-line);
+  padding-left: 12px;
+  color: var(--color-muted);
+  margin-bottom: 18px;
+  -webkit-mask: linear-gradient(transparent, #000 26%);
+  mask: linear-gradient(transparent, #000 26%);
+}
+.bl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: blin 0.3s ease forwards;
+}
+@keyframes blin {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.bl-row .bl-ts {
+  color: var(--color-ghost);
+  font-size: 10px;
+  width: 46px;
+  flex: 0 0 auto;
+}
+.bl-row .bl-txt {
+  flex: 1;
+}
+.bl-row .bl-ok {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--c-success);
+}
+.bl-row.is-active .bl-txt {
+  color: #fff;
+}
+.bl-row.is-active .bl-ok {
+  color: var(--section-accent);
+}
+
+.boot-enter {
+  margin: 0 auto;
+  display: inline-block;
+}
+.boot-enter[disabled] {
+  opacity: 0.45;
+  cursor: wait;
+  filter: saturate(0.4);
+}
+.boot-enter span {
+  padding: 14px 30px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+}
+#boot.ready .boot-enter {
+  filter: drop-shadow(0 0 18px color-mix(in oklab, var(--section-accent) 60%, transparent));
+  animation: enterpulse 2.2s ease-in-out infinite;
+}
+@keyframes enterpulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+.boot-tips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin: 16px auto 0;
+  max-width: 560px;
+}
+.boot-tips span {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  padding: 4px 9px;
+  border: 1px solid var(--color-border-2);
+  background: rgba(255, 255, 255, 0.012);
+}
+.boot-tips span b {
+  color: var(--section-accent);
+  font-weight: 700;
+}
+.boot-foot {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-top: 15px;
+}
+.boot-foot b {
+  color: var(--color-faint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-floor,
+  .boot-scan,
+  .boot-mark circle {
+    animation: none;
+  }
+  .boot-card > * {
+    animation: none;
+  }
+  #boot.ready .boot-enter {
+    animation: none;
+  }
+  .bl-row {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
