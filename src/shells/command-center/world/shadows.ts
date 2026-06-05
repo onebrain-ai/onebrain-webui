@@ -14,6 +14,7 @@ import {
   type PerspectiveCamera,
 } from "three";
 import type { WidgetRecord } from "../layout";
+import { ACCENT_HEX } from "../../../core/accent";
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
@@ -59,6 +60,8 @@ interface ShadowState {
 
 export interface Shadows {
   update(widgets: WidgetRecord[], camera: PerspectiveCamera, accent: Color): void;
+  /** drop a closed widget's shadow (engine calls this from closePanel). */
+  remove(rec: WidgetRecord): void;
   dispose(): void;
 }
 
@@ -92,10 +95,20 @@ export function createShadows(scene: Scene): Shadows {
         m.scale.set(foot * 1.2, 1, foot * 0.52);
         const u = (m.material as ShaderMaterial).uniforms;
         u.uOpacity.value = clamp(0.4 - h * 0.038, 0.12, 0.4);
-        tint.copy(accent);
+        if (rec.accent && ACCENT_HEX[rec.accent]) tint.set(ACCENT_HEX[rec.accent]); // panel's own accent…
+        else tint.copy(accent); // …else the global accent
         (u.uColor.value as Color).copy(SHADOW_BASE).lerp(tint, 0.3);
         m.visible = rec.el.style.visibility !== "hidden";
       }
+    },
+    remove(rec) {
+      const st = byRec.get(rec);
+      if (!st) return;
+      scene.remove(st.mesh);
+      (st.mesh.material as ShaderMaterial).dispose();
+      byRec.delete(rec);
+      const i = meshes.indexOf(st.mesh);
+      if (i >= 0) meshes.splice(i, 1);
     },
     dispose() {
       for (const m of meshes) {

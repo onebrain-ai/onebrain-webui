@@ -7,12 +7,23 @@
 import { render, h } from "preact";
 import { Vector3, Color } from "three";
 import { createSceneWorld } from "./world/scene";
-import { createRig, updateMovement, stepFocus, stepView, advanceDrag, easeFocusDof, clamp } from "./camera/rig";
+import {
+  createRig,
+  updateMovement,
+  stepFocus,
+  stepView,
+  advanceDrag,
+  easeFocusDof,
+  clamp,
+  PITCH_MIN,
+  PITCH_MAX,
+} from "./camera/rig";
 import { attachInput } from "./camera/input";
 import { createFocus } from "./camera/focus";
 import { createViews, type Views } from "./camera/views";
 import { createExpose } from "./camera/expose";
 import { makeWidgetInteractive } from "./interact";
+import { setupPanelControls, applyPanelAccent, releasePanelPop } from "./panel-controls";
 import { projectWidgets, type WidgetRecord } from "./layout";
 import { createStars } from "./world/stars";
 import { createShadows } from "./world/shadows";
@@ -28,8 +39,10 @@ import { toast } from "./boot/store";
 import { seedPanels, getPanel } from "../../panels";
 import { initVault, openFile } from "../../panels/bus";
 import { lowMotion } from "../../core/motion";
-import { accentHex, initAccent } from "../../core/accent";
+import { accentHex, initAccent, ACCENT_HEX } from "../../core/accent";
 import { frameMs } from "../../core/perf";
+import { loadLayout, writeLayout, clearLayout, type SavedLayout } from "../../core/layout-persist";
+import { setStoredPanelAccent } from "../../core/panel-accent";
 import type { PanelContext, PanelDef } from "../../panels/contract";
 import type { DaemonClient } from "../../core/daemon";
 
@@ -90,6 +103,7 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     };
     widgets.push(rec);
     makeWidgetInteractive(rec, { rig, camera: world.camera, focus, focusFromExpose: expose.focusFromExpose });
+    setupPanelControls(rec, { closePanel, onChange: flushLayout }); // header accent picker + close
     return rec;
   }
 
@@ -120,7 +134,105 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     },
   };
 
-  for (const def of seedPanels()) spawnPanel(def, placeWorld(def.placement), def.type, def.placement.t);
+  // ── desk persistence (panels + camera) ──────────────────────────────────────
+  function snapshot(): SavedLayout {
+    // while exposé is active the widgets sit at transient grid tiles and the camera
+    // at the overview pose — persist the REAL desk (captured when exposé opened)
+    // instead, or a flush / tab-close would freeze the grid into the saved layout.
+    const saved = rig.exposeActive ? rig.exposeSaved : null;
+    const cam = saved ?? rig;
+    return {
+      cam: {
+        x: +cam.pos.x.toFixed(3),
+        y: +cam.pos.y.toFixed(3),
+        z: +cam.pos.z.toFixed(3),
+        yaw: +cam.yaw.toFixed(4),
+        pitch: +cam.pitch.toFixed(4),
+      },
+      panels: widgets.map((r, i) => {
+        const w = saved?.pan[i] ?? r.world;
+        return {
+          type: r.type,
+          key: r.key,
+          x: +w.x.toFixed(3),
+          y: +w.y.toFixed(3),
+          z: +w.z.toFixed(3),
+          accent: r.accent ?? null,
+        };
+      }),
+    };
+  }
+  let _layoutJSON = "";
+  function flushLayout(): void {
+    let s: string;
+    try {
+      s = JSON.stringify(snapshot());
+    } catch {
+      return;
+    }
+    if (s === _layoutJSON) return; // unchanged → no write (idle is free)
+    _layoutJSON = s;
+    writeLayout(s);
+  }
+
+  /** Remove a panel (its header × button, after the two-click confirm). */
+  function closePanel(rec: WidgetRecord): void {
+    if (rig.focusedRec === rec) focus.clearFocus();
+    if (rig.dragRec === rec) rig.dragRec = null;
+    releasePanelPop(rec); // don't leave openPop pointing at the detached popover
+    setStoredPanelAccent(rec.key, null); // drop its accent entry so a recycled key can't inherit it
+    const i = widgets.indexOf(rec);
+    if (i >= 0) {
+      widgets.splice(i, 1);
+      // keep every parallel per-widget position array aligned with `widgets`, or a
+      // tween / exposé-collapse mid-close lerps survivors to the wrong (or undefined)
+      // target — the position arrays are indexed by widget order.
+      rig.viewTween?.fromPan?.splice(i, 1);
+      rig.viewTween?.toPan?.splice(i, 1);
+      rig.exposeSaved?.pan.splice(i, 1);
+      rig.exposeReturn?.pan.splice(i, 1);
+      rig.focusReturn?.pan.splice(i, 1);
+    }
+    shadows.remove(rec);
+    render(null, rec.el);
+    rec.el.remove();
+    flushLayout();
+    toast(`Closed · <b>${getPanel(rec.type)?.name ?? rec.type}</b>`);
+  }
+
+  /** Rebuild the saved desk (panels + per-panel accents + camera); false if none. */
+  function restoreLayout(): boolean {
+    const d = loadLayout();
+    if (!d) return false;
+    let n = 0;
+    let maxSeq = 0;
+    for (const p of d.panels) {
+      const def = getPanel(p.type);
+      if (!def) continue; // unknown type (e.g. a removed plugin) → skip
+      const rec = spawnPanel(def, new Vector3(+p.x || 0, +p.y || 0, +p.z || 0), p.key);
+      n++;
+      const m = /-(\d+)$/.exec(p.key || ""); // keep widgetSeq ahead of restored keys
+      if (m) maxSeq = Math.max(maxSeq, +m[1]);
+      if (p.accent && ACCENT_HEX[p.accent] && !rec.accent) {
+        rec.accent = p.accent; // fallback if the panel-accents map was cleared
+        setStoredPanelAccent(rec.key, p.accent); // re-sync the store (prototype parity)
+        applyPanelAccent(rec);
+      }
+    }
+    if (!n) return false;
+    widgetSeq = Math.max(widgetSeq, maxSeq);
+    if (d.cam) {
+      rig.pos.set(+d.cam.x || 0, +d.cam.y || 0, +d.cam.z || 0);
+      rig.yaw = +d.cam.yaw || 0;
+      rig.pitch = clamp(+d.cam.pitch || 0, PITCH_MIN, PITCH_MAX);
+    }
+    return true;
+  }
+
+  // restore the saved desk, or seed the five default panels on first run
+  if (!restoreLayout()) {
+    for (const def of seedPanels()) spawnPanel(def, placeWorld(def.placement), def.type, def.placement.t);
+  }
 
   /** Tear down every panel, recentre the camera, and re-seed the default desk. */
   function resetLayout(): void {
@@ -131,6 +243,8 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     rig.dragRec = null;
     document.body.classList.remove("focusmode", "exposemode", "views-open");
     for (const w of widgets) {
+      releasePanelPop(w); // clear openPop if a panel's accent popover was open
+      shadows.remove(w); // drop the floor shadow too, or its mesh is orphaned in the scene
       render(null, w.el);
       w.el.remove();
     }
@@ -141,6 +255,9 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
     rig.pitch = 0;
     for (const def of seedPanels()) spawnPanel(def, placeWorld(def.placement), def.type, def.placement.t);
     views?.setActiveView(null);
+    clearLayout();
+    _layoutJSON = ""; // force the next flush to persist the fresh default desk
+    flushLayout();
     toast("Workspace reset to defaults");
   }
 
@@ -183,6 +300,15 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
   };
   tickClock();
   const clockTimer = setInterval(tickClock, 1000);
+
+  // persist the desk periodically + on the way out (flushLayout dedups, so idle is free)
+  const layoutTimer = setInterval(flushLayout, 1500);
+  const onHide = () => flushLayout();
+  const onVisibility = () => {
+    if (document.hidden) flushLayout();
+  };
+  window.addEventListener("pagehide", onHide);
+  document.addEventListener("visibilitychange", onVisibility);
 
   // ── render loop (fps-capped) ────────────────────────────────────────────────
   let fpsFrames = 0;
@@ -268,8 +394,12 @@ export function startCommandCenter(opts: StartOptions): CommandCenterHandle {
 
   return {
     dispose() {
+      flushLayout(); // capture the final desk state before tearing down
       cancelAnimationFrame(raf);
       clearInterval(clockTimer);
+      clearInterval(layoutTimer);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("resize", onResize);
       input.dispose();
       cmdk.dispose();

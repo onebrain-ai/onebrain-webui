@@ -28,6 +28,11 @@ export interface WidgetRecord {
   el: HTMLElement;
   /** last pushed --glass value (throttles the backdrop-filter paint). */
   _glass?: number;
+  /** per-panel accent KEY (e.g. "magenta"), or null/undefined → global accent.
+   *  Drives the inline --section-accent override + the radar blip + shadow tint. */
+  accent?: string | null;
+  /** the per-panel accent popover element (header swatch picker). */
+  accPop?: HTMLElement;
 }
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));

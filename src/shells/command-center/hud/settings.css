@@ -1,28 +1,6 @@
-/* Settings popover. Ported verbatim from the prototype (lines 200–206, 494–567).
-   #settings-btn itself lives in topbar.css; .hud-lab is shared there too. */
-
-/* shared accent swatch (global + per-panel pickers) */
-.acc-sw {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--color-border);
-  padding: 0;
-  cursor: pointer;
-  border-radius: 50%;
-  position: relative;
-  transition:
-    transform 0.12s,
-    border-color 0.12s;
-}
-.acc-sw:hover {
-  transform: scale(1.12);
-}
-.acc-sw.on {
-  border-color: #fff;
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.18),
-    0 0 12px -2px currentColor;
-}
+/* Settings popover. Ported verbatim from the prototype (lines 494–567).
+   #settings-btn itself lives in topbar.css; .hud-lab is shared there too; the
+   shared .acc-sw swatch lives in widget.css (used by the per-panel picker too). */
 
 #settings-pop {
   position: fixed;

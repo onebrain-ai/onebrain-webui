@@ -5,14 +5,15 @@
 
 import { rgba } from "./canvas";
 import { lowMotion } from "../../../core/motion";
+import { ACCENT_HEX } from "../../../core/accent";
 
 export interface RadarTarget {
   /** world position (THREE.Vector3-like: x/z used). */
   world: { x: number; z: number };
   /** short blip label (e.g. "EXP"). */
   label: string;
-  /** per-panel accent hex, or undefined → use the global accent. */
-  accent?: string;
+  /** per-panel accent KEY (e.g. "magenta"), or null/undefined → global accent. */
+  accent?: string | null;
 }
 
 const RV = 320;
@@ -138,7 +139,7 @@ export function drawRadar(rctx: CanvasRenderingContext2D, f: RadarFrame): { inRa
     const bx = RC + rgt * k * s;
     const by = RC - fwd * k * s;
     const focused = rec === f.focused;
-    const pacc = rec.accent ?? acc;
+    const pacc = rec.accent && ACCENT_HEX[rec.accent] ? ACCENT_HEX[rec.accent] : acc; // blip wears its panel's accent
     const col = focused ? "#ffffff" : pacc;
     // ping: as the sweep crosses a blip it flashes twice behind one expanding ring
     let prog = -1;
