@@ -9,6 +9,8 @@ import { Vector3, type PerspectiveCamera } from "three";
 
 export interface WidgetRecord {
   type: string;
+  /** short blip label for the radar (e.g. "EXP"). */
+  label: string;
   /** world-space anchor of the panel. */
   world: Vector3;
   /** billboard scale factor (PanelPlacement.s — prototype default 0.005). */
