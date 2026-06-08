@@ -59,4 +59,25 @@ export class Autosaver {
       }
     }
   }
+
+  /** Resolve a conflict by clobbering the on-disk file (If-Match: *). Used by the
+   *  conflict toast's "Overwrite" action — never automatic. */
+  async overwrite(): Promise<void> {
+    const text = this.target.compose();
+    saveStatus.value = "saving";
+    try {
+      const res = await this.daemon.saveFile(this.target.path, text, "*");
+      this.target.rev = res.rev;
+      dirty.value = false;
+      conflictRev.value = null;
+      saveStatus.value = "saved";
+    } catch {
+      saveStatus.value = "error";
+    }
+  }
+
+  /** Adopt a server rev (used by the editor's reload-from-disk). */
+  adoptRev(rev: string): void {
+    this.target.rev = rev;
+  }
 }

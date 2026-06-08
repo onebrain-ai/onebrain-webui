@@ -37,4 +37,22 @@ describe("Autosaver", () => {
     expect(saveStatus.value).toBe("conflict");
     expect(conflictRev.value).toBe("999");
   });
+
+  it("overwrite() saves with If-Match * and clears the conflict", async () => {
+    const daemon = { saveFile: vi.fn(async () => ({ path: "a.md", rev: "9" })) } as any;
+    conflictRev.value = "5";
+    saveStatus.value = "conflict";
+    const a = new Autosaver(daemon, target("1"));
+    await a.overwrite();
+    expect(daemon.saveFile).toHaveBeenCalledWith("a.md", "BODY", "*");
+    expect(saveStatus.value).toBe("saved");
+    expect(conflictRev.value).toBe(null);
+  });
+
+  it("adoptRev() updates the target rev", () => {
+    const t = target("1");
+    const a = new Autosaver({} as any, t);
+    a.adoptRev("42");
+    expect(t.rev).toBe("42");
+  });
 });

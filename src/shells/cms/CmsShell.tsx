@@ -6,6 +6,9 @@ import { getPanel } from "../../panels";
 import { initVault, openFile, previewPath } from "../../panels/bus";
 import { setMode, chatOpen, setChatOpen } from "../../core/stores";
 import { newNote, newFolder, renameEntry, deleteEntry } from "../../panels/explorer/actions";
+import { editorBridge } from "../../core/editor-bridge";
+import { StatusBar } from "./StatusBar";
+import { ConflictToast } from "./ConflictToast";
 import "./cms.css";
 
 /** A 2D panel context: the write-capable daemon, the cross-panel open action,
@@ -109,6 +112,11 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
           <Chat ctx={ctx} />
         </aside>
       )}
+      <StatusBar />
+      <ConflictToast
+        onReload={() => { void editorBridge.value?.reload(); }}
+        onOverwrite={() => { void editorBridge.value?.overwrite(); }}
+      />
     </div>
   );
 }

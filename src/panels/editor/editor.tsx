@@ -6,7 +6,8 @@ import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath } from "../bus";
-import { Autosaver } from "../../core/autosave";
+import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
+import { editorBridge } from "../../core/editor-bridge";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
@@ -56,11 +57,24 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           ],
         }),
       });
+      const reload = async () => {
+        const f2 = await ctx.daemon.file(path);
+        const s2 = splitNote(f2.content);
+        fm.current = { raw: s2.raw, obj: parseFrontmatter(s2.raw), edited: false };
+        props.value = fm.current.obj;
+        sv.adoptRev(f2.rev);
+        view.current?.dispatch({ changes: { from: 0, to: view.current.state.doc.length, insert: s2.body } });
+        conflictRev.value = null;
+        dirty.value = false;
+        saveStatus.value = "saved";
+      };
+      editorBridge.value = { overwrite: () => sv.overwrite(), reload };
     });
     return () => {
       cancelled = true;
       view.current?.destroy();
       view.current = null;
+      editorBridge.value = null;
     };
   }, [path]);
 
