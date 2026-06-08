@@ -7,6 +7,7 @@ import { registerPanel } from "./registry";
 import { filesPanel } from "./files/files";
 import { explorerPanel } from "./explorer/explorer";
 import { previewPanel } from "./preview/preview";
+import { editorPanel } from "./editor/editor";
 import { chatPanel } from "./chat/chat";
 import { cliPanel } from "./cli/cli";
 import { searchPanel } from "./search/search";
@@ -24,6 +25,7 @@ const PANELS = [
   filesPanel,
   explorerPanel,
   previewPanel,
+  editorPanel,
   chatPanel,
   cliPanel,
   searchPanel,

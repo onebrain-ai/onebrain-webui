@@ -1,0 +1,4 @@
+.ed { height: 100%; }
+.ed .cm-editor { height: 100%; }
+.ed .cm-scroller { font: 14px/1.6 var(--font-mono, ui-monospace, monospace); padding: 16px 24px; }
+.ed-empty { padding: 32px; opacity: .6; }

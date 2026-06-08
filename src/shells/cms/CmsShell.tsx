@@ -19,7 +19,7 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
 
   const ctx = ctxFor(daemon);
   const Explorer = getPanel("explorer")!.Component;
-  const Main = getPanel("preview")!.Component; // Task 7 → "editor"
+  const Main = getPanel("editor")!.Component;
   const Chat = getPanel("chat")!.Component;
 
   return (
