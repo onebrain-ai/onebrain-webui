@@ -1,6 +1,12 @@
 // Frontmatter is the CLIENT's job (Approach A: the daemon writes bytes verbatim).
 // The body stays byte-exact; the frontmatter block is re-serialized ONLY when the
 // properties form is edited — otherwise its original bytes are preserved.
+//
+// Known v1 verbatim edge cases (body is NOT 100% byte-exact in two rare cases):
+//   (a) CodeMirror normalizes CRLF -> LF in the doc body, so a CRLF source round-
+//       trips to LF on save. Obsidian writes LF, so this is rare in practice.
+//   (b) A properties-only note (frontmatter + no body) with no trailing newline
+//       gains one on save, because compose() joins the fence and body with "\n".
 import yaml from "js-yaml";
 
 export interface SplitNote {

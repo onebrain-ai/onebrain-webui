@@ -37,6 +37,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
 
   useEffect(() => {
     if (!path || !host.current) return;
+    // Each note starts clean — clear any prior note's save/conflict state so a
+    // stale toast/indicator can't carry over to a different note.
+    saveStatus.value = "idle";
+    dirty.value = false;
+    conflictRev.value = null;
     let cancelled = false;
     void ctx.daemon.file(path).then((f) => {
       if (cancelled || !host.current) return;
@@ -72,11 +77,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       });
       const reload = async () => {
         const f2 = await ctx.daemon.file(path);
+        if (cancelled || previewPath.value !== path) return; // note switched mid-reload — abandon
+        const myView = view.current;
+        if (!myView) return;
         const s2 = splitNote(f2.content);
         fm.current = { raw: s2.raw, obj: parseFrontmatter(s2.raw), edited: false };
         props.value = fm.current.obj;
         sv.adoptRev(f2.rev);
-        view.current?.dispatch({ changes: { from: 0, to: view.current.state.doc.length, insert: s2.body } });
+        myView.dispatch({ changes: { from: 0, to: myView.state.doc.length, insert: s2.body } });
         conflictRev.value = null;
         dirty.value = false;
         saveStatus.value = "saved";
