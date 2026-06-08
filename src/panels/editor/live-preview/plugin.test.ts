@@ -45,4 +45,10 @@ describe("livePreview", () => {
     expect(decorationCount(v)).toBeGreaterThanOrEqual(2);
     v.destroy();
   });
+
+  it("replaces [[wikilink]] with a clickable widget off-line", () => {
+    const v = viewWith("see [[Alpha]] here\n\nx", 20); // cursor on "x"
+    expect(decorationCount(v)).toBeGreaterThan(0);
+    v.destroy();
+  });
 });

@@ -8,6 +8,7 @@ import {
 } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import type { Range } from "@codemirror/state";
+import { resolveWikilink, openFile } from "../../bus";
 
 /** Replace a range with nothing (conceal). */
 const conceal = Decoration.replace({});
@@ -42,6 +43,32 @@ class CheckboxWidget extends WidgetType {
     box.className = "cm-lp-task";
     box.setAttribute("aria-hidden", "true"); // display-only for v1
     return box;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+/** Replaces a [[wikilink]] token with a clickable span.
+ *  Clicking resolves the target through the shared bus index and opens it in the
+ *  Preview panel. Display-only: the `[[…]]` source bytes are unchanged. */
+class WikilinkWidget extends WidgetType {
+  constructor(readonly target: string, readonly label: string) {
+    super();
+  }
+  eq(o: WikilinkWidget) {
+    return o.target === this.target && o.label === this.label;
+  }
+  toDOM() {
+    const a = document.createElement("span");
+    a.className = "cm-lp-wikilink";
+    a.textContent = this.label;
+    a.onmousedown = (e) => {
+      e.preventDefault();
+      const p = resolveWikilink(this.target);
+      if (p) openFile(p);
+    };
+    return a;
   }
   ignoreEvent() {
     return false;
@@ -149,6 +176,20 @@ function build(view: EditorView): DecorationSet {
       }
     },
   });
+  // Wikilinks are not lezer nodes, so scan the full doc text with a regex.
+  // [[Note]] and [[Note|alias]] → replace the whole token with a WikilinkWidget.
+  const re = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+  const text = view.state.doc.toString();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (onCursorLine(view, start, end)) continue;
+    ranges.push(
+      Decoration.replace({ widget: new WikilinkWidget(m[1].trim(), (m[2] ?? m[1]).trim()) }).range(start, end),
+    );
+  }
+
   return Decoration.set(ranges, true);
 }
 

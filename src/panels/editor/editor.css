@@ -18,3 +18,5 @@
 .cm-lp-quote { border-left: 3px solid var(--border, #2a2f37); padding-left: 12px; opacity: .85; }
 .cm-lp-hr { border-bottom: 1px solid var(--border, #2a2f37); }
 .cm-lp-task { margin-right: 6px; vertical-align: middle; }
+.cm-lp-wikilink { color: var(--action-primary, #00f3ff); cursor: pointer; }
+.cm-lp-wikilink:hover { text-decoration: underline; }
