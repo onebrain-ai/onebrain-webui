@@ -32,4 +32,17 @@ describe("livePreview", () => {
     expect(decorationCount(v)).toBeGreaterThanOrEqual(2);
     v.destroy();
   });
+
+  it("turns a task marker into a checkbox widget off-line", () => {
+    const v = viewWith("- [ ] todo\n\nx", 12); // cursor on "x"
+    expect(decorationCount(v)).toBeGreaterThan(0);
+    v.destroy();
+  });
+
+  it("gives a heading its level line-class off-line", () => {
+    const v = viewWith("# Title\n\nx", 9); // cursor on "x"
+    // HeaderMark conceal + h1 line class
+    expect(decorationCount(v)).toBeGreaterThanOrEqual(2);
+    v.destroy();
+  });
 });

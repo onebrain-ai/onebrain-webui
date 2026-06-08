@@ -8,3 +8,13 @@
 .cm-lp-em { font-style: italic; }
 .cm-lp-strike { text-decoration: line-through; opacity: .7; }
 .cm-lp-code { font-family: var(--font-mono, monospace); background: #14181d; padding: 0 4px; border-radius: 4px; }
+
+.cm-lp-h1 { font-size: 1.7em; font-weight: 700; line-height: 1.25; }
+.cm-lp-h2 { font-size: 1.45em; font-weight: 700; line-height: 1.25; }
+.cm-lp-h3 { font-size: 1.25em; font-weight: 700; }
+.cm-lp-h4 { font-size: 1.1em; font-weight: 700; }
+.cm-lp-h5 { font-size: 1em; font-weight: 700; }
+.cm-lp-h6 { font-size: .9em; font-weight: 700; opacity: .8; }
+.cm-lp-quote { border-left: 3px solid var(--border, #2a2f37); padding-left: 12px; opacity: .85; }
+.cm-lp-hr { border-bottom: 1px solid var(--border, #2a2f37); }
+.cm-lp-task { margin-right: 6px; vertical-align: middle; }

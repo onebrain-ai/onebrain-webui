@@ -1,4 +1,11 @@
-import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate,
+  WidgetType,
+} from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import type { Range } from "@codemirror/state";
 
@@ -10,6 +17,36 @@ const styleBold = Decoration.mark({ class: "cm-lp-strong" });
 const styleItalic = Decoration.mark({ class: "cm-lp-em" });
 const styleStrike = Decoration.mark({ class: "cm-lp-strike" });
 const styleCode = Decoration.mark({ class: "cm-lp-code" });
+
+/** Block-quote body style (left border via CSS). */
+const styleQuote = Decoration.mark({ class: "cm-lp-quote" });
+
+/** Line decorations for headings (one per level) + horizontal rule. */
+const lineH = [1, 2, 3, 4, 5, 6].map((n) => Decoration.line({ class: `cm-lp-h${n}` }));
+const lineHr = Decoration.line({ class: "cm-lp-hr" });
+
+/** Replaces a GFM TaskMarker (`[ ]`/`[x]`) with a checkbox input.
+ *  Display-only for v1: clicking does NOT persist back to the doc — that is a
+ *  deliberate future follow-up. Marked aria-hidden so AT ignores the inert box. */
+class CheckboxWidget extends WidgetType {
+  constructor(readonly checked: boolean) {
+    super();
+  }
+  eq(o: CheckboxWidget) {
+    return o.checked === this.checked;
+  }
+  toDOM() {
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = this.checked;
+    box.className = "cm-lp-task";
+    box.setAttribute("aria-hidden", "true"); // display-only for v1
+    return box;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
 
 /** Is byte range [from,to] on the same line as any cursor? (Live preview reveals
  *  raw source on the active line, Obsidian-style.) */
@@ -68,6 +105,46 @@ function build(view: EditorView): DecorationSet {
         case "CodeMark":
         case "StrikethroughMark":
           if (!onCursorLine(view, node.from, node.to)) ranges.push(conceal.range(node.from, node.to));
+          break;
+        // Block elements (Task 11). Names verified against the live @lezer/markdown
+        // tree (throwaway dump, deleted after use):
+        //   ATXHeading1..6 — heading lines; TaskMarker — GFM `[ ]`/`[x]`
+        //   Blockquote + QuoteMark — `> …`; HorizontalRule — `---`/`***`/`___`
+        case "ATXHeading1":
+        case "ATXHeading2":
+        case "ATXHeading3":
+        case "ATXHeading4":
+        case "ATXHeading5":
+        case "ATXHeading6": {
+          // Line decoration adding the level class; keeps the HeaderMark conceal.
+          if (!onCursorLine(view, node.from, node.to)) {
+            const lineFrom = view.state.doc.lineAt(node.from).from;
+            const level = Number(node.name.slice(-1)); // 1..6
+            ranges.push(lineH[level - 1].range(lineFrom));
+          }
+          break;
+        }
+        case "TaskMarker": {
+          // Replace `[ ]`/`[x]` with a display-only checkbox widget.
+          if (!onCursorLine(view, node.from, node.to)) {
+            const checked = /x/i.test(view.state.sliceDoc(node.from, node.to));
+            ranges.push(Decoration.replace({ widget: new CheckboxWidget(checked) }).range(node.from, node.to));
+          }
+          break;
+        }
+        case "Blockquote":
+          // Style the whole quote body; conceal of `>` handled by QuoteMark case.
+          if (node.to > node.from && !onCursorLine(view, node.from, node.to)) {
+            ranges.push(styleQuote.range(node.from, node.to));
+          }
+          break;
+        case "QuoteMark":
+          if (!onCursorLine(view, node.from, node.to)) ranges.push(conceal.range(node.from, node.to));
+          break;
+        case "HorizontalRule":
+          if (!onCursorLine(view, node.from, node.to)) {
+            ranges.push(lineHr.range(view.state.doc.lineAt(node.from).from));
+          }
           break;
       }
     },
