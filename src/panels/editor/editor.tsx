@@ -9,6 +9,7 @@ import { previewPath } from "../bus";
 import { Autosaver } from "../../core/autosave";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
+import { livePreview } from "./live-preview/plugin";
 import "./editor.css";
 
 function Editor({ ctx }: { ctx: PanelContext }) {
@@ -46,6 +47,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           extensions: [
             keymap.of(defaultKeymap),
             markdown(),
+            livePreview(),
             EditorView.updateListener.of((u) => {
               if (u.docChanged) sv.schedule();
             }),
