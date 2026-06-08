@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/preact";
+import { render, screen, fireEvent, waitFor } from "@testing-library/preact";
 import { CmsShell } from "./CmsShell";
 import { mode, setChatOpen } from "../../core/stores";
 
@@ -36,5 +36,15 @@ describe("CmsShell", () => {
     render(<CmsShell daemon={daemon} />);
     expect(screen.getByTestId("cms-chat")).toBeTruthy();
     setChatOpen(false);
+  });
+
+  it("new-note button creates and opens the note", async () => {
+    const createFile = vi.fn(async () => ({ path: "00-inbox/idea.md", rev: "1" }));
+    const d = { tree: vi.fn(async () => ({ root: "", entries: [] })), createFile } as any;
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("00-inbox/idea.md");
+    render(<CmsShell daemon={d} />);
+    fireEvent.click(screen.getByTestId("op-new-note"));
+    await waitFor(() => expect(createFile).toHaveBeenCalledWith("00-inbox/idea.md", ""));
+    promptSpy.mockRestore();
   });
 });

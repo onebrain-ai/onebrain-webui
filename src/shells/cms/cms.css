@@ -24,3 +24,5 @@
 .cms-sidebar-body { overflow: auto; flex: 1; }
 .cms-main { grid-area: main; overflow: auto; min-width: 0; }
 .cms-chat { grid-area: chat; overflow: auto; border-left: 1px solid var(--border, #1c2128); }
+.cms-fileops { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border-bottom: 1px solid var(--border, #1c2128); }
+.cms-fileops button { background: var(--action-primary-weak, #14181d); border: 1px solid var(--border, #1c2128); color: inherit; border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
