@@ -41,3 +41,38 @@ export class DaemonError extends Error {
     this.name = "DaemonError";
   }
 }
+
+/** `POST`/`PUT /api/vault/file` success body (mirrors Rust `WriteResponse`). */
+export interface WriteResult {
+  path: string;
+  rev: string;
+}
+
+/** `DELETE /api/vault/{file,folder}` success body (mirrors `TrashResponse`). */
+export interface TrashResult {
+  path: string;
+  trashed_to: string;
+}
+
+/** `POST /api/vault/move` success body (mirrors `MoveResult`). */
+export interface MoveResult {
+  from: string;
+  to: string;
+}
+
+/** `POST /api/vault/folder` success body (mirrors `FolderResult`). */
+export interface FolderResult {
+  path: string;
+}
+
+/** A 409 from `PUT /api/vault/file`: the on-disk `rev` moved under us. Carries
+ *  the server's current rev so the UI can offer reload / overwrite. */
+export class ConflictError extends DaemonError {
+  constructor(
+    message: string,
+    public readonly rev: string | null,
+  ) {
+    super(409, message);
+    this.name = "ConflictError";
+  }
+}
