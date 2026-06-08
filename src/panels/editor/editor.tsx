@@ -14,6 +14,14 @@ import { livePreview } from "./live-preview/plugin";
 import { renderMarkdown } from "../../core/markdown";
 import "./editor.css";
 
+/**
+ * The run-function wired to the Mod-s keybinding.
+ * Exported so tests can invoke it directly (jsdom does not propagate key events
+ * through CodeMirror's event handler chain, so fireEvent.keyDown cannot reach it).
+ * In production this is called by CodeMirror; the `sv` closure is set per-load.
+ */
+export let _cmdSaveRun: (() => boolean) | null = null;
+
 function Editor({ ctx }: { ctx: PanelContext }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -42,13 +50,18 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         compose: () => compose(fm.current, view.current?.state.doc.toString() ?? ""),
       });
       saver.current = sv;
+      const cmdSaveRun = () => { void sv.flush(); return true; };
+      _cmdSaveRun = cmdSaveRun;
       view.current?.destroy();
       view.current = new EditorView({
         parent: host.current,
         state: EditorState.create({
           doc: split.body,
           extensions: [
-            keymap.of(defaultKeymap),
+            keymap.of([
+              { key: "Mod-s", run: cmdSaveRun },
+              ...defaultKeymap,
+            ]),
             markdown({ base: markdownLanguage }),
             livePreview(),
             EditorView.updateListener.of((u) => {
@@ -75,6 +88,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       view.current?.destroy();
       view.current = null;
       editorBridge.value = null;
+      _cmdSaveRun = null;
     };
   }, [path]);
 
