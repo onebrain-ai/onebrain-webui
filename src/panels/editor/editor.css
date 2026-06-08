@@ -3,3 +3,8 @@
 .ed .cm-editor { height: 100%; }
 .ed .cm-scroller { font: 14px/1.6 var(--font-mono, ui-monospace, monospace); padding: 16px 24px; }
 .ed-empty { padding: 32px; opacity: .6; }
+
+.cm-lp-strong { font-weight: 700; }
+.cm-lp-em { font-style: italic; }
+.cm-lp-strike { text-decoration: line-through; opacity: .7; }
+.cm-lp-code { font-family: var(--font-mono, monospace); background: #14181d; padding: 0 4px; border-radius: 4px; }

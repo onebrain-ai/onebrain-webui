@@ -3,7 +3,7 @@ import { useSignal } from "@preact/signals";
 import { EditorView, keymap } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath } from "../bus";
 import { Autosaver } from "../../core/autosave";
@@ -46,7 +46,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           doc: split.body,
           extensions: [
             keymap.of(defaultKeymap),
-            markdown(),
+            markdown({ base: markdownLanguage }),
             livePreview(),
             EditorView.updateListener.of((u) => {
               if (u.docChanged) sv.schedule();
