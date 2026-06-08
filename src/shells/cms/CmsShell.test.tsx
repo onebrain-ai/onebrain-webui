@@ -24,4 +24,17 @@ describe("CmsShell", () => {
     expect(mode.value).toBe("command-center");
     setChatOpen(false);
   });
+
+  it("switches the sidebar tab to Search", () => {
+    render(<CmsShell daemon={daemon} />);
+    fireEvent.click(screen.getByTestId("cms-tab-search"));
+    expect(screen.getByTestId("cms-tab-search").className).toContain("is-active");
+  });
+
+  it("mounts the chat panel when chatOpen is set", () => {
+    setChatOpen(true);
+    render(<CmsShell daemon={daemon} />);
+    expect(screen.getByTestId("cms-chat")).toBeTruthy();
+    setChatOpen(false);
+  });
 });

@@ -1,9 +1,10 @@
 import { useEffect } from "preact/hooks";
+import { useSignal } from "@preact/signals";
 import type { DaemonClient } from "../../core/daemon";
 import type { PanelContext } from "../../panels/contract";
 import { getPanel } from "../../panels";
 import { initVault, openFile } from "../../panels/bus";
-import { setMode, chatOpen } from "../../core/stores";
+import { setMode, chatOpen, setChatOpen } from "../../core/stores";
 import "./cms.css";
 
 /** A 2D panel context: the write-capable daemon, the cross-panel open action,
@@ -12,13 +13,24 @@ function ctxFor(daemon: DaemonClient): PanelContext {
   return { daemon, openFile, addPanel: () => {} };
 }
 
+const TABS = [
+  ["explorer", "Files"],
+  ["search", "Search"],
+  ["tasks", "Tasks"],
+  ["status", "Status"],
+] as const;
+
+type SidebarTab = "explorer" | "search" | "tasks" | "status";
+
 export function CmsShell({ daemon }: { daemon: DaemonClient }) {
+  const sidebarTab = useSignal<SidebarTab>("explorer");
+
   useEffect(() => {
     void initVault(daemon);
   }, [daemon]);
 
   const ctx = ctxFor(daemon);
-  const Explorer = getPanel("explorer")!.Component;
+  const SidebarPanel = getPanel(sidebarTab.value)!.Component;
   const Main = getPanel("editor")!.Component;
   const Chat = getPanel("chat")!.Component;
 
@@ -34,9 +46,31 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
         >
           ◆
         </button>
+        <button
+          class="cms-rail-btn"
+          data-testid="cms-chat-toggle"
+          title="Chat"
+          onClick={() => setChatOpen(!chatOpen.value)}
+        >
+          💬
+        </button>
       </nav>
       <aside class="cms-explorer" data-testid="cms-explorer">
-        <Explorer ctx={ctx} />
+        <div class="cms-tabs">
+          {TABS.map(([id, label]) => (
+            <button
+              key={id}
+              class={sidebarTab.value === id ? "cms-tab is-active" : "cms-tab"}
+              data-testid={`cms-tab-${id}`}
+              onClick={() => { sidebarTab.value = id; }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div class="cms-sidebar-body">
+          <SidebarPanel ctx={ctx} />
+        </div>
       </aside>
       <main class="cms-main" data-testid="cms-main">
         <Main ctx={ctx} />
