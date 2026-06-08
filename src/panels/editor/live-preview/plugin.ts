@@ -13,6 +13,9 @@ import { resolveWikilink, openFile } from "../../bus";
 /** Replace a range with nothing (conceal). */
 const conceal = Decoration.replace({});
 
+/** Fenced code block background (whole block, not just the content). */
+const styleFence = Decoration.mark({ class: "cm-lp-fence" });
+
 /** Inline-emphasis style marks (applied to the whole span, delimiters concealed). */
 const styleBold = Decoration.mark({ class: "cm-lp-strong" });
 const styleItalic = Decoration.mark({ class: "cm-lp-em" });
@@ -171,6 +174,12 @@ function build(view: EditorView): DecorationSet {
         case "HorizontalRule":
           if (!onCursorLine(view, node.from, node.to)) {
             ranges.push(lineHr.range(view.state.doc.lineAt(node.from).from));
+          }
+          break;
+        // FencedCode node name verified against @lezer/markdown tree dump (throwaway, deleted).
+        case "FencedCode":
+          if (!onCursorLine(view, node.from, node.to)) {
+            ranges.push(styleFence.range(node.from, node.to));
           }
           break;
       }

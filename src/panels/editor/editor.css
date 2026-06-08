@@ -3,6 +3,10 @@
 .ed .cm-editor { height: 100%; }
 .ed .cm-scroller { font: 14px/1.6 var(--font-mono, ui-monospace, monospace); padding: 16px 24px; }
 .ed-empty { padding: 32px; opacity: .6; }
+.ed-toolbar { display: flex; justify-content: flex-end; padding: 6px 12px; border-bottom: 1px solid var(--border, #1c2128); }
+.ed-toggle { background: var(--action-primary-weak, #14181d); border: 1px solid var(--border, #1c2128); color: inherit; border-radius: 6px; padding: 3px 12px; font: inherit; cursor: pointer; }
+.ed-hidden { display: none; }
+.ed-reading { flex: 1; overflow: auto; padding: 16px 24px; }
 
 .cm-lp-strong { font-weight: 700; }
 .cm-lp-em { font-style: italic; }
@@ -20,3 +24,4 @@
 .cm-lp-task { margin-right: 6px; vertical-align: middle; }
 .cm-lp-wikilink { color: var(--action-primary, #00f3ff); cursor: pointer; }
 .cm-lp-wikilink:hover { text-decoration: underline; }
+.cm-lp-fence { font-family: var(--font-mono, monospace); background: #14181d; display: block; }

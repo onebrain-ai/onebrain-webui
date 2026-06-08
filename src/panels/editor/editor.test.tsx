@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, waitFor } from "@testing-library/preact";
+import { render, waitFor, fireEvent, screen } from "@testing-library/preact";
 import { editorPanel } from "./editor";
 import { previewPath } from "../bus";
 
@@ -19,5 +19,13 @@ describe("editorPanel", () => {
     await waitFor(() =>
       expect(container.querySelector(".cm-content")?.textContent ?? "").toContain("Hello"),
     );
+  });
+
+  it("toggles to reading mode and renders HTML via renderMarkdown", async () => {
+    previewPath.value = "a.md";
+    const { container } = render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(container.querySelector(".cm-content")?.textContent ?? "").toContain("Hello"));
+    fireEvent.click(screen.getByTestId("ed-reading-toggle"));
+    expect(screen.getByTestId("ed-reading")).toBeTruthy();
   });
 });

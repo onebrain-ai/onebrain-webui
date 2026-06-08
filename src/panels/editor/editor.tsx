@@ -10,6 +10,7 @@ import { Autosaver } from "../../core/autosave";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
+import { renderMarkdown } from "../../core/markdown";
 import "./editor.css";
 
 function Editor({ ctx }: { ctx: PanelContext }) {
@@ -22,6 +23,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     edited: false,
   });
   const props = useSignal<Record<string, unknown>>({});
+  const reading = useSignal(false);
   const path = previewPath.value;
 
   useEffect(() => {
@@ -72,8 +74,24 @@ function Editor({ ctx }: { ctx: PanelContext }) {
 
   return (
     <div class="ed-wrap">
+      <div class="ed-toolbar">
+        <button
+          class="ed-toggle"
+          data-testid="ed-reading-toggle"
+          onClick={() => { reading.value = !reading.value; }}
+        >
+          {reading.value ? "Edit" : "Read"}
+        </button>
+      </div>
       <Properties value={props.value} onChange={onProps} />
-      <div class="ed" ref={host} />
+      {reading.value && (
+        <div
+          class="ed-reading"
+          data-testid="ed-reading"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(view.current?.state.doc.toString() ?? "").html }}
+        />
+      )}
+      <div class={reading.value ? "ed ed-hidden" : "ed"} ref={host} />
     </div>
   );
 }
