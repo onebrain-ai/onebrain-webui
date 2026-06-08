@@ -1,0 +1,22 @@
+/* Flat 2D shell — DS tokens (tokens.css) reused; base.css is a 3D z-stack and
+   is intentionally NOT used for layout here. */
+.cms {
+  display: grid;
+  grid-template-columns: 48px 280px 1fr;
+  grid-template-areas: "rail explorer main";
+  height: 100vh;
+  background: var(--bg, #0b0d10);
+  color: var(--text, #e6e9ee);
+}
+.cms[data-chat="open"] {
+  grid-template-columns: 48px 280px 1fr 360px;
+  grid-template-areas: "rail explorer main chat";
+}
+.cms-rail { grid-area: rail; display: flex; flex-direction: column; gap: 6px; padding: 8px 4px;
+  border-right: 1px solid var(--border, #1c2128); }
+.cms-rail-btn { background: none; border: 0; color: inherit; opacity: .55; cursor: pointer;
+  font-size: 18px; padding: 6px; border-radius: 6px; }
+.cms-rail-btn.is-active, .cms-rail-btn:hover { opacity: 1; background: var(--action-primary-weak, #1c2128); }
+.cms-explorer { grid-area: explorer; overflow: auto; border-right: 1px solid var(--border, #1c2128); }
+.cms-main { grid-area: main; overflow: auto; min-width: 0; }
+.cms-chat { grid-area: chat; overflow: auto; border-left: 1px solid var(--border, #1c2128); }
