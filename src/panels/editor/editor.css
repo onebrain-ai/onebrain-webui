@@ -1,4 +1,5 @@
-.ed { height: 100%; }
+.ed-wrap { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.ed { flex: 1; min-height: 0; }
 .ed .cm-editor { height: 100%; }
 .ed .cm-scroller { font: 14px/1.6 var(--font-mono, ui-monospace, monospace); padding: 16px 24px; }
 .ed-empty { padding: 32px; opacity: .6; }

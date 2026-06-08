@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
+import { useSignal } from "@preact/signals";
 import { EditorView, keymap } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
@@ -6,7 +7,8 @@ import { markdown } from "@codemirror/lang-markdown";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath } from "../bus";
 import { Autosaver } from "../../core/autosave";
-import { splitNote, compose } from "../../core/frontmatter";
+import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
+import { Properties } from "./properties";
 import "./editor.css";
 
 function Editor({ ctx }: { ctx: PanelContext }) {
@@ -18,6 +20,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     obj: {},
     edited: false,
   });
+  const props = useSignal<Record<string, unknown>>({});
   const path = previewPath.value;
 
   useEffect(() => {
@@ -26,7 +29,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     void ctx.daemon.file(path).then((f) => {
       if (cancelled || !host.current) return;
       const split = splitNote(f.content);
-      fm.current = { raw: split.raw, obj: {}, edited: false };
+      const obj = parseFrontmatter(split.raw);
+      fm.current = { raw: split.raw, obj, edited: false };
+      props.value = obj;
       const sv = new Autosaver(ctx.daemon, {
         path,
         rev: f.rev,
@@ -56,7 +61,19 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   }, [path]);
 
   if (!path) return <div class="ed-empty">Select a note from the Explorer.</div>;
-  return <div class="ed" ref={host} />;
+
+  const onProps = (next: Record<string, unknown>) => {
+    props.value = next;
+    fm.current = { ...fm.current, obj: next, edited: true };
+    saver.current?.schedule();
+  };
+
+  return (
+    <div class="ed-wrap">
+      <Properties value={props.value} onChange={onProps} />
+      <div class="ed" ref={host} />
+    </div>
+  );
 }
 
 export const editorPanel: PanelDef = {
