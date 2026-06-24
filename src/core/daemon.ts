@@ -68,6 +68,9 @@ export interface DaemonClient {
   tasks(): Promise<VaultTask[]>;
   /** `GET /api/vault/raw?path=` — a file's raw bytes (images, PDFs) for preview. */
   fileBlob(path: string): Promise<Blob>;
+  /** Authenticated `/api/vault/raw` URL (token in the query) for direct use in an
+   *  `<img src>` — which can't send the auth header. */
+  rawUrl(path: string): string;
   /** `POST /api/vault/upload?path=` — write raw bytes to the vault (chat attachment). */
   uploadFile(path: string, data: ArrayBuffer): Promise<{ path: string }>;
 }
@@ -87,6 +90,11 @@ export class HttpDaemonClient implements DaemonClient {
 
   config(): Promise<OnebrainConfig> {
     return this.getJson<OnebrainConfig>("/api/config");
+  }
+
+  rawUrl(path: string): string {
+    const tok = this.token ? `&token=${encodeURIComponent(this.token)}` : "";
+    return `${this.baseUrl}/api/vault/raw?path=${encodeURIComponent(path)}${tok}`;
   }
 
   tree(): Promise<VaultTree> {

@@ -50,12 +50,12 @@ describe("renderMarkdown — rendering", () => {
   it("splits YAML frontmatter from the body", () => {
     const { frontmatter, html } = renderMarkdown("---\ntitle: Hi\ntags: [a]\n---\n# Body\n");
     expect(frontmatter).toBe("title: Hi\ntags: [a]");
-    expect(html).toContain("<h1>Body</h1>");
+    expect(html).toContain('<h1 id="body">Body</h1>');
     expect(html).not.toContain("title: Hi");
   });
 
   it("renders headings, bold, italic and inline code", () => {
-    expect(html("## Heading")).toContain("<h2>Heading</h2>");
+    expect(html("## Heading")).toContain('<h2 id="heading">Heading</h2>');
     expect(html("**bold**")).toContain("<strong>bold</strong>");
     expect(html("a *word* b")).toContain("<em>word</em>");
     expect(html("*lead* word")).toContain("<em>lead</em>");
@@ -151,6 +151,64 @@ describe("renderMarkdown — rendering", () => {
     expect(html("[[a==b==c]]")).toContain("<mark>b</mark>");
   });
 
+  it("nests lists by indentation, with task checkboxes", () => {
+    const out = html("- a\n- b\n  - b1\n  - b2\n- c");
+    // child list lives inside its parent <li>, not as a sibling
+    expect(out).toContain("<li>b<ul><li>b1</li><li>b2</li></ul></li>");
+    const tasks = html("- [ ] open\n  - [x] sub done");
+    expect(tasks).toContain('class="task-list"');
+    // checkboxes are clickable + carry a data-line for write-back (0-based body line)
+    expect(tasks).toContain('<input type="checkbox" class="task-check" data-line="0"> open');
+    expect(tasks).toContain('<input type="checkbox" class="task-check" data-line="1" checked> sub done');
+  });
+
+  it("gives a task nested in a callout an ABSOLUTE data-line (not callout-relative)", () => {
+    // body lines: 0 '# H', 1 '', 2 '> [!note] T', 3 '> - [ ] in callout'
+    const out = html("# H\n\n> [!note] T\n> - [ ] in callout");
+    expect(out).toContain('data-line="3"'); // real body line, so write-back hits the right line
+  });
+
+  it("renders #tags as clickable spans but ignores #1 and URL fragments", () => {
+    expect(html("a #project tag")).toContain('<span class="ob-tag" data-tag="project">#project</span>');
+    expect(html("nested #area/health")).toContain('data-tag="area/health"');
+    expect(html("issue #1 here")).not.toContain("ob-tag");
+    expect(html("see http://x.com/p#frag now")).not.toContain("ob-tag");
+  });
+
+  it("renders footnotes: ref links to a definition list at the bottom", () => {
+    const out = html("text[^1] more.\n\n[^1]: the note");
+    expect(out).toContain('<sup class="fn-ref" id="fnref-1"><a href="#fn-1">1</a></sup>');
+    expect(out).toContain('<section class="footnotes">');
+    expect(out).toContain('<li id="fn-1">the note');
+    expect(out).not.toContain("[^1]:"); // definition removed from body
+  });
+
+  it("does NOT extract footnote defs inside a code fence (keeps code verbatim)", () => {
+    const out = html("```md\n[^1]: not a footnote here\n```");
+    expect(out).toContain("[^1]: not a footnote here"); // stays verbatim in the code block
+    expect(out).not.toContain('class="footnotes"'); // no spurious footnotes section
+  });
+
+  it("gives duplicate headings unique ids", () => {
+    const out = html("## Setup\n\ntext\n\n## Setup");
+    expect(out).toContain('<h2 id="setup">Setup</h2>');
+    expect(out).toContain('<h2 id="setup-2">Setup</h2>');
+  });
+
+  it("renders images: external direct, vault-relative + ![[embed]] as placeholders", () => {
+    expect(html("![cat](https://x.com/cat.png)")).toContain('<img src="https://x.com/cat.png" alt="cat"');
+    expect(html("![dia](attachments/dia.png)")).toContain('<img data-vault-src="attachments/dia.png" alt="dia"');
+    expect(html("![[diagram.png]]")).toContain('<img data-vault-embed="diagram.png"');
+    // a non-image ![[note]] is NOT an embed (images-only) — left for the wikilink pass
+    expect(html("![[some note]]")).not.toContain("data-vault-embed");
+  });
+
+  it("renders inline $math$ and block $$math$$ for KaTeX (verbatim)", () => {
+    expect(html("euler $e^{i\\pi}+1=0$ ok")).toContain('<span class="math-inline" data-math>e^{i\\pi}+1=0</span>');
+    expect(html("$$\\int_0^1 x\\,dx$$")).toContain('<div class="math-block" data-math>');
+    expect(html("price $5 and $10 total")).not.toContain("math-inline"); // not math
+  });
+
   it("falls back to a plain blockquote when there is no callout marker", () => {
     const out = html("> just a quote");
     expect(out).toContain("<blockquote>");
@@ -160,8 +218,8 @@ describe("renderMarkdown — rendering", () => {
   it("renders a task list with checkbox state", () => {
     const out = html("- [ ] open\n- [x] done");
     expect(out).toContain('class="task-list"');
-    expect(out).toContain('<input type="checkbox" disabled> open');
-    expect(out).toContain('<input type="checkbox" disabled checked> done');
+    expect(out).toContain('<input type="checkbox" class="task-check" data-line="0"> open');
+    expect(out).toContain('<input type="checkbox" class="task-check" data-line="1" checked> done');
   });
 
   it("renders a ```mermaid fence as a mermaid container, not a code block", () => {

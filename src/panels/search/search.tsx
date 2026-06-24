@@ -5,9 +5,9 @@
 // opens it in Preview. Ported from the prototype (template 1266–1270, buildSearch
 // 2889–2907, OB.search 2705–2719).
 
-import { useSignal } from "@preact/signals";
 import type { PanelDef, PanelContext } from "../contract";
 import { allFiles, vaultTree, vaultError, previewPath } from "../bus";
+import { searchQuery } from "../../core/stores";
 import "./search.css";
 
 interface Hit {
@@ -62,7 +62,8 @@ function searchVault(q: string): Hit[] {
 }
 
 function Search({ ctx }: { ctx: PanelContext }) {
-  const query = useSignal("");
+  // Module-level signal so a #tag click in the reading view can pre-fill the box.
+  const query = searchQuery;
   const active = previewPath.value;
   // subscribe to the tree so the panel re-renders (and search works) once the
   // vault finishes loading

@@ -6,7 +6,22 @@
 
 import { signal, computed } from "@preact/signals";
 import type { DaemonClient } from "../core/daemon";
+import type { OnebrainConfig } from "../core/types";
 import { buildTree, type TreeNode } from "../core/tree";
+
+/** Parsed onebrain.yml (null until loaded / on failure). Lets panels read the
+ *  CONFIGURED folder names instead of hardcoding `00-inbox/` etc. */
+export const vaultConfig = signal<OnebrainConfig | null>(null);
+
+/** Load the vault config once (folder names, qmd, …). Best-effort: on failure
+ *  panels fall back to the default folder names. */
+export async function loadConfig(daemon: DaemonClient): Promise<void> {
+  try {
+    vaultConfig.value = await daemon.config();
+  } catch {
+    /* no config file / daemon unreachable — panels use defaults */
+  }
+}
 
 /** nested vault tree (null until loaded; stays null on load failure). */
 export const vaultTree = signal<TreeNode[] | null>(null);
@@ -136,4 +151,20 @@ export function resolveWikilink(name: string): string | null {
   }
   const arr = _byBase.get(norm);
   return arr && arr.length ? arr[0] : null;
+}
+
+/** Resolve an image reference (`![[image.png]]` basename, or a `![](attachments/x.png)`
+ *  relative path) to a vault path. Matches by FULL filename (with extension),
+ *  unlike `resolveWikilink` which keys on the ext-less note basename. Shortest
+ *  match wins; null if absent. */
+export function resolveAsset(name: string): string | null {
+  const n = name.trim().replace(/^\.?\//, "").toLowerCase();
+  if (!n) return null;
+  let best: string | null = null;
+  for (const p of _files) {
+    const lp = p.toLowerCase();
+    const hit = n.includes("/") ? lp === n || lp.endsWith("/" + n) : (lp.split("/").pop() ?? "") === n;
+    if (hit && (!best || p.length < best.length)) best = p;
+  }
+  return best;
 }

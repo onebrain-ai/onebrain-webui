@@ -1,9 +1,8 @@
 import { useEffect } from "preact/hooks";
-import { useSignal } from "@preact/signals";
 import type { DaemonClient } from "../../core/daemon";
 import type { PanelContext } from "../../panels/contract";
 import { getPanel } from "../../panels";
-import { initVault, openFile, previewPath } from "../../panels/bus";
+import { initVault, openFile, previewPath, loadConfig } from "../../panels/bus";
 import {
   chatOpen,
   setChatOpen,
@@ -13,12 +12,15 @@ import {
   setSidebarCollapsed,
   chatWidth,
   setChatWidth,
+  sidebarTab,
+  type SidebarTab,
 } from "../../core/stores";
 import { newNote, newFolder, renameEntry, deleteEntry } from "../../panels/explorer/actions";
 import { loadTasks } from "../../panels/tasks-store";
 import { editorBridge } from "../../core/editor-bridge";
 import { Icon, type IconName } from "../../ui/Icon";
 import { promptModal, confirmModal, ModalHost } from "../../ui/Modal";
+import { TaskModalHost } from "../../panels/tasks/task-modal";
 import { Topbar } from "./Topbar";
 import { ConflictToast } from "./ConflictToast";
 import "./cms.css";
@@ -28,8 +30,6 @@ import "./cms.css";
 function ctxFor(daemon: DaemonClient): PanelContext {
   return { daemon, openFile, addPanel: () => {} };
 }
-
-type SidebarTab = "explorer" | "search" | "tasks" | "status";
 
 /** Left activity rail: each entry selects which panel fills the sidebar. */
 const NAV: ReadonlyArray<readonly [SidebarTab, IconName, string]> = [
@@ -43,12 +43,35 @@ const NAV: ReadonlyArray<readonly [SidebarTab, IconName, string]> = [
 const RAIL_W = 52;
 
 export function CmsShell({ daemon }: { daemon: DaemonClient }) {
-  const sidebarTab = useSignal<SidebarTab>("explorer");
-
   useEffect(() => {
     void initVault(daemon);
     void loadTasks(daemon);
+    void loadConfig(daemon);
   }, [daemon]);
+
+  // Re-scan the vault when the window regains focus, so files/folders created in
+  // Obsidian or the shell show up without a reload. (Manual refresh button too.)
+  useEffect(() => {
+    let last = 0;
+    const onFocus = () => {
+      // Debounce: a focus storm (alt-tabbing) shouldn't fire a tree+tasks+config
+      // refetch each time. One refresh per 10s is plenty for "files changed externally".
+      const now = Date.now();
+      if (now - last < 10_000) return;
+      last = now;
+      void initVault(daemon);
+      void loadTasks(daemon);
+      void loadConfig(daemon);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [daemon]);
+
+  const onRefresh = () => {
+    void initVault(daemon);
+    void loadTasks(daemon);
+    void loadConfig(daemon);
+  };
 
   const onNewNote = async () => {
     const p = await promptModal({ title: "New note", placeholder: "00-inbox/idea.md", okLabel: "Create" });
@@ -174,6 +197,10 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
             <button type="button" class="fo-btn fo-danger" data-testid="op-delete" title="Delete open note → .trash" aria-label="Delete" onClick={onDelete}>
               <Icon name="trash" />
             </button>
+            <span class="fo-sep" />
+            <button type="button" class="fo-btn" data-testid="op-refresh" title="Refresh vault" aria-label="Refresh vault" onClick={onRefresh}>
+              <Icon name="refresh" />
+            </button>
           </div>
         )}
         <div class="cms-sidebar-body">
@@ -198,6 +225,7 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
         onOverwrite={() => { void editorBridge.value?.overwrite(); }}
       />
       <ModalHost />
+      <TaskModalHost />
     </div>
   );
 }

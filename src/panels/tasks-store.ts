@@ -21,6 +21,40 @@ export const recentlyToggled = signal<Set<string>>(new Set());
 
 export const taskKey = (t: VaultTask) => `${t.file}:${t.line}`;
 
+/** Calendar filter: when set (`YYYY-MM-DD`), the list shows only that day's tasks.
+ *  Null = no day filter (show all open). */
+export const selectedDate = signal<string | null>(null);
+
+/** Obsidian-Tasks priority levels we edit (CLAUDE.md set). "none" = no marker. */
+export type Priority = "high" | "medium" | "low" | "none";
+const PRIO_EMOJI: Record<Exclude<Priority, "none">, string> = { high: "🔺", medium: "⏫", low: "🔽" };
+const PRIO_ALL = "🔺⏫🔼🔽⏬"; // strip any of these (incl. the two we don't author) when rebuilding
+
+/** The description a user edits: the task body with the date + priority markers
+ *  removed (tags stay — they're part of the text). */
+export function taskDescription(text: string): string {
+  return text
+    .replace(DUE_MARK, "")
+    .replace(new RegExp(`[${PRIO_ALL}]`, "gu"), "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The priority encoded in a task's text, if any. */
+export function taskPriority(text: string): Priority {
+  if (text.includes("🔺")) return "high";
+  if (text.includes("⏫")) return "medium";
+  if (text.includes("🔽")) return "low";
+  return "none";
+}
+
+/** Rebuild a full task line from its parts (Obsidian order: text · priority · date). */
+function buildTaskLine(indent: string, checkbox: string, desc: string, priority: Priority, due: string | null): string {
+  const prio = priority !== "none" ? ` ${PRIO_EMOJI[priority]}` : "";
+  const date = due ? ` 📅 ${due}` : "";
+  return `${indent}- [${checkbox}] ${taskDescription(desc)}${prio}${date}`;
+}
+
 /** Local-time `YYYY-MM-DD` (NOT UTC — the user's "today" must match their clock,
  *  or tasks flip overdue at the wrong hour in a non-UTC zone). */
 export function todayLocal(): string {
@@ -103,5 +137,83 @@ export async function toggleTask(daemon: DaemonClient, task: VaultTask): Promise
     await loadTasks(daemon); // resync (line numbers / rev drifted)
   } finally {
     inflight.delete(k);
+  }
+}
+
+const FULL_TASK_LINE = /^(\s*)-\s+\[(.)\]\s+(.+?)\s*$/; // indent, checkbox, body
+
+/** Read the note → verify the target line is STILL this task → transform (or
+ *  remove) the line → save → reload. Returns true on success. Shared by
+ *  edit/delete; mirrors `toggleTask`'s drift + conflict handling. */
+async function mutateLine(
+  daemon: DaemonClient,
+  task: VaultTask,
+  transform: ((line: string) => string | null) | null,
+): Promise<boolean> {
+  const k = taskKey(task);
+  if (inflight.has(k)) return false;
+  inflight.add(k);
+  taskNotice.value = null;
+  try {
+    const f = await daemon.file(task.file);
+    const nl = f.content.includes("\r\n") ? "\r\n" : "\n";
+    const lines = f.content.split(nl);
+    const line = lines[task.line - 1];
+    if (line === undefined || !lineIsTask(line, task)) throw new Error("drift");
+    if (transform === null) {
+      lines.splice(task.line - 1, 1); // delete
+    } else {
+      const next = transform(line);
+      if (next === null) throw new Error("drift");
+      lines[task.line - 1] = next;
+    }
+    await daemon.saveFile(task.file, lines.join(nl), f.rev);
+    await loadTasks(daemon); // line numbers shift on delete; text/due changed on edit
+    return true;
+  } catch (e) {
+    taskNotice.value =
+      e instanceof ConflictError ? "note changed on disk — reloaded" : "couldn't update the note — reloaded";
+    await loadTasks(daemon);
+    return false;
+  } finally {
+    inflight.delete(k);
+  }
+}
+
+/** Edit a task's description / due date / priority in its source note. */
+export function editTask(
+  daemon: DaemonClient,
+  task: VaultTask,
+  next: { text: string; due: string | null; priority: Priority },
+): Promise<boolean> {
+  return mutateLine(daemon, task, (line) => {
+    const m = line.match(FULL_TASK_LINE);
+    return m ? buildTaskLine(m[1], m[2], next.text, next.priority, next.due) : null;
+  });
+}
+
+/** Delete a task line from its source note. */
+export function deleteTask(daemon: DaemonClient, task: VaultTask): Promise<boolean> {
+  return mutateLine(daemon, task, null);
+}
+
+/** Append a new dated task line to the end of a note, then refresh. */
+export async function addTask(
+  daemon: DaemonClient,
+  file: string,
+  next: { text: string; due: string | null; priority: Priority },
+): Promise<boolean> {
+  taskNotice.value = null;
+  try {
+    const f = await daemon.file(file);
+    const nl = f.content.includes("\r\n") ? "\r\n" : "\n";
+    const sep = f.content === "" || f.content.endsWith(nl) ? "" : nl;
+    const line = buildTaskLine("", " ", next.text, next.priority, next.due);
+    await daemon.saveFile(file, f.content + sep + line + nl, f.rev);
+    await loadTasks(daemon);
+    return true;
+  } catch (e) {
+    taskNotice.value = e instanceof ConflictError ? "note changed on disk — try again" : "couldn't add the task";
+    return false;
   }
 }

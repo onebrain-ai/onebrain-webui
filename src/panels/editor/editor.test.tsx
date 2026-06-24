@@ -30,7 +30,7 @@ describe("editorPanel", () => {
     render(<editorPanel.Component ctx={ctx} />);
     // reading view is the default surface on open — body rendered via renderMarkdown
     await waitFor(() =>
-      expect(screen.getByTestId("ed-reading").innerHTML).toContain("<h1>Hello</h1>"),
+      expect(screen.getByTestId("ed-reading").innerHTML).toContain('<h1 id="hello">Hello</h1>'),
     );
     // toggling switches to the edit surface (reading node removed)
     fireEvent.click(screen.getByTestId("ed-reading-toggle"));

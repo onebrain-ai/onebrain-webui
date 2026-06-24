@@ -3,7 +3,7 @@
 // session counts from the loaded vault tree, and the live due-task count.
 
 import type { PanelDef } from "../contract";
-import { vaultTree, vaultError, allFiles } from "../bus";
+import { vaultTree, vaultError, allFiles, vaultConfig } from "../bus";
 import { dueCount } from "../tasks-store";
 import "./status.css";
 
@@ -12,11 +12,19 @@ function Status() {
   const ready = tree !== null;
   const files = ready ? allFiles() : [];
 
+  // Folder names from the vault config (falls back to the PARA defaults) so a
+  // vault that renamed folders in onebrain.yml still counts correctly.
+  const folders = vaultConfig.value?.folders ?? {};
+  const dir = (key: string, dflt: string) => (folders[key] ?? dflt).toLowerCase().replace(/\/$/, "");
+  const inboxDir = dir("inbox", "00-inbox");
+  const agentDir = dir("agent", "05-agent");
+  const logsDir = dir("logs", "07-logs");
+
   const lc = (p: string) => p.toLowerCase();
   const notes = files.filter((p) => lc(p).endsWith(".md")).length;
-  const inbox = files.filter((p) => lc(p).startsWith("00-inbox/")).length;
-  const memory = files.filter((p) => lc(p).startsWith("05-agent/memory/") && lc(p).endsWith(".md")).length;
-  const sessions = files.filter((p) => lc(p).startsWith("07-logs/session/") && lc(p).endsWith(".md")).length;
+  const inbox = files.filter((p) => lc(p).startsWith(inboxDir + "/")).length;
+  const memory = files.filter((p) => lc(p).startsWith(agentDir + "/memory/") && lc(p).endsWith(".md")).length;
+  const sessions = files.filter((p) => lc(p).startsWith(logsDir + "/session/") && lc(p).endsWith(".md")).length;
 
   return (
     <>

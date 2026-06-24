@@ -44,8 +44,8 @@ export function confirmModal(opts: {
 }
 
 /** Keep Tab focus inside the dialog so it can't wander to the inert page behind
- *  the aria-modal backdrop (WCAG 2.1.2 / 2.4.3). */
-function trapFocus(e: KeyboardEvent, container: HTMLElement | null): void {
+ *  the aria-modal backdrop (WCAG 2.4.3). Shared by ModalHost + the task modal. */
+export function trapFocus(e: KeyboardEvent, container: HTMLElement | null): void {
   if (!container) return;
   const items = container.querySelectorAll<HTMLElement>('button, input, [href], [tabindex]:not([tabindex="-1"])');
   if (!items.length) return;

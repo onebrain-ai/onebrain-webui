@@ -42,44 +42,98 @@ function splitFrontmatter(src: string): { frontmatter: string | null; body: stri
 /** Inline formatting on an already-block-split line. Escapes first, then layers
  *  markup whose delimiters can't appear in escaped text except as literals. */
 function inline(text: string): string {
+  // Verbatim-span sentinels (STX / ETX) — never appear in note text and carry no
+  // markdown metacharacter, so the emphasis/link/tag passes skip over them. Built
+  // at runtime (String.fromCharCode) so the source stays plain text.
+  const C = String.fromCharCode(2); // inline code
+  const M = String.fromCharCode(3); // inline math
   let s = esc(text);
-  // Pull inline code spans out first so the emphasis passes can't format their
-  // interior — code must be verbatim. Inert NUL-delimited placeholders carry no
-  // markdown metacharacter, so every pass below skips over them.
+  // Pull inline code + inline math out first so nothing formats their interior.
   const codes: string[] = [];
   s = s.replace(/`([^`]+)`/g, (_m, c) => {
     codes.push(c);
-    return `\u0000${codes.length - 1}\u0000`;
+    return `${C}${codes.length - 1}${C}`;
   });
-  // Emphasis BEFORE links/wikilinks. Run early so a `*`/`~~`/`==` inside a link or
-  // wikilink decorates the visible label — and so the link/wikilink attribute
-  // values below (which are tag-stripped via attrSafe) never carry a dangling
-  // delimiter that a later pass would turn into a tag inside the attr.
+  // $…$ inline math: content can't start/end with whitespace, so "$5 and $10"
+  // isn't read as math. Block $$…$$ is handled at the block level.
+  const maths: string[] = [];
+  s = s.replace(/\$(\S|\S[^$\n]*?\S)\$/g, (_m, tex) => {
+    maths.push(tex);
+    return `${M}${maths.length - 1}${M}`;
+  });
+  // Emphasis.
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   // The italic opener must NOT be preceded by a word char and its content must
   // not start with whitespace — so `2*3*4` / `a*b*c` (math, intra-word) don't
   // become italics, while `a *word* b` and `*lead*` do (R2).
   s = s.replace(/(^|[^\w*])\*([^*\s][^*]*?)\*/g, "$1<em>$2</em>");
-  // Obsidian extras: ~~strikethrough~~ and ==highlight==.
   s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
   s = s.replace(/==([^=]+)==/g, "<mark>$1</mark>");
-  // Restore code spans (verbatim) before the link passes, so a `code` span inside
-  // a link label renders while attrSafe still strips the <code> from the attr.
-  s = s.replace(/\u0000(\d+)\u0000/g, (_m, i) => `<code>${codes[Number(i)]}</code>`);
-  // Images / links: ![alt](url) handled as links' text; [text](url). attrSafe
-  // strips any markup the passes above left inside the captured href.
+  // Footnote references [^id] → superscript link (run while code/math are still
+  // sentinels so a [^x] inside `code` is left alone).
+  s = s.replace(
+    /\[\^([\w-]+)\]/g,
+    (_m, id) => `<sup class="fn-ref" id="fnref-${esc(id)}"><a href="#fn-${esc(id)}">${esc(id)}</a></sup>`,
+  );
+  // #tags → clickable. Run BEFORE restoring code/math so a "#x" inside a code span
+  // isn't tagged. Must follow start-or-whitespace and start with a letter/_ (so
+  // "#1" and a URL fragment, preceded by a non-space, aren't tags).
+  s = s.replace(
+    /(^|\s)#([A-Za-z_][\w/-]*)/g,
+    (_m, pre, tag) => `${pre}<span class="ob-tag" data-tag="${esc(tag)}">#${esc(tag)}</span>`,
+  );
+  // Restore verbatim code + math BEFORE the link passes, so a `code`/$math$ inside
+  // a link label renders while attrSafe still strips those tags from the attribute.
+  s = s.replace(new RegExp(C + "(\\d+)" + C, "g"), (_m, i) => `<code>${codes[Number(i)]}</code>`);
+  s = s.replace(
+    new RegExp(M + "(\\d+)" + M, "g"),
+    (_m, i) => `<span class="math-inline" data-math>${maths[Number(i)]}</span>`,
+  );
+  // Image embeds ![[image.png]] (images only) — emit a placeholder the reading
+  // view resolves (basename → vault path → authed raw URL). Before the wikilink
+  // pass so the inner [[…]] isn't consumed as a link.
+  s = s.replace(/!\[\[([^\]|]+\.(?:png|jpe?g|gif|webp|svg|avif|bmp))\]\]/gi, (_m, target) => {
+    const t = attrSafe(target.trim());
+    return `<img data-vault-embed="${t}" alt="${t}" loading="lazy">`;
+  });
+  // Markdown images ![alt](src). External http(s)/data render directly; a
+  // vault-relative src becomes data-vault-src for the reading view to resolve+auth.
+  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_m, alt, src) => {
+    const clean = attrSafe(src);
+    const a = attrSafe(alt);
+    if (/^(https?:|data:image\/)/i.test(clean)) {
+      return `<img src="${clean}" alt="${a}" loading="lazy">`;
+    }
+    return `<img data-vault-src="${clean.replace(/^\.?\//, "")}" alt="${a}" loading="lazy">`;
+  });
+  // Links [text](url). attrSafe strips any markup the passes above left in href.
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, t, href) => {
     const clean = attrSafe(href);
     const safe = /^https?:|^mailto:|^\//.test(clean) ? clean : "#";
     return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${t}</a>`;
   });
-  // [[wikilink]] and [[link|alias]] → a span the Preview wires for navigation.
-  // The label keeps its emphasis; data-wikilink is the clean (tag-stripped) target.
+  // [[wikilink]], [[link|alias]], [[note#heading]] → a span the Preview wires for
+  // navigation: data-wikilink = clean note path, data-heading = optional anchor.
   s = s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_m, target, alias) => {
-    const label = alias ?? target;
-    return `<span class="ob-wikilink" data-wikilink="${attrSafe(target.trim())}">${label}</span>`;
+    const tgt = target.trim();
+    const hash = tgt.indexOf("#");
+    const note = hash >= 0 ? tgt.slice(0, hash) : tgt;
+    const head = hash >= 0 ? tgt.slice(hash + 1).trim() : "";
+    const label = alias ?? tgt;
+    const dataHead = head ? ` data-heading="${attrSafe(headingSlug(head))}"` : "";
+    return `<span class="ob-wikilink" data-wikilink="${attrSafe(note)}"${dataHead}>${label}</span>`;
   });
   return s;
+}
+
+/** Slugify a heading for an `id`/anchor (lowercased, spaces → "-", punctuation
+ *  dropped) — must match the slug put on rendered headings so anchors line up. */
+function headingSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
 // Obsidian callout type → icon key (covers the common aliases). Unknown → info.
@@ -111,11 +165,42 @@ function calloutIconHtml(type: string): string {
   return `<svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
 
-/** Render the note body (frontmatter already removed) to HTML. */
-function renderBody(src: string): string {
+/** Render the note body (frontmatter already removed) to HTML. `lineBase` is the
+ *  absolute 0-based body-line index of `src`'s first line — 0 at the top level,
+ *  but a callout's recursive render passes the callout body's real offset so a
+ *  task checkbox's `data-line` stays aligned with the source/CodeMirror doc. */
+function renderBody(src: string, lineBase = 0): string {
+  // Pull footnote definitions ([^id]: text) out up front — they render as a list
+  // at the bottom of the note, not inline. Blank the line (rather than removing
+  // it) so every other line keeps its index → the reading view's task checkboxes
+  // can carry a `data-line` that maps back to the source line for write-back.
+  const footnotes: { id: string; text: string }[] = [];
   const lines = src.split("\n");
+  let inFence = false;
+  for (let j = 0; j < lines.length; j++) {
+    if (/^```/.test(lines[j])) {
+      inFence = !inFence; // don't treat a `[^x]:` line inside a code fence as a footnote
+      continue;
+    }
+    if (inFence) continue;
+    const m = /^\[\^([\w-]+)\]:\s?(.*)$/.exec(lines[j]);
+    if (m) {
+      footnotes.push({ id: m[1], text: m[2] });
+      lines[j] = ""; // skipped by the blank-line handler; index preserved
+    }
+  }
   const out: string[] = [];
   let i = 0;
+
+  // Heading ids must be unique — append -2, -3, … on a repeated slug so duplicate
+  // headings don't emit duplicate ids (invalid HTML; anchors would all hit the first).
+  const usedSlugs = new Set<string>();
+  const uniqueSlug = (base: string): string => {
+    let slug = base || "section";
+    for (let n = 2; usedSlugs.has(slug); n++) slug = `${base || "section"}-${n}`;
+    usedSlugs.add(slug);
+    return slug;
+  };
 
   const flushTable = (rows: string[]): void => {
     // A pipe table: header | --- separator | body rows. The separator row is
@@ -133,6 +218,48 @@ function renderBody(src: string): string {
       out.push("</tr>");
     }
     out.push("</tbody></table>");
+  };
+
+  // Render a contiguous run of list lines (incl. indented children) into nested
+  // <ul>/<ol>. An indent stack keeps each child list INSIDE its parent <li>.
+  const renderList = (listLines: string[], startLine: number): string => {
+    const items = listLines.map((ln, idx) => {
+      const m = /^([ \t]*)([-*+]|\d+\.)\s+(.*)$/.exec(ln)!;
+      const indent = m[1].replace(/\t/g, "  ").length;
+      const ordered = /\d/.test(m[2]);
+      const taskM = ordered ? null : /^\[([ xX])\]\s+(.*)$/.exec(m[3]);
+      // line = 0-based body line index (footnote lines were blanked, not removed,
+      // so this stays aligned with the CodeMirror doc for checkbox write-back).
+      return {
+        indent,
+        ordered,
+        task: taskM ? taskM[1].toLowerCase() : null,
+        text: taskM ? taskM[2] : m[3],
+        line: startLine + idx,
+      };
+    });
+    let html = "";
+    const stack: { indent: number; tag: "ul" | "ol" }[] = [];
+    for (const it of items) {
+      const tag: "ul" | "ol" = it.ordered ? "ol" : "ul";
+      if (!stack.length || it.indent > stack[stack.length - 1].indent) {
+        html += `<${tag}${it.task !== null ? ' class="task-list"' : ""}>`;
+        stack.push({ indent: it.indent, tag });
+      } else {
+        html += "</li>";
+        while (stack.length > 1 && it.indent < stack[stack.length - 1].indent) {
+          html += `</${stack.pop()!.tag}></li>`;
+        }
+      }
+      const body =
+        it.task !== null
+          ? `<input type="checkbox" class="task-check" data-line="${it.line}"${it.task === "x" ? " checked" : ""}> ${inline(it.text)}`
+          : inline(it.text);
+      html += it.task !== null ? `<li class="task-list-item">${body}` : `<li>${body}`;
+    }
+    html += "</li>";
+    while (stack.length) html += `</${stack.pop()!.tag}>`;
+    return html;
   };
 
   while (i < lines.length) {
@@ -160,6 +287,23 @@ function renderBody(src: string): string {
       continue;
     }
 
+    // Block math: $$ … $$ (KaTeX display mode) — a single `$$x$$` line or a
+    // fenced block. Escaped; KaTeX reads it back via textContent after mount.
+    if (/^\s*\$\$/.test(line)) {
+      const single = /^\s*\$\$(.+?)\$\$\s*$/.exec(line);
+      if (single) {
+        out.push(`<div class="math-block" data-math>${esc(single[1].trim())}</div>`);
+        i++;
+        continue;
+      }
+      const buf: string[] = [];
+      i++; // past the opening $$
+      while (i < lines.length && !/\$\$\s*$/.test(lines[i])) buf.push(lines[i++]);
+      i++; // closing $$
+      out.push(`<div class="math-block" data-math>${esc(buf.join("\n"))}</div>`);
+      continue;
+    }
+
     // Blank line — paragraph break.
     if (/^\s*$/.test(line)) {
       i++;
@@ -170,7 +314,7 @@ function renderBody(src: string): string {
     const h = /^(#{1,6})\s+(.*)$/.exec(line);
     if (h) {
       const level = h[1].length;
-      out.push(`<h${level}>${inline(h[2])}</h${level}>`);
+      out.push(`<h${level} id="${uniqueSlug(headingSlug(h[2]))}">${inline(h[2])}</h${level}>`);
       i++;
       continue;
     }
@@ -196,6 +340,7 @@ function renderBody(src: string): string {
     // blockquote whose first line is `[!type] optional title`; render it as a
     // titled callout box (body parsed recursively so it can hold lists, etc.).
     if (/^\s*>/.test(line)) {
+      const blockStart = i;
       const buf: string[] = [];
       while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
       const callout = /^\[!([\w-]+)\]([-+]?)\s*(.*)$/.exec(buf[0] ?? "");
@@ -205,7 +350,12 @@ function renderBody(src: string): string {
         const title = callout[3].trim() || type.charAt(0).toUpperCase() + type.slice(1);
         const body = buf.slice(1).join("\n");
         const titleHtml = `${calloutIconHtml(type)}<span class="callout-title-text">${inline(title)}</span>`;
-        const bodyHtml = body.trim() ? `<div class="callout-body">${renderBody(body)}</div>` : "";
+        // The callout body's first line is the source line after the `[!type]`
+        // header, i.e. absolute index lineBase + blockStart + 1 — pass it down so
+        // a nested task's data-line stays aligned with the real document line.
+        const bodyHtml = body.trim()
+          ? `<div class="callout-body">${renderBody(body, lineBase + blockStart + 1)}</div>`
+          : "";
         if (fold === "-" || fold === "+") {
           out.push(
             `<details class="callout" data-callout="${esc(type)}"${fold === "+" ? " open" : ""}>` +
@@ -227,29 +377,14 @@ function renderBody(src: string): string {
       continue;
     }
 
-    // Lists (unordered or ordered) — flat; nested handled shallowly. Unordered
-    // items may be task items: `- [ ]` (open) / `- [x]` (done).
+    // Lists (unordered or ordered, with nesting). Indented child items belong
+    // inside their parent <li>; task items render a checkbox. Gather the whole
+    // contiguous run (incl. indented lines) and build the nested tree.
     if (/^\s*([-*+]|\d+\.)\s+/.test(line)) {
-      const ordered = /^\s*\d+\.\s+/.test(line);
-      const tag = ordered ? "ol" : "ul";
-      const isTaskList = !ordered && /^\s*[-*+]\s+\[[ xX]\]\s/.test(line);
-      out.push(`<${tag}${isTaskList ? ' class="task-list"' : ""}>`);
-      while (i < lines.length && /^\s*([-*+]|\d+\.)\s+/.test(lines[i])) {
-        const item = lines[i].replace(/^\s*([-*+]|\d+\.)\s+/, "");
-        const task = /^\[([ xX])\]\s+(.*)$/.exec(item);
-        if (task) {
-          const checked = task[1].toLowerCase() === "x";
-          out.push(
-            `<li class="task-list-item">` +
-              `<input type="checkbox" disabled${checked ? " checked" : ""}> ${inline(task[2])}` +
-              "</li>",
-          );
-        } else {
-          out.push(`<li>${inline(item)}</li>`);
-        }
-        i++;
-      }
-      out.push(`</${tag}>`);
+      const startLine = i;
+      const listLines: string[] = [];
+      while (i < lines.length && /^\s*([-*+]|\d+\.)\s+/.test(lines[i])) listLines.push(lines[i++]);
+      out.push(renderList(listLines, lineBase + startLine));
       continue;
     }
 
@@ -262,6 +397,7 @@ function renderBody(src: string): string {
       !/^\s*$/.test(lines[i]) &&
       !/^(#{1,6})\s/.test(lines[i]) &&
       !/^```/.test(lines[i]) &&
+      !/^\s*\$\$/.test(lines[i]) &&
       !/^\s*>/.test(lines[i]) &&
       !/^\s*([-*+]|\d+\.)\s+/.test(lines[i]) &&
       !/^\s*([-*_])\1{2,}\s*$/.test(lines[i])
@@ -269,6 +405,17 @@ function renderBody(src: string): string {
       buf.push(lines[i++]);
     }
     out.push(`<p>${inline(buf.join(" "))}</p>`);
+  }
+
+  // Footnote definitions render as a list at the very bottom; refs above link here.
+  if (footnotes.length) {
+    out.push('<section class="footnotes"><hr><ol>');
+    for (const fn of footnotes) {
+      out.push(
+        `<li id="fn-${esc(fn.id)}">${inline(fn.text)} <a class="fn-back" href="#fnref-${esc(fn.id)}">↩</a></li>`,
+      );
+    }
+    out.push("</ol></section>");
   }
 
   return out.join("\n");

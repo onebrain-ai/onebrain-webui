@@ -193,3 +193,78 @@
   color: var(--color-faint);
   max-width: 210px;
 }
+
+/* ── Task editing UI (calendar filter, add, per-row actions) ───────────────── */
+.cal .day { cursor: pointer; }
+.cal .day:hover { color: #fff; border-color: var(--color-border-2); }
+.cal .day.sel { color: #fff; border-color: var(--section-accent); background: var(--accent-weak); }
+.cal .day:focus-visible { outline: 1px solid var(--section-accent); outline-offset: -1px; }
+
+/* + New task button in the panel header */
+.task-add {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  cursor: pointer;
+  border-radius: 5px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.task-add:hover { color: var(--section-accent); border-color: var(--accent-line); background: var(--accent-weak); }
+.task-add svg { width: 14px; height: 14px; }
+
+/* Selected-day filter banner */
+.task-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 8px;
+  padding: 5px 9px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--section-accent);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-weak);
+}
+.task-filter button {
+  background: none;
+  border: 0;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.task-filter button:hover { color: var(--section-accent); }
+
+/* Per-row edit / delete — revealed on row hover to keep the list calm. */
+.task-acts {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.task-row:hover .task-acts,
+.task-acts:focus-within { opacity: 1; }
+.task-acts button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: 0;
+  color: var(--color-muted);
+  cursor: pointer;
+  border-radius: 4px;
+}
+.task-acts button:hover { color: var(--color-text); background: rgba(255, 255, 255, 0.05); }
+.task-acts button:last-child:hover { color: var(--acc-magenta); }
+.task-acts svg { width: 13px; height: 13px; }
+.task-box, .task-main { cursor: pointer; }
+.task-head-r { display: flex; align-items: center; gap: 8px; }
