@@ -1,0 +1,171 @@
+/* File Explorer (PARA tree). Ported from the prototype (lines 312–330). The
+   .fx-* content classes are global (the `fx-` prefix is the namespace) so the
+   ExplorerTree body renders identically in the standalone panel and the combined
+   File Browser. Only the panel-width rule is panel-scoped. */
+.w-explorer {
+  width: 286px;
+}
+.fx-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.fx-filter {
+  flex: 1;
+  min-width: 0;
+  background: rgba(2, 2, 6, 0.6);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 9px;
+  outline: none;
+}
+.fx-filter:focus {
+  border-color: var(--section-accent);
+}
+.fx-filter::placeholder {
+  color: var(--color-muted);
+}
+.fx-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-ghost);
+  letter-spacing: 0.08em;
+  flex: 0 0 auto;
+}
+.fx-tree {
+  max-height: 336px;
+  overflow: auto;
+  margin: 0 -6px;
+  padding: 0 4px;
+}
+.fx-note {
+  padding: 8px 7px;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.fx-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--color-faint);
+  white-space: nowrap;
+}
+.fx-row:hover {
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.fx-row.active {
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+  color: #fff;
+}
+.fx-row.dir {
+  color: var(--color-text);
+}
+.fx-row .fx-ic {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+.fx-row.dir .fx-ic {
+  color: var(--section-accent);
+  opacity: 1;
+}
+.fx-row .fx-tw {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  transition: transform 0.15s;
+}
+.fx-row.dir.open .fx-tw {
+  transform: rotate(90deg);
+}
+.fx-row .fx-nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fx-row .fx-ext {
+  margin-left: auto;
+  font-size: 8px;
+  color: var(--color-ghost);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+  padding-left: 8px;
+}
+
+/* Filter result row (.fx-hit) — a two-line "quick switcher" hit, isolated from
+   the compact single-line tree .fx-row. Line 1 = filename at full row width (so
+   it's never the thing truncated); line 2 = the nearest folder. The matched run
+   is highlighted (.fx-mk) and the full path is on the row's title tooltip. */
+.fx-hit {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 5px 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+.fx-hit:hover {
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.fx-row:focus-visible,
+.fx-hit:focus-visible {
+  outline: 1px solid var(--section-accent);
+  outline-offset: -1px;
+}
+.fx-hit.active {
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.fx-hit .fx-ic {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+.fx-hit-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.32;
+}
+.fx-hit-nm {
+  font-size: 11.5px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-hit-dir {
+  font-size: 9.5px;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-hit-dir.is-root {
+  font-style: italic;
+  color: var(--color-ghost);
+}
+.fx-mk {
+  background: color-mix(in oklab, var(--section-accent) 26%, transparent);
+  color: var(--color-text);
+  border-radius: 2px;
+  padding: 0 1px;
+}

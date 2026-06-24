@@ -1,0 +1,289 @@
+/* Editor panel — wired to the OneBrain DS (tokens.css). The toolbar/toggle is
+   chrome (operator-console: mono, accent stroke, tech chamfer); the reading body
+   is a calm, legible document surface. */
+.ed-wrap { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.ed { flex: 1; min-height: 0; }
+.ed .cm-editor { height: 100%; }
+.ed .cm-scroller { font: 14px/1.6 var(--font-mono); padding: 16px 24px; }
+/* Caret + current-line visibility on the dark theme. drawSelection() renders the
+   styleable .cm-cursor; highlightActiveLine() adds .cm-activeLine. The native
+   caret-color is set too as a belt-and-braces fallback. */
+.ed .cm-content { caret-color: var(--section-accent); }
+.ed .cm-cursor, .ed .cm-dropCursor {
+  border-left: 2px solid var(--section-accent);
+  border-right: none;
+}
+.ed .cm-activeLine { background: color-mix(in oklab, var(--section-accent) 8%, transparent); }
+.ed .cm-selectionBackground,
+.ed .cm-content ::selection { background: color-mix(in oklab, var(--section-accent) 22%, transparent); }
+.ed .cm-focused .cm-selectionBackground { background: color-mix(in oklab, var(--section-accent) 30%, transparent); }
+.ed-empty { padding: 32px; color: var(--color-muted); }
+/* ── Editor header bar — breadcrumb + save state + read/edit toggle ───────── */
+.ed-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  flex: 0 0 auto;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-deep);
+}
+.ed-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ed-crumb > .ic { font-size: 14px; color: var(--section-accent); flex: 0 0 auto; }
+.ed-crumb-dir { color: var(--color-faint); flex: 0 0 auto; }
+.ed-crumb-sep { color: var(--color-ghost); margin: 0 6px; }
+.ed-crumb-cur { color: var(--color-text); overflow: hidden; text-overflow: ellipsis; }
+.ed-acts {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.ed-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.ed-save .ic { font-size: 12px; }
+.ed-save.st-saved { color: var(--c-success); }
+.ed-save.st-conflict,
+.ed-save.st-error { color: var(--acc-magenta); }
+.ed-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-muted);
+  flex: 0 0 auto;
+}
+.ed-dot.saving {
+  background: var(--section-accent);
+  box-shadow: 0 0 8px -1px var(--section-accent);
+  animation: ed-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ed-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.ed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--section-accent);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-weak);
+  clip-path: var(--clip-chip);
+}
+.ed-badge .ic { font-size: 12px; }
+.ed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
+  color: var(--section-accent);
+  clip-path: var(--clip-chip);
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ed-toggle .ic { font-size: 14px; }
+.ed-toggle:hover { background: var(--accent-line); }
+.ed-hidden { display: none; }
+.ed-reading { flex: 1; overflow: auto; padding: 16px 24px; }
+
+/* Sandboxed HTML-file preview — fills the pane below the header. */
+.ed-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+
+/* Image preview — centered on a faint checkerboard so transparent PNGs/SVGs read.
+   The wrap scrolls so a zoomed-in image can be panned. */
+.ed-binwrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 0 0 / 22px 22px,
+    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 11px 11px / 22px 22px;
+}
+.ed-media {
+  display: block;
+  flex: 0 0 auto;
+}
+.ed-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+}
+/* SVG is inlined (not <img>) so it uses the page's web fonts. Fit: cap to the pane
+   keeping aspect; zoomed: fill the wrapper's explicit pixel width. */
+.ed-svg {
+  max-width: 100%;
+}
+.ed-svg svg {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 150px);
+}
+.ed-svg.zoomed svg {
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
+}
+
+/* Header icon buttons (download / zoom) + zoom readout. */
+.ed-iconbtn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.ed-iconbtn:hover:not(:disabled) {
+  color: var(--section-accent);
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.ed-iconbtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.ed-nav {
+  display: flex;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+.ed-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.ed-zoom-pct {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  transition: color 0.15s;
+}
+.ed-zoom-pct:hover {
+  color: var(--section-accent);
+}
+
+/* PDF preview — the browser's built-in viewer fills the pane. */
+.ed-pdf {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.cm-lp-strong { font-weight: 700; }
+.cm-lp-em { font-style: italic; }
+.cm-lp-strike { text-decoration: line-through; opacity: .7; }
+.cm-lp-code { font-family: var(--font-mono); background: var(--color-surface); padding: 0 4px; border-radius: 4px; }
+
+.cm-lp-h1 { font-size: 1.7em; font-weight: 700; line-height: 1.25; }
+.cm-lp-h2 { font-size: 1.45em; font-weight: 700; line-height: 1.25; }
+.cm-lp-h3 { font-size: 1.25em; font-weight: 700; }
+.cm-lp-h4 { font-size: 1.1em; font-weight: 700; }
+.cm-lp-h5 { font-size: 1em; font-weight: 700; }
+.cm-lp-h6 { font-size: .9em; font-weight: 700; opacity: .8; }
+.cm-lp-quote { border-left: 3px solid var(--color-border); padding-left: 12px; opacity: .85; }
+.cm-lp-hr { border-bottom: 1px solid var(--color-border); }
+.cm-lp-task { margin-right: 6px; vertical-align: middle; }
+.cm-lp-wikilink { color: var(--section-accent); cursor: pointer; }
+.cm-lp-wikilink:hover { text-decoration: underline; }
+.cm-lp-fence { font-family: var(--font-mono); background: var(--color-surface); display: block; }
+
+/* ── Reading view (rendered markdown) — calm document surface ──────────────── */
+.ed-reading {
+  font: 15px/1.7 var(--font-sans);
+  color: var(--color-text);
+}
+.ed-reading > * { max-width: 820px; margin-left: auto; margin-right: auto; }
+.ed-reading h1, .ed-reading h2, .ed-reading h3,
+.ed-reading h4, .ed-reading h5, .ed-reading h6 { line-height: 1.25; font-weight: 700; margin: 1.4em 0 .5em; }
+.ed-reading h1 { font-size: 1.9em; }
+.ed-reading h2 { font-size: 1.55em; }
+.ed-reading h3 { font-size: 1.3em; }
+.ed-reading h4 { font-size: 1.12em; }
+.ed-reading h5 { font-size: 1em; }
+.ed-reading h6 { font-size: .9em; opacity: .8; }
+.ed-reading h1, .ed-reading h2 { padding-bottom: .25em; border-bottom: 1px solid var(--color-border); }
+.ed-reading p { margin: .7em 0; }
+.ed-reading a, .ed-reading .ob-wikilink { color: var(--section-accent); text-decoration: none; cursor: pointer; }
+.ed-reading a:hover, .ed-reading .ob-wikilink:hover { text-decoration: underline; }
+.ed-reading ul, .ed-reading ol { margin: .6em 0; padding-left: 1.5em; }
+.ed-reading li { margin: .25em 0; }
+.ed-reading ul.task-list { list-style: none; padding-left: .25em; }
+.ed-reading .task-list-item { display: flex; align-items: flex-start; gap: .5em; }
+.ed-reading .task-list-item input { margin-top: .35em; accent-color: var(--section-accent); }
+.ed-reading code { font-family: var(--font-mono); font-size: .9em; background: var(--color-surface); padding: .12em .4em; border-radius: 4px; }
+.ed-reading pre { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; overflow: auto; margin: .9em auto; }
+.ed-reading pre code { background: none; padding: 0; font-size: .88em; line-height: 1.55; }
+.ed-reading blockquote { margin: .9em auto; padding: .2em 0 .2em 14px; border-left: 3px solid var(--color-border); opacity: .85; }
+.ed-reading hr { border: 0; border-top: 1px solid var(--color-border); margin: 1.6em auto; }
+.ed-reading table { border-collapse: collapse; margin: 1em auto; width: 100%; }
+.ed-reading th, .ed-reading td { border: 1px solid var(--color-border); padding: 6px 12px; text-align: left; }
+.ed-reading th { background: var(--color-surface); font-weight: 700; }
+
+/* Callouts are styled globally in src/ui/callout.css (shared with the chat feed)
+   so per-type colors live in one place. Nothing callout-specific here. */
+
+/* Mermaid diagrams render in place of the source <pre>. */
+.ed-reading pre.mermaid { background: none; border: 0; text-align: center; padding: 8px 0; }
+.ed-reading pre.mermaid svg { max-width: 100%; height: auto; }

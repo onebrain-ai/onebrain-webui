@@ -1,0 +1,214 @@
+/* HUD top app bar. Ported from the prototype (CSS 832–938). */
+#topbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 42px;
+  z-index: 46;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0 13px;
+  background: linear-gradient(180deg, rgba(8, 8, 15, 0.9), rgba(5, 5, 11, 0.6));
+  border-bottom: 1px solid var(--color-border);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  backdrop-filter: blur(18px) saturate(1.35);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+#topbar .ob-mark {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--acc-magenta) 55%, transparent));
+}
+.tb-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.tb-word {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0 13px rgba(255, 255, 255, 0.28);
+  text-transform: uppercase;
+}
+.tb-eyebrow {
+  padding-left: 12px;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-ghost);
+  font-size: 9px;
+  letter-spacing: 0.34em;
+  white-space: nowrap;
+}
+.tb-spacer {
+  flex: 1;
+}
+.tb-cluster {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.tb-stat,
+.tb-clock {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+.tb-stat {
+  color: var(--color-muted);
+}
+.tb-stat b {
+  color: var(--section-accent);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.tb-stat .ok {
+  color: var(--c-success);
+}
+.tb-clock {
+  color: var(--color-faint);
+  font-variant-numeric: tabular-nums;
+}
+.tb-div {
+  width: 1px;
+  height: 15px;
+  background: var(--color-border);
+  flex: 0 0 auto;
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--color-faint);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.hud-lab {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: inherit;
+  transition:
+    max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.22s ease,
+    margin 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#tb-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  background: rgba(7, 7, 13, 0.6);
+  clip-path: var(--clip-tech);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  transition:
+    color 0.16s,
+    border-color 0.16s,
+    box-shadow 0.16s;
+}
+#tb-search:hover {
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  box-shadow: 0 0 22px -10px color-mix(in oklab, var(--section-accent) 70%, transparent);
+}
+#tb-search svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+#tb-search .kbd {
+  font-size: 9.5px;
+  color: var(--color-ghost);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+#settings-btn {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  background: rgba(7, 7, 13, 0.7);
+  clip-path: var(--clip-tech);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    color 0.16s,
+    border-color 0.16s,
+    box-shadow 0.16s;
+}
+#settings-btn .hud-lab {
+  order: -1;
+}
+#settings-btn:hover {
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  box-shadow: 0 0 22px -10px color-mix(in oklab, var(--section-accent) 70%, transparent);
+}
+#settings-btn:hover .hud-lab {
+  max-width: 120px;
+  opacity: 1;
+  margin-right: 8px;
+}
+#settings-btn svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .tb-eyebrow,
+  .tb-clock,
+  .tb-cluster .tb-div:first-child {
+    display: none;
+  }
+  #tb-search .tb-s-lab,
+  #tb-search .kbd {
+    display: none;
+  }
+}

@@ -1,0 +1,118 @@
+/* Obsidian-style callouts — shared by the reading view and the chat feed (both
+   render through core/markdown.ts). Color per type via --callout; an inline icon
+   leads the title; `[!type]-` / `[!type]+` callouts fold via <details>.
+
+   Unscoped on purpose: one source of truth for both surfaces. Keep this the
+   only place that styles `.callout*` so per-type colors don't fight a more
+   specific selector elsewhere. */
+
+.callout {
+  --callout: var(--section-accent);
+  margin: 1em 0;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--callout);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--callout) 8%, transparent);
+}
+.callout-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--callout);
+}
+.callout-title-text {
+  min-width: 0;
+}
+.callout-icon {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+.callout-body {
+  margin-top: 6px;
+}
+.callout-body > :first-child {
+  margin-top: 0;
+}
+.callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Collapsible callouts (`[!type]-` collapsed, `[!type]+` open) — a chevron on the
+   summary row rotates with the open state. */
+details.callout > summary {
+  cursor: pointer;
+  list-style: none;
+}
+details.callout > summary::-webkit-details-marker {
+  display: none;
+}
+details.callout > summary::after {
+  content: "";
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--callout);
+  border-bottom: 2px solid var(--callout);
+  transform: rotate(-45deg);
+  transition: transform 0.18s ease;
+  opacity: 0.65;
+}
+details.callout[open] > summary::after {
+  transform: rotate(45deg);
+}
+details.callout > summary:hover::after {
+  opacity: 1;
+}
+details.callout[open] > summary {
+  margin-bottom: 6px;
+}
+
+/* Type → color (Obsidian's palette, tuned for the dark operator console). */
+.callout[data-callout="note"],
+.callout[data-callout="info"],
+.callout[data-callout="todo"] {
+  --callout: #4d9fff;
+}
+.callout[data-callout="abstract"],
+.callout[data-callout="summary"],
+.callout[data-callout="tldr"] {
+  --callout: #00b8d4;
+}
+.callout[data-callout="tip"],
+.callout[data-callout="hint"],
+.callout[data-callout="important"] {
+  --callout: #00bfa6;
+}
+.callout[data-callout="success"],
+.callout[data-callout="check"],
+.callout[data-callout="done"] {
+  --callout: #44cf6e;
+}
+.callout[data-callout="question"],
+.callout[data-callout="help"],
+.callout[data-callout="faq"] {
+  --callout: #e0b341;
+}
+.callout[data-callout="warning"],
+.callout[data-callout="caution"],
+.callout[data-callout="attention"] {
+  --callout: #e0a30e;
+}
+.callout[data-callout="failure"],
+.callout[data-callout="fail"],
+.callout[data-callout="missing"],
+.callout[data-callout="danger"],
+.callout[data-callout="error"],
+.callout[data-callout="bug"] {
+  --callout: #e5484d;
+}
+.callout[data-callout="example"] {
+  --callout: #a371f7;
+}
+.callout[data-callout="quote"],
+.callout[data-callout="cite"] {
+  --callout: #9aa0aa;
+}

@@ -105,6 +105,78 @@ describe("renderMarkdown — rendering", () => {
     expect(ol).toContain("</ol>");
   });
 
+  it("renders an Obsidian callout with type + title", () => {
+    const out = html("> [!abstract] TL;DR\n> body text");
+    expect(out).toContain('data-callout="abstract"');
+    expect(out).toContain('class="callout-title"');
+    expect(out).toContain("TL;DR");
+    expect(out).toContain("body text");
+    expect(out).not.toContain("[!abstract]");
+  });
+
+  it("gives a callout a type icon", () => {
+    const out = html("> [!warning] Heads up\n> body");
+    expect(out).toContain('class="callout-icon"');
+    expect(out).toContain('class="callout-title-text"');
+  });
+
+  it("renders [!type]- collapsed and [!type]+ open as <details>", () => {
+    const collapsed = html("> [!warning]- Heads up\n> details here");
+    expect(collapsed).toContain('<details class="callout" data-callout="warning">');
+    expect(collapsed).toContain('<summary class="callout-title">');
+    expect(collapsed).toContain("details here");
+    const open = html("> [!tip]+ Pro tip\n> body");
+    expect(open).toContain('<details class="callout" data-callout="tip" open>');
+  });
+
+  it("renders ~~strikethrough~~ and ==highlight==", () => {
+    expect(html("this is ~~gone~~ now")).toContain("<del>gone</del>");
+    expect(html("a ==hot== take")).toContain("<mark>hot</mark>");
+  });
+
+  it("treats inline code as verbatim (no emphasis formatted inside it)", () => {
+    expect(html("`a*b*c`")).toContain("<code>a*b*c</code>");
+    expect(html("`a*b*c`")).not.toContain("<em>");
+    expect(html("`x==y==z`")).toContain("<code>x==y==z</code>");
+    // a number surrounded by spaces must NOT be eaten by the code placeholder
+    expect(html("step 3 of 5")).toContain("step 3 of 5");
+  });
+
+  it("keeps emphasis out of href / data-wikilink attribute values", () => {
+    // emphasis markup inside a link/wikilink must not leak into the attribute.
+    expect(html("[[a==b==c]]")).toContain('data-wikilink="abc"');
+    expect(html("[[a`b`c]]")).toContain('data-wikilink="abc"');
+    expect(html("[a](https://x.com/*a*b)")).toContain('href="https://x.com/ab"');
+    // …while the visible label still gets its emphasis.
+    expect(html("[[a==b==c]]")).toContain("<mark>b</mark>");
+  });
+
+  it("falls back to a plain blockquote when there is no callout marker", () => {
+    const out = html("> just a quote");
+    expect(out).toContain("<blockquote>");
+    expect(out).not.toContain("callout");
+  });
+
+  it("renders a task list with checkbox state", () => {
+    const out = html("- [ ] open\n- [x] done");
+    expect(out).toContain('class="task-list"');
+    expect(out).toContain('<input type="checkbox" disabled> open');
+    expect(out).toContain('<input type="checkbox" disabled checked> done');
+  });
+
+  it("renders a ```mermaid fence as a mermaid container, not a code block", () => {
+    const out = html("```mermaid\ngraph TD\n  A-->B\n```");
+    expect(out).toContain('class="mermaid"');
+    expect(out).toContain("graph TD");
+    expect(out).not.toContain("<code>graph TD");
+  });
+
+  it("keeps a normal code fence as <pre><code> with a language class", () => {
+    const out = html("```ts\nconst x = 1;\n```");
+    expect(out).toContain('<pre><code class="language-ts">');
+    expect(out).toContain("const x = 1;");
+  });
+
   it("handles a note that is only frontmatter (empty body)", () => {
     const { frontmatter, html } = renderMarkdown("---\nonly: meta\n---\n");
     expect(frontmatter).toBe("only: meta");

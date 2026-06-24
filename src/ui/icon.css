@@ -1,0 +1,10 @@
+/* Icon sizing: em-box so a glyph matches the host element's font-size. Color
+   comes from currentColor (inherits text / --section-accent). Override size by
+   setting font-size on the icon's parent, or pass a class for special cases. */
+.ic {
+  width: 1.15em;
+  height: 1.15em;
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: -0.15em;
+}

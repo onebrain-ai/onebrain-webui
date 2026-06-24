@@ -1,0 +1,64 @@
+/* File Browser — Explorer tree (collapsible sidebar) + Preview (hero) in one
+   widget. The .fx-* / .pv-* content styles come from explorer.css / preview.css
+   (global); this file only lays out the two panes + the ☰ toggle. */
+.w-files {
+  width: 720px;
+}
+
+/* ☰ toggle — leftmost in the header, shows/hides the tree sidebar */
+.w-files .fb-toggle {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0;
+  cursor: pointer;
+  border-radius: 5px;
+  color: var(--color-muted);
+  transition:
+    border-color 0.16s,
+    color 0.16s;
+}
+.w-files .fb-toggle:hover,
+.w-files .fb-toggle[aria-pressed="true"] {
+  border-color: var(--accent-line);
+  color: var(--section-accent);
+}
+.w-files .fb-toggle svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* two-pane body: tree sidebar | preview. Collapsing drops the sidebar column. */
+.w-files .fb-body {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.w-files .fb-body.tree-hidden {
+  grid-template-columns: 1fr;
+}
+.w-files .fb-body.tree-hidden .fb-tree {
+  display: none;
+}
+.w-files .fb-tree {
+  min-width: 0;
+  border-right: 1px solid var(--color-border-2);
+  padding-right: 12px;
+}
+.w-files .fb-preview {
+  min-width: 0;
+}
+/* the tree's own scroll area can run a little taller inside the browser */
+.w-files .fb-tree .fx-tree {
+  max-height: 348px;
+}

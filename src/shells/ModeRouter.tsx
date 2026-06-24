@@ -1,26 +1,29 @@
-// ModeRouter — mounts one shell at a time (spec §5, decision D1). The 3D
-// `CommandCenterShell` is a lazy chunk: its Three.js weight is only fetched when
-// the user actually enters the command center, so the CMS-only path stays light
-// (the "fast + Pi" constraint). 3D is gated on WebGL2 — a host without it falls
-// back to the CMS shell.
+import { useEffect, useRef } from "preact/hooks";
+import { mode } from "../core/stores";
+import { CmsShell } from "./cms/CmsShell";
+import { startCommandCenter } from "./command-center/engine";
+import { HudChrome } from "./command-center/hud/HudChrome";
+import { BootOverlay } from "./command-center/boot/BootOverlay";
+import type { DaemonClient } from "../core/daemon";
 
-import { lazy, Suspense } from "preact/compat";
-import { mode, hasWebGL2 } from "../core/stores";
-import { CmsShell } from "./CmsShell";
-import type { PanelContext } from "../panels/panel";
+/** Boot-time surface selector. Reads `mode` once at mount (a reload applies a
+ *  changed mode — the 3D engine is imperative and not hot-swappable mid-session). */
+export function ModeRouter({ daemon }: { daemon: DaemonClient }) {
+  if (mode.value === "command-center") return <CommandCenterHost daemon={daemon} />;
+  return <CmsShell daemon={daemon} />;
+}
 
-const CommandCenterShell = lazy(() =>
-  import("./command-center/CommandCenterShell").then((m) => ({ default: m.CommandCenterShell })),
-);
-
-export function ModeRouter({ ctx }: { ctx: PanelContext }) {
-  // Reading `mode.value` here subscribes the router to mode switches.
-  if (mode.value === "command-center" && hasWebGL2()) {
-    return (
-      <Suspense fallback={<div class="cc-loading">Booting command center…</div>}>
-        <CommandCenterShell ctx={ctx} />
-      </Suspense>
-    );
-  }
-  return <CmsShell ctx={ctx} />;
+function CommandCenterHost({ daemon }: { daemon: DaemonClient }) {
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    startCommandCenter({ daemon });
+  }, [daemon]);
+  return (
+    <>
+      <HudChrome />
+      <BootOverlay />
+    </>
+  );
 }

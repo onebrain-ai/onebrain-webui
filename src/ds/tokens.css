@@ -1,0 +1,48 @@
+/* ============================================================== *
+ * OneBrain Design System — Operator Console tokens
+ * Ported verbatim from the Spatial Command Center prototype
+ * (Open Design project 9d613bc0…). The single source of palette
+ * truth for every shell and every panel plugin.
+ * ============================================================== */
+:root {
+  --color-bg: #050507;
+  --color-bg-deep: #020204;
+  --color-surface: #0a0a12;
+  --color-surface-2: rgba(8, 8, 14, 0.82);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-2: rgba(255, 255, 255, 0.06);
+  --color-text: #f0f0f2;
+  --color-muted: #a1a1aa;
+  --color-faint: rgba(255, 255, 255, 0.62);
+  --color-ghost: rgba(255, 255, 255, 0.2);
+  --color-white: #fff;
+
+  /* Operator Console accents — used as strokes / glows, never solid fills */
+  --acc-cyan: #00f3ff;
+  --acc-violet: #bc13fe;
+  --acc-magenta: #ff2d92;
+  --acc-amber: #ffb000;
+  --c-success: #a8d000;
+
+  /* brand gradient — the one sanctioned multi-hue lockup (mark + "Brain").
+     Used once, on a brand moment only (boot wordmark). Never a panel accent. */
+  --grad-brand: linear-gradient(104deg, #ff2d92 0%, #ff5aa3 46%, #00f3ff 100%);
+
+  /* re-keyable section accent (default = cyan). A panel may override
+     --section-accent inline; --accent-weak / --accent-line recompute from it. */
+  --section-accent: var(--acc-cyan);
+  --accent-weak: color-mix(in oklab, var(--section-accent) 14%, transparent);
+  --accent-line: color-mix(in oklab, var(--section-accent) 32%, transparent);
+
+  /* Thai must render in Chakra Petch (DS rule). Inter / JetBrains Mono carry the
+     Latin glyphs and lack Thai, so the browser falls through to Chakra Petch for
+     Thai text — Latin stays Inter/JetBrains, Thai becomes Chakra Petch. */
+  --font-display: "Chakra Petch", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", "Chakra Petch", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Chakra Petch", ui-monospace, Menlo, monospace;
+
+  /* chamfered-rectangle clip: cut top-left + bottom-right corners at 12px */
+  --clip-tech: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  /* button-scale chamfer (6px) for chrome controls — --clip-tech is panel-scale (12px) */
+  --clip-chip: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
