@@ -84,6 +84,20 @@ export function toggleSidebar(): void {
   setSidebarCollapsed(!sidebarCollapsed.value);
 }
 
+// ── Which panel fills the sidebar + the live search query ─────────────────────
+// Module-level (not CmsShell-local) so any surface can switch tabs — e.g. clicking
+// a #tag in the reading view opens the Search panel pre-filled.
+export type SidebarTab = "explorer" | "search" | "tasks" | "status";
+export const sidebarTab = signal<SidebarTab>("explorer");
+export const searchQuery = signal<string>("");
+
+/** Open the Search panel pre-filled with `query` (and ensure the sidebar is open). */
+export function openSearch(query: string): void {
+  searchQuery.value = query;
+  sidebarTab.value = "search";
+  setSidebarCollapsed(false);
+}
+
 /** Chat dock width in px (drag-resizable, persisted). Collapse is `chatOpen`. */
 export const CHAT_MIN = 300;
 export const CHAT_MAX = 760;

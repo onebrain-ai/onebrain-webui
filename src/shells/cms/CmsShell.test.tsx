@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/preact";
 import { CmsShell } from "./CmsShell";
-import { setChatOpen } from "../../core/stores";
+import { setChatOpen, sidebarTab } from "../../core/stores";
 
 vi.mock("../../panels/bus", async (orig) => ({
   ...(await orig<typeof import("../../panels/bus")>()),
@@ -11,6 +11,12 @@ vi.mock("../../panels/bus", async (orig) => ({
 const daemon = { tree: vi.fn(async () => ({ root: "", entries: [] })) } as any;
 
 describe("CmsShell", () => {
+  // sidebarTab is a module-level signal now — reset it so tab-switching in one
+  // test doesn't hide the explorer (and its file-ops) in the next.
+  beforeEach(() => {
+    sidebarTab.value = "explorer";
+  });
+
   it("renders rail, explorer, and main zones", () => {
     render(<CmsShell daemon={daemon} />);
     expect(screen.getByTestId("cms-rail")).toBeTruthy();

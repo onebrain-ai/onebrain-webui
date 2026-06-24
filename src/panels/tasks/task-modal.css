@@ -1,0 +1,24 @@
+/* Task modal fields — label above, input below; due+priority share a row. */
+.tm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.tm-field > span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.tm-row {
+  display: flex;
+  gap: 10px;
+}
+.tm-field select.ob-modal-input {
+  appearance: none;
+  cursor: pointer;
+}

@@ -5,7 +5,9 @@ import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import type { PanelDef, PanelContext } from "../contract";
-import { previewPath, resolveWikilink, navBack, navForward, canNavBack, canNavForward } from "../bus";
+import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
+import { openSearch } from "../../core/stores";
+import { loadTasks } from "../tasks-store";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
@@ -13,6 +15,7 @@ import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
 import { renderMarkdown } from "../../core/markdown";
 import { renderMermaidIn } from "../../core/mermaid";
+import { renderMathIn } from "../../core/katex";
 import { Icon } from "../../ui/Icon";
 import "./editor.css";
 
@@ -94,6 +97,9 @@ function SaveBadge() {
 function Editor({ ctx }: { ctx: PanelContext }) {
   const host = useRef<HTMLDivElement>(null);
   const readingHost = useRef<HTMLDivElement>(null);
+  // A heading anchor to scroll to once the next reading render lands (set when a
+  // [[note#heading]] link is clicked, consumed by the reading-render effect).
+  const pendingHeading = useRef<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
   const mediaW = useRef<number>(0); // intrinsic width of the current image/svg
@@ -262,7 +268,30 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // (before the early return) so the effect's hook order stays stable.
   const readingHtml = reading.value && path && !isHtml && !isBinary ? renderMarkdown(docText.value).html : "";
   useEffect(() => {
-    if (readingHost.current) void renderMermaidIn(readingHost.current);
+    if (readingHost.current) {
+      void renderMermaidIn(readingHost.current);
+      void renderMathIn(readingHost.current);
+      // Resolve vault image refs to the authed raw endpoint (img can't send the
+      // token header, so rawUrl carries it in the query).
+      readingHost.current
+        .querySelectorAll<HTMLImageElement>("img[data-vault-src],img[data-vault-embed]")
+        .forEach((img) => {
+          const ref = img.getAttribute("data-vault-src") ?? img.getAttribute("data-vault-embed") ?? "";
+          const path = resolveAsset(ref);
+          if (path) img.src = ctx.daemon.rawUrl(path);
+          img.removeAttribute("data-vault-src");
+          img.removeAttribute("data-vault-embed");
+        });
+      // Scroll to a pending [[note#heading]] anchor once the new content is laid out.
+      if (pendingHeading.current) {
+        const slug = pendingHeading.current;
+        pendingHeading.current = null;
+        requestAnimationFrame(() => {
+          const t = readingHost.current?.querySelector(`#${CSS.escape(slug)}`);
+          if (t) (t as HTMLElement).scrollIntoView({ block: "start" });
+        });
+      }
+    }
   }, [readingHtml]);
 
   if (!path) return <div class="ed-empty">Select a note from the Explorer.</div>;
@@ -275,12 +304,59 @@ function Editor({ ctx }: { ctx: PanelContext }) {
 
   // Click a [[wikilink]] in the reading view → open the linked note (event-
   // delegated, like Obsidian — no markdown-link conversion needed).
+  const scrollToHeading = (slug: string) => {
+    const t = readingHost.current?.querySelector(`#${CSS.escape(slug)}`);
+    if (t) (t as HTMLElement).scrollIntoView({ block: "start" });
+  };
   const onReadingClick = (e: MouseEvent) => {
-    const wl = (e.target as HTMLElement).closest("[data-wikilink]");
-    if (!wl) return;
-    e.preventDefault();
-    const target = resolveWikilink(wl.getAttribute("data-wikilink") ?? "");
-    if (target) ctx.openFile(target);
+    const el = e.target as HTMLElement;
+    // Task checkbox → flip the source line through the CodeMirror doc, which drives
+    // autosave + the reading re-render. preventDefault stops the uncontrolled toggle
+    // (the rendered state comes back from the re-render, not the input itself).
+    const cb = el.closest("input.task-check") as HTMLInputElement | null;
+    if (cb) {
+      e.preventDefault();
+      const bodyLine = Number(cb.getAttribute("data-line"));
+      const v = view.current;
+      if (v && Number.isFinite(bodyLine) && bodyLine >= 0 && bodyLine < v.state.doc.lines) {
+        const ln = v.state.doc.line(bodyLine + 1);
+        // Allow a blockquote/callout prefix (`> `) and any list marker (-, *, +).
+        const m = /^(\s*(?:>\s*)*[-*+]\s+\[)([ xX])(\])/.exec(ln.text);
+        // Flip from the SOURCE checkbox char. Only a checkbox line matches, so a
+        // (correctly absolute, see renderBody lineBase) data-line can't corrupt a
+        // non-task line. Note: don't read cb.checked here — a checkbox's pre-click
+        // activation already toggled it, so it reflects the desired state, not the
+        // source; the source char (m[2]) is the reliable signal.
+        if (m) {
+          const pos = ln.from + m[1].length;
+          v.dispatch({ changes: { from: pos, to: pos + 1, insert: m[2].toLowerCase() === "x" ? " " : "x" } });
+          void saver.current?.flush().then(() => loadTasks(ctx.daemon));
+        }
+      }
+      return;
+    }
+    const wl = el.closest("[data-wikilink]");
+    if (wl) {
+      e.preventDefault();
+      const note = wl.getAttribute("data-wikilink") ?? "";
+      const heading = wl.getAttribute("data-heading") ?? "";
+      if (!note) {
+        // a same-note [[#heading]] link — scroll without reopening
+        if (heading) scrollToHeading(heading);
+        return;
+      }
+      const target = resolveWikilink(note);
+      if (target) {
+        pendingHeading.current = heading || null;
+        ctx.openFile(target);
+      }
+      return;
+    }
+    const tag = el.closest("[data-tag]");
+    if (tag) {
+      e.preventDefault();
+      openSearch("#" + (tag.getAttribute("data-tag") ?? ""));
+    }
   };
 
   // ── Image zoom + download ──────────────────────────────────────────────────

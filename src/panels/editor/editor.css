@@ -287,3 +287,43 @@
 /* Mermaid diagrams render in place of the source <pre>. */
 .ed-reading pre.mermaid { background: none; border: 0; text-align: center; padding: 8px 0; }
 .ed-reading pre.mermaid svg { max-width: 100%; height: auto; }
+
+/* #tags — accent chip, clickable affordance. */
+.ed-reading .ob-tag,
+.cm-body .ob-tag {
+  color: var(--section-accent);
+  background: color-mix(in oklab, var(--section-accent) 12%, transparent);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.88em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ed-reading .ob-tag:hover,
+.cm-body .ob-tag:hover { background: color-mix(in oklab, var(--section-accent) 22%, transparent); }
+
+/* Footnotes — superscript refs + the definition list at the bottom. */
+.ed-reading .fn-ref { font-size: 0.75em; line-height: 0; }
+.ed-reading .fn-ref a,
+.ed-reading .fn-back { color: var(--section-accent); text-decoration: none; }
+.ed-reading .footnotes { margin-top: 2em; font-size: 0.9em; color: var(--color-muted); }
+.ed-reading .footnotes hr { border: 0; border-top: 1px solid var(--color-border); margin-bottom: 1em; }
+.ed-reading .fn-back { margin-left: 4px; }
+
+/* Inline / embedded images — fit the column, never overflow. */
+.ed-reading img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+  margin: 0.6em 0;
+}
+
+/* KaTeX math — block centred, inline flows; KaTeX ships its own glyph CSS. */
+.ed-reading .math-block { text-align: center; overflow-x: auto; padding: 4px 0; }
+.ed-reading .math-block .katex-error,
+.ed-reading .math-inline .katex-error { color: var(--acc-magenta); }
+
+/* Reading-view task checkboxes are clickable (write back to the source note). */
+.ed-reading .task-check { cursor: pointer; }
+.ed-reading .task-list-item { list-style: none; }
