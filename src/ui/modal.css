@@ -1,0 +1,98 @@
+/* DS modal — operator-console panel (chamfer, accent stroke, mono actions). */
+.ob-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 4, 10, 0.62);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+.ob-modal {
+  width: min(440px, 100%);
+  padding: 18px 18px 16px;
+  background: linear-gradient(180deg, rgba(14, 14, 22, 0.98), rgba(7, 7, 13, 0.98));
+  border: 1px solid var(--accent-line);
+  clip-path: var(--clip-tech);
+  box-shadow:
+    0 30px 80px -24px rgba(0, 0, 0, 0.85),
+    0 0 60px -26px color-mix(in oklab, var(--section-accent) 50%, transparent);
+}
+.ob-modal-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 15px;
+  color: #fff;
+}
+.ob-modal-msg {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-faint);
+  margin-top: 9px;
+  word-break: break-word;
+}
+.ob-modal-input {
+  width: 100%;
+  margin-top: 14px;
+  background: rgba(2, 2, 6, 0.6);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 9px 11px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ob-modal-input:focus {
+  border-color: var(--section-accent);
+}
+.ob-modal-input::placeholder {
+  color: var(--color-muted);
+}
+.ob-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.ob-modal-btn {
+  padding: 7px 16px;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  cursor: pointer;
+  clip-path: var(--clip-chip);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.ob-modal-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-2);
+  background: rgba(255, 255, 255, 0.03);
+}
+.ob-modal-btn.primary {
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  background: var(--accent-weak);
+}
+.ob-modal-btn.primary:hover {
+  background: var(--accent-line);
+  color: #fff;
+}
+.ob-modal-btn.danger {
+  color: var(--acc-magenta);
+  border-color: color-mix(in oklab, var(--acc-magenta) 40%, transparent);
+  background: color-mix(in oklab, var(--acc-magenta) 12%, transparent);
+}
+.ob-modal-btn.danger:hover {
+  background: color-mix(in oklab, var(--acc-magenta) 22%, transparent);
+}

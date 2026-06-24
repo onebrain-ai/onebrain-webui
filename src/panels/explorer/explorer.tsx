@@ -55,6 +55,48 @@ function FileIcon({ type }: { type: FileType }) {
   );
 }
 
+/** Split `s` into [before, match, after] on the first case-insensitive hit of
+ *  `q`, or null when `q` isn't in `s` (e.g. the filter matched the folder path,
+ *  not this filename). Lets the filter view highlight exactly what matched. */
+export function splitMatch(s: string, q: string): [string, string, string] | null {
+  if (!q) return null;
+  const i = s.toLowerCase().indexOf(q);
+  if (i < 0) return null;
+  return [s.slice(0, i), s.slice(i, i + q.length), s.slice(i + q.length)];
+}
+
+/** Collapse a parent path to its last two segments with a leading ellipsis, so
+ *  the nearest folder (the disambiguating part when names share a long prefix)
+ *  always stays visible. An empty `parent` (the only value a real folder name can
+ *  never take) flags a vault-root file — so a folder literally named "root" is
+ *  not mistaken for the root sentinel. */
+export function tailPath(parent: string): { text: string; clipped: boolean; root: boolean } {
+  if (parent === "") return { text: "", clipped: false, root: true };
+  const segs = parent.split("/");
+  return { text: segs.slice(-2).join("/"), clipped: segs.length > 2, root: false };
+}
+
+/** Activate a role="button" row on Enter/Space (rows are divs, so they need an
+ *  explicit keyboard path to be operable without a mouse). */
+function rowKey(e: KeyboardEvent, action: () => void): void {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    action();
+  }
+}
+
+/** Render a string with its matched run wrapped in <mark>, or plain when no match. */
+function hilite(parts: [string, string, string] | null, fallback: string) {
+  if (!parts) return fallback;
+  return (
+    <>
+      {parts[0]}
+      <mark class="fx-mk">{parts[1]}</mark>
+      {parts[2]}
+    </>
+  );
+}
+
 /** The PARA tree + filter — the reusable body (no panel header), shared by the
  *  standalone Explorer panel and the combined File Browser. */
 export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
@@ -81,18 +123,34 @@ export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
     fileCount = hits.length;
     for (const path of hits) {
       const name = path.split("/").pop() ?? path;
-      const dir = path.split("/").slice(0, -1).join("/") || "root";
+      const dir = path.split("/").slice(0, -1).join("/"); // "" for a vault-root file
       const type = fileType({ kind: "file", name, path, children: [] });
+      const nm = splitMatch(name, q);
+      const tp = tailPath(dir);
+      // highlight inside the path tail only when the name itself didn't match —
+      // so a folder-only hit still shows *why* it surfaced.
+      const dirParts = !nm && !tp.root ? splitMatch(tp.text, q) : null;
       rows.push(
         <div
-          class={`fx-row${path === active ? " active" : ""}`}
-          style="padding-left:7px"
+          class={`fx-hit${path === active ? " active" : ""}`}
+          role="button"
+          tabIndex={0}
           onClick={() => ctx.openFile(path)}
+          onKeyDown={(e) => rowKey(e, () => ctx.openFile(path))}
+          title={path}
         >
-          <span class="fx-tw" />
           <FileIcon type={type} />
-          <span class="fx-nm">{name}</span>
-          <span class="fx-ext">{dir}</span>
+          <span class="fx-hit-body">
+            <span class="fx-hit-nm">{hilite(nm, name)}</span>
+            {tp.root ? (
+              <span class="fx-hit-dir is-root">vault root</span>
+            ) : (
+              <span class="fx-hit-dir">
+                {tp.clipped ? "…/" : ""}
+                {hilite(dirParts, tp.text)}
+              </span>
+            )}
+          </span>
         </div>,
       );
     }
@@ -103,7 +161,15 @@ export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
         if (node.kind === "dir") {
           const isOpen = open.value.has(node.path);
           rows.push(
-            <div class={`fx-row dir${isOpen ? " open" : ""}`} style={pad} onClick={() => toggle(node.path)}>
+            <div
+              class={`fx-row dir${isOpen ? " open" : ""}`}
+              style={pad}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isOpen}
+              onClick={() => toggle(node.path)}
+              onKeyDown={(e) => rowKey(e, () => toggle(node.path))}
+            >
               <svg class="fx-tw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                 <path d="M9 6l6 6-6 6" />
               </svg>
@@ -119,7 +185,10 @@ export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
             <div
               class={`fx-row${node.path === active ? " active" : ""}`}
               style={pad}
+              role="button"
+              tabIndex={0}
               onClick={() => ctx.openFile(node.path)}
+              onKeyDown={(e) => rowKey(e, () => ctx.openFile(node.path))}
             >
               <span class="fx-tw" />
               <FileIcon type={fileType(node)} />

@@ -23,18 +23,26 @@ export function splitNote(src: string): SplitNote {
   return { raw: null, body: src };
 }
 
+// CORE_SCHEMA = YAML 1.1 core types (str/int/float/bool/null/seq/map) WITHOUT the
+// `!!timestamp` type that DEFAULT_SCHEMA adds. We deliberately avoid timestamp
+// parsing: under DEFAULT_SCHEMA an unquoted date like `created: 2026-03-10` is
+// coerced to a JS Date, which (a) renders as a locale string in the properties
+// form and (b) re-serializes to a full ISO timestamp on save — both break the
+// verbatim invariant. Kept as plain strings, dates round-trip byte-exact.
+// CORE_SCHEMA is also safe — no `!!js/*` construction (that lives only in
+// DEFAULT_FULL_SCHEMA, which we never use). NOT PyYAML's unsafe `load`.
+const FM_SCHEMA = yaml.CORE_SCHEMA;
+
 export function parseFrontmatter(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
-  // js-yaml v4 `load` is the SAFE default loader (DEFAULT_SCHEMA — no `!!js/*`
-  // type construction; that lives only in DEFAULT_FULL_SCHEMA, which we never use).
-  // This is NOT PyYAML's unsafe `load`. Do not "fix" it to a non-existent safeLoad.
-  const v = yaml.load(raw);
+  const v = yaml.load(raw, { schema: FM_SCHEMA });
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 }
 
 export function serializeFrontmatter(obj: Record<string, unknown>): string {
   // lineWidth:-1 = never wrap; the trailing newline is stripped (compose adds the fence).
-  return yaml.dump(obj, { lineWidth: -1 }).replace(/\n$/, "");
+  // Same schema as the parser so a date string dumps back as an unquoted scalar.
+  return yaml.dump(obj, { schema: FM_SCHEMA, lineWidth: -1 }).replace(/\n$/, "");
 }
 
 /** Re-assemble the full note text. Preserves the raw frontmatter bytes unless

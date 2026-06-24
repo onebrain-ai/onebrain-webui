@@ -26,6 +26,7 @@
     "@lezer/markdown": "^1.6.4",
     "@preact/signals": "^2.0.4",
     "js-yaml": "^4.2.0",
+    "mermaid": "^11.15.0",
     "preact": "^10.27.2",
     "three": "^0.160.1"
   },

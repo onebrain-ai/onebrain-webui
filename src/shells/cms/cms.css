@@ -1,33 +1,223 @@
-/* Flat 2D shell — DS tokens (tokens.css) reused; base.css is a 3D z-stack and
-   is intentionally NOT used for layout here. */
+/* Flat 2D CMS shell — wired to the OneBrain DS (tokens.css). Chrome (topbar,
+   rail, file-ops, status) carries the operator-console identity: deep void bg,
+   thin accent strokes, mono uppercase labels, a restrained tech chamfer, SVG
+   icons. The document body (editor + reading view) stays calm — see editor.css.
+   base.css is the 3D z-stack and is intentionally NOT used here. */
 .cms {
   display: grid;
-  grid-template-columns: 48px 280px 1fr;
-  grid-template-areas: "rail explorer main";
+  grid-template-columns: 52px var(--sidebar-w, 280px) 1fr;
+  grid-template-rows: 44px 1fr;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "rail explorer main";
   height: 100vh;
-  background: var(--bg, #0b0d10);
-  color: var(--text, #e6e9ee);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
 }
 .cms[data-chat="open"] {
-  grid-template-columns: 48px 280px 1fr 360px;
-  grid-template-areas: "rail explorer main chat";
+  grid-template-columns: 52px var(--sidebar-w, 280px) 1fr var(--chat-w, 360px);
+  grid-template-areas:
+    "topbar topbar topbar topbar"
+    "rail explorer main chat";
 }
-.cms-rail { grid-area: rail; display: flex; flex-direction: column; gap: 6px; padding: 8px 4px;
-  border-right: 1px solid var(--border, #1c2128); }
-.cms-rail-btn { background: none; border: 0; color: inherit; opacity: .55; cursor: pointer;
-  font-size: 18px; padding: 6px; border-radius: 6px; }
-.cms-rail-btn.is-active, .cms-rail-btn:hover { opacity: 1; background: var(--action-primary-weak, #1c2128); }
-.cms-explorer { grid-area: explorer; overflow: hidden; border-right: 1px solid var(--border, #1c2128); display: flex; flex-direction: column; }
-.cms-tabs { display: flex; border-bottom: 1px solid var(--border, #1c2128); }
-.cms-tab { flex: 1; background: none; border: 0; color: inherit; opacity: .55; cursor: pointer; padding: 8px 4px; font: inherit; font-size: 12px; }
-.cms-tab.is-active { opacity: 1; border-bottom: 2px solid var(--action-primary, #00f3ff); }
-.cms-sidebar-body { overflow: auto; flex: 1; }
-.cms-main { grid-area: main; overflow: auto; min-width: 0; }
-.cms-chat { grid-area: chat; overflow: auto; border-left: 1px solid var(--border, #1c2128); }
-.cms-fileops { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border-bottom: 1px solid var(--border, #1c2128); }
-.cms-fileops button { background: var(--action-primary-weak, #14181d); border: 1px solid var(--border, #1c2128); color: inherit; border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
-.cms-statusbar { position: fixed; bottom: 6px; right: 12px; font-size: 12px; opacity: .7; pointer-events: none; z-index: 50; }
-.cms-toast { position: fixed; bottom: 32px; right: 12px; display: flex; gap: 8px; align-items: center;
-  background: #1c2128; border: 1px solid var(--action-primary, #00f3ff); border-radius: 8px; padding: 8px 12px; z-index: 60; }
-.cms-toast button { background: var(--action-primary-weak, #14181d); border: 1px solid var(--border, #2a2f37);
-  color: inherit; border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+/* Collapsed sidebar — the column is already 0 (inline --sidebar-w:0), just hide
+   the panel so nothing renders behind the seam. Re-open via a rail icon. */
+.cms[data-sidebar="collapsed"] .cms-explorer {
+  display: none;
+}
+body.cms-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* ── Activity rail (sidebar switcher + chat toggle) ───────────────────────── */
+.cms-rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 0;
+  background: var(--color-bg-deep);
+  border-right: 1px solid var(--color-border);
+}
+.cms-rail-grow {
+  flex: 1;
+}
+.cms-rail-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-size: 17px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.cms-rail-btn:hover {
+  color: var(--color-text);
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.cms-rail-btn.is-active {
+  color: var(--section-accent);
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+  clip-path: var(--clip-chip);
+}
+
+/* ── Sidebar (hosts the active panel) ────────────────────────────────────── */
+.cms-explorer {
+  grid-area: explorer;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--color-surface-2);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+.cms-sidebar-body {
+  overflow: auto;
+  flex: 1;
+  padding: 12px 14px 16px;
+}
+/* Drag handle on the sidebar's right edge — thin, lights up on hover/drag. */
+.cms-resize {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 12;
+}
+.cms-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 2px;
+  width: 1px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.cms-resize:hover::after,
+body.cms-resizing .cms-resize::after {
+  background: var(--section-accent);
+}
+
+/* ── File ops — clean icon-only toolbar ──────────────────────────────────── */
+.cms-fileops {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.fo-btn {
+  width: 30px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-size: 15px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.fo-btn:hover {
+  color: var(--section-accent);
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.fo-btn.fo-danger:hover {
+  color: var(--acc-magenta);
+  border-color: color-mix(in oklab, var(--acc-magenta) 32%, transparent);
+  background: color-mix(in oklab, var(--acc-magenta) 10%, transparent);
+}
+.fo-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 5px;
+  flex: 0 0 auto;
+  background: var(--color-border);
+}
+/* The explorer tree caps at 336px for the 3D billboard; in the CMS sidebar let it
+   fill the column (the sidebar-body scrolls) instead of leaving dead space below. */
+.cms-sidebar-body .fx-tree {
+  max-height: none;
+}
+
+.cms-main {
+  grid-area: main;
+  overflow: auto;
+  min-width: 0;
+  min-height: 0;
+}
+.cms-chat {
+  grid-area: chat;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* Drag handle on the chat dock's LEFT edge (mirrors the sidebar handle). */
+.cms-chat-resize {
+  position: absolute;
+  top: 0;
+  left: -2px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 12;
+}
+.cms-chat-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.cms-chat-resize:hover::after,
+body.cms-resizing .cms-chat-resize::after {
+  background: var(--section-accent);
+}
+
+/* ── Conflict toast (fixed overlay) ──────────────────────────────────────── */
+.cms-toast {
+  position: fixed;
+  bottom: 32px;
+  right: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--accent-line);
+  border-left: 3px solid var(--section-accent);
+  padding: 9px 14px;
+  font-size: 13px;
+  z-index: 60;
+}
+.cms-toast button {
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
+  color: var(--color-text);
+  clip-path: var(--clip-chip);
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}

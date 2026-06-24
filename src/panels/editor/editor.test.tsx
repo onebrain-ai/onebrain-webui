@@ -25,12 +25,16 @@ describe("editorPanel", () => {
     );
   });
 
-  it("toggles to reading mode and renders HTML via renderMarkdown", async () => {
+  it("defaults to the reading view (rendered HTML), and toggles to edit", async () => {
     previewPath.value = "a.md";
-    const { container } = render(<editorPanel.Component ctx={ctx} />);
-    await waitFor(() => expect(container.querySelector(".cm-content")?.textContent ?? "").toContain("Hello"));
+    render(<editorPanel.Component ctx={ctx} />);
+    // reading view is the default surface on open — body rendered via renderMarkdown
+    await waitFor(() =>
+      expect(screen.getByTestId("ed-reading").innerHTML).toContain("<h1>Hello</h1>"),
+    );
+    // toggling switches to the edit surface (reading node removed)
     fireEvent.click(screen.getByTestId("ed-reading-toggle"));
-    expect(screen.getByTestId("ed-reading")).toBeTruthy();
+    expect(screen.queryByTestId("ed-reading")).toBeNull();
   });
 
   it("Cmd+S force-flushes the autosave", async () => {

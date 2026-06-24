@@ -1,8 +1,10 @@
-/* qmd Search. Ported verbatim from the prototype (lines 388–404), scoped to .w-search. */
+/* qmd Search. Class-based selectors so the panel styles in BOTH shells: the
+   command-center wraps it in .w-search (billboard), the CMS hosts it in the flex
+   .cms-sidebar-body. Only the billboard width stays .w-search-scoped. */
 .w-search {
   width: 360px;
 }
-.w-search .qs-box {
+.qs-box {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11,16 +13,16 @@
   padding: 7px 11px;
   margin-bottom: 10px;
 }
-.w-search .qs-box:focus-within {
+.qs-box:focus-within {
   border-color: var(--section-accent);
 }
-.w-search .qs-ic {
+.qs-ic {
   width: 15px;
   height: 15px;
   color: var(--color-muted);
   flex: 0 0 auto;
 }
-.w-search .qs-in {
+.qs-in {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -30,64 +32,69 @@
   font-size: 12px;
   outline: none;
 }
-.w-search .qs-in::placeholder {
+.qs-in::placeholder {
   color: var(--color-muted);
 }
-.w-search .qs-results {
-  max-height: 322px;
+.qs-results {
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 7px;
 }
-.w-search .qs-hit {
+.qs-hit {
   padding: 8px 10px;
   border: 1px solid var(--color-border-2);
   cursor: pointer;
   background: rgba(255, 255, 255, 0.012);
 }
-.w-search .qs-hit:hover,
-.w-search .qs-hit.active {
+.qs-hit:hover,
+.qs-hit.active {
   border-color: var(--accent-line);
   background: var(--accent-weak);
 }
-.w-search .qs-hit .qh-top {
+.qs-hit .qh-top {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 3px;
 }
-.w-search .qs-hit .qh-name {
+.qs-hit .qh-name {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.w-search .qs-hit .qh-score {
+.qs-hit .qh-score {
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--section-accent);
   flex: 0 0 auto;
 }
-.w-search .qs-hit .qh-path {
+.qs-hit .qh-path {
   font-family: var(--font-mono);
   font-size: 8.5px;
   color: var(--color-ghost);
   margin-bottom: 4px;
   letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.w-search .qs-hit .qh-snip {
+.qs-hit .qh-snip {
   font-size: 11px;
   color: var(--color-faint);
   line-height: 1.45;
   word-break: break-word;
 }
-.w-search .qs-hit .qh-snip mark {
+.qs-hit .qh-snip mark {
   background: var(--accent-weak);
   color: var(--section-accent);
   padding: 0 2px;
 }
-.w-search .qs-empty {
+.qs-empty {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-muted);

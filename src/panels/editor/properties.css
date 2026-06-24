@@ -1,5 +1,87 @@
-.props { border-bottom: 1px solid var(--border, #1c2128); padding: 12px 24px; display: grid; gap: 6px; }
-.props-row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 12px; }
-.props-key { opacity: .6; font-size: 13px; }
-.props-val { background: var(--action-primary-weak, #14181d); border: 1px solid var(--border, #1c2128);
-  color: inherit; border-radius: 6px; padding: 4px 8px; font: inherit; }
+/* Frontmatter properties — chrome zone (operator-console). A collapsible header
+   folds the fields up so they don't push the note content down. Mirrors the
+   explorer filter-input idiom: deep field, thin DS border, mono, accent on focus. */
+.props {
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px 24px 14px;
+}
+.props.collapsed {
+  padding: 6px 24px;
+}
+
+/* fold/unfold header — always visible, thin */
+.props-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color 0.15s;
+}
+.props-head:hover {
+  color: var(--section-accent);
+}
+.props-chev {
+  font-size: 13px;
+  color: var(--color-faint);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s;
+}
+.props.collapsed .props-chev {
+  transform: rotate(-90deg);
+}
+.props-head:hover .props-chev {
+  color: var(--section-accent);
+}
+.props-count {
+  margin-left: 3px;
+  color: var(--color-ghost);
+  font-size: 9px;
+}
+
+.props-body {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+}
+.props-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.props-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.props-key .ic {
+  font-size: 13px;
+  color: var(--color-ghost);
+  flex: 0 0 auto;
+}
+.props-val {
+  background: rgba(2, 2, 6, 0.6);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 5px 9px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.props-val:focus {
+  border-color: var(--section-accent);
+}

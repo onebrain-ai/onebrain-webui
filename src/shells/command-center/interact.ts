@@ -9,7 +9,7 @@ import type { FocusActions } from "./camera/focus";
 import type { WidgetRecord } from "./layout";
 
 const NONDRAG =
-  "input,textarea,button,a,.acc-pop,.skill-scroll,.log-feed,.slash-menu,.task-row,.skill-row,.slash-item,.composer,.w-handle,.fx-tree,.fx-row,.fx-tools,.pv-body,.chat-feed,.chat-input,.cli-out,.cli-line,.qs-box,.qs-results,.qs-hit";
+  "input,textarea,button,a,.acc-pop,.skill-scroll,.log-feed,.slash-menu,.task-row,.skill-row,.slash-item,.composer,.w-handle,.fx-tree,.fx-row,.fx-hit,.fx-tools,.pv-body,.chat-feed,.chat-input,.cli-out,.cli-line,.qs-box,.qs-results,.qs-hit";
 
 export interface InteractDeps {
   rig: Rig;

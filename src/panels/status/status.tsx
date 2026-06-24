@@ -1,22 +1,33 @@
-// Status panel — the operator's at-a-glance system readout. Mock data for now
-// (matches the prototype); wires to live daemon/session telemetry in a later
-// pass. Ported from the prototype template (lines 1194–1211).
+// Status panel — the operator's at-a-glance system readout, computed from REAL
+// vault state: the daemon connection (the tree loaded), note / inbox / memory /
+// session counts from the loaded vault tree, and the live due-task count.
 
 import type { PanelDef } from "../contract";
+import { vaultTree, vaultError, allFiles } from "../bus";
 import { dueCount } from "../tasks-store";
 import "./status.css";
 
 function Status() {
+  const tree = vaultTree.value; // subscribe → re-compute when the vault loads
+  const ready = tree !== null;
+  const files = ready ? allFiles() : [];
+
+  const lc = (p: string) => p.toLowerCase();
+  const notes = files.filter((p) => lc(p).endsWith(".md")).length;
+  const inbox = files.filter((p) => lc(p).startsWith("00-inbox/")).length;
+  const memory = files.filter((p) => lc(p).startsWith("05-agent/memory/") && lc(p).endsWith(".md")).length;
+  const sessions = files.filter((p) => lc(p).startsWith("07-logs/session/") && lc(p).endsWith(".md")).length;
+
   return (
     <>
       <div class="w-head">
         <span class="pill">
           <span class="dot" />
-          System · Online
+          System · {ready ? "Online" : "Connecting"}
         </span>
         <span class="w-meta">HUD_01</span>
       </div>
-      <div class="brand">
+      <div class="st-brand">
         <svg class="ob-mark" aria-hidden="true">
           <use href="#ob-brain-mark" />
         </svg>
@@ -26,35 +37,35 @@ function Status() {
       </div>
       <ul class="stat-lines">
         <li>
-          <span>NODE · NETWORK</span>
+          <span>DAEMON</span>
           <b>
-            :: <em>ONLINE</em> · FPS <span class="fps2">60</span>
+            :: <em class={ready ? "ok" : "off"}>{ready ? "ONLINE" : vaultError.value ? "OFFLINE" : "…"}</em>
           </b>
         </li>
         <li>
-          <span>HARNESS</span>
-          <b>:: CLAUDE CODE · v3.1.6</b>
-        </li>
-        <li>
           <span>VAULT</span>
-          <b>:: SYNCED · 1,284 notes</b>
+          <b>:: {ready ? "SYNCED" : "…"} · {notes.toLocaleString()} notes</b>
         </li>
         <li>
           <span>MEMORY</span>
-          <b>:: 47 facts</b>
+          <b>:: {memory} notes</b>
+        </li>
+        <li>
+          <span>SESSIONS</span>
+          <b>:: {sessions} logged</b>
         </li>
       </ul>
       <div class="metric-row">
         <div class="metric">
-          <div class="m-val">6</div>
-          <div class="m-lab">sessions</div>
+          <div class="m-val">{notes.toLocaleString()}</div>
+          <div class="m-lab">notes</div>
         </div>
         <div class="metric">
           <div class="m-val">{dueCount.value}</div>
           <div class="m-lab">due</div>
         </div>
         <div class="metric">
-          <div class="m-val">12</div>
+          <div class="m-val">{inbox}</div>
           <div class="m-lab">inbox</div>
         </div>
       </div>

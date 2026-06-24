@@ -44,6 +44,14 @@ button {
   background: color-mix(in oklab, var(--section-accent) 35%, transparent);
 }
 
+/* Thai run inside tracked/uppercased chrome — Thai uses stacked vowels + tone
+   marks, so the wide Latin letter-spacing breaks it apart and detaches the marks.
+   Wrap Thai text in `.thai` to reset the tracking (and the no-op uppercase). */
+.thai {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 /* ---------- backdrop (z0) — fixed near-black operator void ----------
    Oversized vertically (80vh slack above & below the viewport) and shifted by
    --sky-y every frame so the sky + horizon track the camera PITCH in lockstep
@@ -128,4 +136,26 @@ button {
     /* faint CRT scanlines — the operator-console screen texture */
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.04) 3px, rgba(0, 0, 0, 0) 4px),
     /* cinematic cool vignette framing the field */ radial-gradient(128% 118% at 50% 45%, transparent 56%, rgba(2, 6, 20, 0.66) 100%);
+}
+
+/* ── Mode gate ──────────────────────────────────────────────────────────────
+ * The layer stack above (#bg-base…#fx) belongs to the 3D command center, but it
+ * lives in index.html so the imperative engine can grab the nodes by id. In CMS
+ * mode the engine never starts, so these fixed, full-viewport layers would sit
+ * inert *on top of* the 2D shell and paint over it (z 0–4). Hide them unless the
+ * active surface is the command center. Default-hidden (attribute absent ⇒
+ * hidden) avoids any first-paint flash; main.tsx sets `data-mode` on <html>. */
+html:not([data-mode="command-center"]) :is(#bg-base, #stars, #gl, #look, #css3d, #fx) {
+  display: none !important;
+}
+
+/* ── Markdown inline marks (Obsidian ==highlight== / ~~strikethrough~~) ────── */
+mark {
+  background: color-mix(in srgb, var(--acc-amber) 30%, transparent);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+del {
+  opacity: 0.55;
 }

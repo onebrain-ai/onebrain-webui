@@ -34,10 +34,15 @@
   --accent-weak: color-mix(in oklab, var(--section-accent) 14%, transparent);
   --accent-line: color-mix(in oklab, var(--section-accent) 32%, transparent);
 
+  /* Thai must render in Chakra Petch (DS rule). Inter / JetBrains Mono carry the
+     Latin glyphs and lack Thai, so the browser falls through to Chakra Petch for
+     Thai text — Latin stays Inter/JetBrains, Thai becomes Chakra Petch. */
   --font-display: "Chakra Petch", "Inter", system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Noto Sans Thai", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-sans: "Inter", "Chakra Petch", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Chakra Petch", ui-monospace, Menlo, monospace;
 
   /* chamfered-rectangle clip: cut top-left + bottom-right corners at 12px */
   --clip-tech: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  /* button-scale chamfer (6px) for chrome controls — --clip-tech is panel-scale (12px) */
+  --clip-chip: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
 }

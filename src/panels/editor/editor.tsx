@@ -1,17 +1,19 @@
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap, drawSelection, highlightActiveLine } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import type { PanelDef, PanelContext } from "../contract";
-import { previewPath } from "../bus";
+import { previewPath, resolveWikilink, navBack, navForward, canNavBack, canNavForward } from "../bus";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
 import { renderMarkdown } from "../../core/markdown";
+import { renderMermaidIn } from "../../core/mermaid";
+import { Icon } from "../../ui/Icon";
 import "./editor.css";
 
 /**
@@ -22,8 +24,79 @@ import "./editor.css";
  */
 export let _cmdSaveRun: (() => boolean) | null = null;
 
+const ZOOM_MIN = 0.1;
+const ZOOM_MAX = 8;
+const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+
+/** Clean an inline SVG before it's injected into the *page* DOM (it renders
+ *  inline, not in a sandboxed iframe, so page fonts apply — which means it MUST
+ *  be sanitized properly, not by regex). Vault files are treated as untrusted
+ *  (imported / AI-generated / synced), so we parse the SVG and drop:
+ *   - active/foreign elements (<script>, <foreignObject>, <animate*>, <set>, <handler>)
+ *   - every on* event-handler attribute (quoted OR unquoted)
+ *   - any href / xlink:href whose scheme isn't a safe `#`, http(s), or data:image
+ *   - inline style with url()/expression()/javascript:
+ *  Returns "" on a parse error so a malformed/hostile file renders nothing. */
+const SVG_BAD_EL = new Set(["script", "foreignobject", "animate", "animatetransform", "animatemotion", "set", "handler"]);
+function sanitizeSvg(s: string): string {
+  let doc: Document;
+  try {
+    doc = new DOMParser().parseFromString(s, "image/svg+xml");
+  } catch {
+    return "";
+  }
+  if (doc.querySelector("parsererror")) return "";
+  const svg = doc.querySelector("svg");
+  if (!svg) return "";
+  const clean = (el: Element): void => {
+    for (const child of Array.from(el.children)) {
+      if (SVG_BAD_EL.has(child.tagName.toLowerCase())) child.remove();
+      else clean(child);
+    }
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith("on")) el.removeAttribute(attr.name);
+      else if (name === "href" || name === "xlink:href") {
+        if (!/^(#|https?:|data:image\/)/i.test(attr.value.trim())) el.removeAttribute(attr.name);
+      } else if (name === "style" && /url\s*\(|expression|javascript:/i.test(attr.value)) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  };
+  clean(svg);
+  return new XMLSerializer().serializeToString(svg);
+}
+
+/** The SVG's intrinsic width (viewBox width, else the width attribute) — the base
+ *  for pixel-zoom. Defaults to 800 when neither is present. */
+function svgIntrinsicWidth(s: string): number {
+  const vb = s.match(/viewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)/i);
+  if (vb) return parseFloat(vb[1]) || 800;
+  const w = s.match(/\bwidth\s*=\s*["']?\s*([\d.]+)/i);
+  if (w) return parseFloat(w[1]) || 800;
+  return 800;
+}
+
+/** Inline save indicator for the editor header (markdown notes only). */
+function SaveBadge() {
+  const s = saveStatus.value;
+  const state = s === "idle" ? (dirty.value ? "unsaved" : "saved") : s;
+  const view: Record<string, preact.JSX.Element> = {
+    saving: <><span class="ed-dot saving" />Saving…</>,
+    unsaved: <><span class="ed-dot" />Unsaved</>,
+    saved: <><Icon name="check" />Saved</>,
+    conflict: <><Icon name="alert" />Conflict</>,
+    error: <><Icon name="alert" />Save failed</>,
+  };
+  return <span class={`ed-save st-${state}`}>{view[state] ?? null}</span>;
+}
+
 function Editor({ ctx }: { ctx: PanelContext }) {
   const host = useRef<HTMLDivElement>(null);
+  const readingHost = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const svgRef = useRef<HTMLDivElement>(null);
+  const mediaW = useRef<number>(0); // intrinsic width of the current image/svg
   const view = useRef<EditorView | null>(null);
   const saver = useRef<Autosaver | null>(null);
   const fm = useRef<{ raw: string | null; obj: Record<string, unknown>; edited: boolean }>({
@@ -32,17 +105,90 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     edited: false,
   });
   const props = useSignal<Record<string, unknown>>({});
-  const reading = useSignal(false);
+  // Default to the rendered reading view on open (toggle to edit with the button).
+  const reading = useSignal(true);
+  // Current doc text, mirrored into a signal so the reading view (markdown) or
+  // the iframe srcdoc (html) re-renders when the note loads or is edited.
+  const docText = useSignal("");
+  // Object URL for a raster-image / PDF preview (created from the raw-bytes blob).
+  const blobUrl = useSignal("");
+  // Sanitized markup for an inline SVG preview (rendered into the DOM, NOT via an
+  // <img>, so it can use the page's web fonts — an <img>-embedded SVG cannot).
+  const svgHtml = useSignal("");
+  // Image zoom: `fit` = scale to the pane; otherwise a numeric factor of intrinsic.
+  const imgFit = useSignal(true);
+  const imgZoom = useSignal(1);
+
   const path = previewPath.value;
+  const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
+  // Non-text files preview read-only — no CodeMirror, no autosave, no frontmatter.
+  const isHtml = ext === "html" || ext === "htm";
+  const isSvg = ext === "svg";
+  const isImage = isSvg || ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico"].includes(ext);
+  const isPdf = ext === "pdf";
+  const isBinary = isImage || isPdf;
 
   useEffect(() => {
-    if (!path || !host.current) return;
+    if (!path) return;
     // Each note starts clean — clear any prior note's save/conflict state so a
     // stale toast/indicator can't carry over to a different note.
     saveStatus.value = "idle";
     dirty.value = false;
     conflictRev.value = null;
     let cancelled = false;
+
+    if (isHtml) {
+      editorBridge.value = null;
+      props.value = {};
+      docText.value = ""; // don't flash the prior note's content into the iframe
+      void ctx.daemon.file(path).then((f) => {
+        if (cancelled) return;
+        docText.value = f.content;
+      });
+      return () => {
+        cancelled = true;
+        editorBridge.value = null;
+      };
+    }
+
+    if (isBinary) {
+      // Read-only preview — no editor/autosaver (a preview must never write back).
+      editorBridge.value = null;
+      props.value = {};
+      imgFit.value = true; // every new image opens fit-to-pane
+      imgZoom.value = 1;
+      mediaW.current = 0;
+
+      if (isSvg) {
+        // Inline the SVG so it renders with the page's fonts (Chakra Petch / etc).
+        svgHtml.value = "";
+        void ctx.daemon.file(path).then((f) => {
+          if (cancelled) return;
+          svgHtml.value = sanitizeSvg(f.content);
+          mediaW.current = svgIntrinsicWidth(f.content);
+        });
+        return () => {
+          cancelled = true;
+          editorBridge.value = null;
+        };
+      }
+
+      // Raster image / PDF → object URL from the raw bytes (revoked on cleanup).
+      blobUrl.value = "";
+      let url: string | null = null;
+      void ctx.daemon.fileBlob(path).then((b) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(b);
+        blobUrl.value = url;
+      });
+      return () => {
+        cancelled = true;
+        editorBridge.value = null;
+        if (url) URL.revokeObjectURL(url);
+      };
+    }
+
+    if (!host.current) return;
     void ctx.daemon.file(path).then((f) => {
       if (cancelled || !host.current) return;
       const split = splitNote(f.content);
@@ -63,6 +209,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         state: EditorState.create({
           doc: split.body,
           extensions: [
+            EditorView.lineWrapping,
+            // A drawn cursor + active-line highlight so you can always see where
+            // the caret is on the dark theme (the native caret is near-invisible).
+            drawSelection(),
+            highlightActiveLine(),
             keymap.of([
               { key: "Mod-s", run: cmdSaveRun },
               ...defaultKeymap,
@@ -70,11 +221,18 @@ function Editor({ ctx }: { ctx: PanelContext }) {
             markdown({ base: markdownLanguage }),
             livePreview(),
             EditorView.updateListener.of((u) => {
-              if (u.docChanged) sv.schedule();
+              if (u.docChanged) {
+                sv.schedule();
+                docText.value = u.state.doc.toString();
+              }
             }),
           ],
         }),
       });
+      docText.value = split.body;
+      // Always land at the top of a freshly-opened note (the reading view div is
+      // reused across notes, so its scroll would otherwise carry over).
+      requestAnimationFrame(() => { if (readingHost.current) readingHost.current.scrollTop = 0; });
       const reload = async () => {
         const f2 = await ctx.daemon.file(path);
         if (cancelled || previewPath.value !== path) return; // note switched mid-reload — abandon
@@ -100,6 +258,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     };
   }, [path]);
 
+  // Rendered reading-view HTML + a mermaid pass after it mounts. Computed here
+  // (before the early return) so the effect's hook order stays stable.
+  const readingHtml = reading.value && path && !isHtml && !isBinary ? renderMarkdown(docText.value).html : "";
+  useEffect(() => {
+    if (readingHost.current) void renderMermaidIn(readingHost.current);
+  }, [readingHtml]);
+
   if (!path) return <div class="ed-empty">Select a note from the Explorer.</div>;
 
   const onProps = (next: Record<string, unknown>) => {
@@ -108,26 +273,202 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     saver.current?.schedule();
   };
 
+  // Click a [[wikilink]] in the reading view → open the linked note (event-
+  // delegated, like Obsidian — no markdown-link conversion needed).
+  const onReadingClick = (e: MouseEvent) => {
+    const wl = (e.target as HTMLElement).closest("[data-wikilink]");
+    if (!wl) return;
+    e.preventDefault();
+    const target = resolveWikilink(wl.getAttribute("data-wikilink") ?? "");
+    if (target) ctx.openFile(target);
+  };
+
+  // ── Image zoom + download ──────────────────────────────────────────────────
+  const zoomBy = (mult: number) => {
+    if (imgFit.value) {
+      // Continue smoothly from the current fitted scale.
+      const el = isSvg ? svgRef.current?.querySelector("svg") : imgRef.current;
+      const base = mediaW.current || 1;
+      const cur = el ? (el as Element).getBoundingClientRect().width / base : 1;
+      imgFit.value = false;
+      imgZoom.value = clampZoom(cur * mult);
+    } else {
+      imgZoom.value = clampZoom(imgZoom.value * mult);
+    }
+  };
+  const onWheel = (e: WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      zoomBy(e.deltaY < 0 ? 1.15 : 0.87);
+    }
+  };
+  const downloadFile = async () => {
+    let url = blobUrl.value;
+    let revoke = false;
+    if (!url) {
+      const b = await ctx.daemon.fileBlob(path);
+      url = URL.createObjectURL(b);
+      revoke = true;
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if (revoke) URL.revokeObjectURL(url);
+  };
+
+  const segs = path.split("/");
+  const fileName = segs[segs.length - 1];
+  const dirSegs = segs.slice(0, -1);
+  const zoomedStyle = imgFit.value
+    ? ""
+    : `width:${Math.round((mediaW.current || 800) * imgZoom.value)}px;max-width:none;max-height:none;height:auto`;
+
+  const downloadBtn = (
+    <button class="ed-iconbtn" type="button" title="Download file" aria-label="Download" onClick={() => void downloadFile()}>
+      <Icon name="download" />
+    </button>
+  );
+  const zoomControls = (
+    <div class="ed-zoom">
+      <button class="ed-iconbtn" type="button" title="Zoom out" aria-label="Zoom out" onClick={() => zoomBy(0.8)}>
+        <Icon name="minus" />
+      </button>
+      <button class="ed-zoom-pct" type="button" title="Fit to pane" onClick={() => { imgFit.value = true; }}>
+        {imgFit.value ? "Fit" : `${Math.round(imgZoom.value * 100)}%`}
+      </button>
+      <button class="ed-iconbtn" type="button" title="Zoom in" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
+        <Icon name="plus" />
+      </button>
+      <button class="ed-iconbtn" type="button" title="Fit to pane" aria-label="Fit" onClick={() => { imgFit.value = true; }}>
+        <Icon name="maximize" />
+      </button>
+    </div>
+  );
+
   return (
     <div class="ed-wrap">
       <div class="ed-toolbar">
-        <button
-          class="ed-toggle"
-          data-testid="ed-reading-toggle"
-          onClick={() => { reading.value = !reading.value; }}
-        >
-          {reading.value ? "Edit" : "Read"}
-        </button>
+        <div class="ed-nav">
+          <button
+            class="ed-iconbtn"
+            type="button"
+            title="Back"
+            aria-label="Back"
+            disabled={!canNavBack.value}
+            onClick={navBack}
+          >
+            <Icon name="arrow-left" />
+          </button>
+          <button
+            class="ed-iconbtn"
+            type="button"
+            title="Forward"
+            aria-label="Forward"
+            disabled={!canNavForward.value}
+            onClick={navForward}
+          >
+            <Icon name="arrow-right" />
+          </button>
+        </div>
+        <div class="ed-crumb" title={path}>
+          <Icon name={isImage ? "image" : isHtml ? "code" : "file"} />
+          {dirSegs.map((s) => (
+            <span class="ed-crumb-dir" key={s}>{s}<span class="ed-crumb-sep">›</span></span>
+          ))}
+          <span class="ed-crumb-cur">{fileName}</span>
+        </div>
+        <div class="ed-acts">
+          {isImage ? (
+            <>
+              <span class="ed-badge"><Icon name="image" />{isSvg ? "SVG" : "Image"}</span>
+              {zoomControls}
+              {downloadBtn}
+            </>
+          ) : isPdf ? (
+            <>
+              <span class="ed-badge"><Icon name="file" />PDF</span>
+              {downloadBtn}
+            </>
+          ) : isHtml ? (
+            <>
+              <span class="ed-badge"><Icon name="code" />HTML preview</span>
+              {downloadBtn}
+            </>
+          ) : (
+            <>
+              <SaveBadge />
+              {downloadBtn}
+              <button
+                class="ed-toggle"
+                data-testid="ed-reading-toggle"
+                onClick={() => { reading.value = !reading.value; }}
+              >
+                <Icon name={reading.value ? "code" : "book"} />
+                <span>{reading.value ? "Edit" : "Read"}</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
-      <Properties value={props.value} onChange={onProps} />
-      {reading.value && (
-        <div
-          class="ed-reading"
-          data-testid="ed-reading"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(view.current?.state.doc.toString() ?? "").html }}
+
+      {isSvg ? (
+        <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
+          <div
+            class={imgFit.value ? "ed-media ed-svg" : "ed-media ed-svg zoomed"}
+            ref={svgRef}
+            style={zoomedStyle}
+            dangerouslySetInnerHTML={{ __html: svgHtml.value }}
+          />
+        </div>
+      ) : isImage ? (
+        <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
+          {blobUrl.value && (
+            <img
+              class="ed-media ed-img"
+              ref={imgRef}
+              src={blobUrl.value}
+              alt={fileName}
+              style={zoomedStyle}
+              onLoad={(e) => { mediaW.current = (e.target as HTMLImageElement).naturalWidth || 0; }}
+            />
+          )}
+        </div>
+      ) : isPdf ? (
+        blobUrl.value ? (
+          <iframe class="ed-pdf" data-testid="ed-pdf" src={blobUrl.value} title="PDF preview" />
+        ) : (
+          <div class="ed-binwrap" />
+        )
+      ) : isHtml ? (
+        <iframe
+          class="ed-frame"
+          data-testid="ed-html-frame"
+          // sandbox="" — fully isolated, scripts DISABLED. Vault .html files are
+          // untrusted (imported / AI-generated / synced), so the preview renders
+          // them as static documents. (Interactive HTML would be a deliberate
+          // `allow-scripts` opt-in, never with allow-same-origin.)
+          sandbox=""
+          srcdoc={docText.value}
+          title="HTML preview"
         />
+      ) : (
+        <>
+          <Properties value={props.value} onChange={onProps} />
+          {reading.value && (
+            <div
+              class="ed-reading"
+              data-testid="ed-reading"
+              ref={readingHost}
+              onClick={onReadingClick}
+              dangerouslySetInnerHTML={{ __html: readingHtml }}
+            />
+          )}
+          <div class={reading.value ? "ed ed-hidden" : "ed"} ref={host} />
+        </>
       )}
-      <div class={reading.value ? "ed ed-hidden" : "ed"} ref={host} />
     </div>
   );
 }

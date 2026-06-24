@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
-import { HttpDaemonClient } from "./daemon";
+import { HttpDaemonClient, parseSseFrame } from "./daemon";
 import { DaemonError } from "./types";
 
 type FetchMock = MockedFunction<typeof fetch>;
@@ -52,5 +52,56 @@ describe("HttpDaemonClient writes", () => {
     const h = init?.headers as HeadersMap;
     expect(init?.body).toBe(JSON.stringify({ from: "a.md", to: "b.md" }));
     expect(h["Content-Type"]).toContain("application/json");
+  });
+});
+
+describe("parseSseFrame", () => {
+  it("parses a session event", () => {
+    expect(parseSseFrame('event: session\ndata: {"session_id":"abc-123"}')).toEqual({
+      type: "session",
+      sessionId: "abc-123",
+    });
+  });
+
+  it("parses a delta event", () => {
+    expect(parseSseFrame('event: delta\ndata: {"text":"hello"}')).toEqual({ type: "delta", text: "hello" });
+  });
+
+  it("parses a done event (and defaults missing fields)", () => {
+    expect(parseSseFrame('event: done\ndata: {"result":"r","is_error":false}')).toEqual({
+      type: "done",
+      result: "r",
+      sessionId: null,
+      isError: false,
+    });
+  });
+
+  it("parses an error event", () => {
+    expect(parseSseFrame('event: error\ndata: {"message":"boom"}')).toEqual({ type: "error", message: "boom" });
+  });
+
+  it("tolerates a leading space after data: (SSE spec)", () => {
+    expect(parseSseFrame("event: delta\ndata: {\"text\":\"x\"}")).toEqual({ type: "delta", text: "x" });
+  });
+
+  it("concatenates multiple data: lines", () => {
+    // SSE allows a payload split across several data: lines.
+    expect(parseSseFrame('event: delta\ndata: {"text":\ndata: "multi"}')).toEqual({ type: "delta", text: "multi" });
+  });
+
+  it("returns null for a comment/keep-alive frame (no data)", () => {
+    expect(parseSseFrame(": keep-alive")).toBeNull();
+  });
+
+  it("returns null for an unknown event name", () => {
+    expect(parseSseFrame('event: bogus\ndata: {"x":1}')).toBeNull();
+  });
+
+  it("returns null for malformed JSON instead of throwing", () => {
+    expect(parseSseFrame("event: delta\ndata: {not json")).toBeNull();
+  });
+
+  it("session event without an id is null", () => {
+    expect(parseSseFrame("event: session\ndata: {}")).toBeNull();
   });
 });

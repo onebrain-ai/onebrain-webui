@@ -1,9 +1,6 @@
 /* Status panel — system status lines + 3-metric grid + OneBrain brand mark.
-   Ported from the prototype (lines 214–234). Panel-specific content classes are
-   scoped under `.w-status` so a panel plugin can't leak styles into its
-   neighbours; the shared DS chrome (.widget/.w-head/.pill/.btn-tech) stays
-   global in widget.css. `.ob-mark` base stays global — it is the brand asset
-   used across panels + HUD. */
+   Class-based selectors so it lays out in BOTH shells (command-center billboard
+   and the CMS sidebar). `.ob-mark` stays global — it is the shared brand asset. */
 
 /* OneBrain brand mark — fixed brand gradient, never accent-keyed (global asset) */
 .ob-mark {
@@ -11,7 +8,7 @@
   overflow: visible;
 }
 
-.w-status .brand {
+.st-brand {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
@@ -23,59 +20,65 @@
   gap: 9px;
   margin: 2px 0 14px;
 }
-.w-status .brand b {
+.st-brand b {
   color: #fff;
   font-weight: 700;
 }
-.w-status .brand .ob-mark {
+.st-brand .ob-mark {
   width: 20px;
   height: 20px;
   filter: drop-shadow(0 0 5px color-mix(in oklab, var(--acc-magenta) 45%, transparent));
 }
 
-.w-status .stat-lines {
+.stat-lines {
   list-style: none;
   margin: 0 0 14px;
   padding: 0;
   font-family: var(--font-mono);
   font-size: 11.5px;
 }
-.w-status .stat-lines li {
+.stat-lines li {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   padding: 6px 0;
   border-bottom: 1px solid var(--color-border-2);
 }
-.w-status .stat-lines li:last-child {
+.stat-lines li:last-child {
   border-bottom: 0;
 }
-.w-status .stat-lines span {
+.stat-lines span {
   color: var(--color-muted);
   letter-spacing: 0.14em;
 }
-.w-status .stat-lines b {
+.stat-lines b {
   color: var(--color-faint);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
-.w-status .stat-lines b em {
+.stat-lines b em {
   color: var(--section-accent);
   font-style: normal;
 }
-.w-status .metric-row {
+.stat-lines b em.ok {
+  color: var(--c-success);
+}
+.stat-lines b em.off {
+  color: var(--acc-magenta);
+}
+.metric-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 9px;
 }
-.w-status .metric {
+.metric {
   border: 1px solid var(--color-border-2);
   padding: 9px 8px;
   text-align: center;
   background: rgba(255, 255, 255, 0.015);
 }
-.w-status .m-val {
+.m-val {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
@@ -84,7 +87,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
-.w-status .m-lab {
+.m-lab {
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.16em;

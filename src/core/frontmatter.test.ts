@@ -15,6 +15,22 @@ describe("frontmatter", () => {
     expect(parseFrontmatter("tags: [a, b]\ncreated: 2026-06-08")).toMatchObject({ tags: ["a", "b"] });
   });
 
+  it("keeps date-like scalars as strings (no Date coercion)", () => {
+    // DEFAULT_SCHEMA would coerce these to JS Date (renders as a locale string in
+    // the properties form, re-serializes to a full ISO timestamp). CORE_SCHEMA keeps
+    // them as the verbatim source string.
+    const obj = parseFrontmatter("created: 2026-03-10\nupdated: 2026-03-18");
+    expect(obj.created).toBe("2026-03-10");
+    expect(obj.updated).toBe("2026-03-18");
+    expect(obj.created).not.toBeInstanceOf(Date);
+  });
+
+  it("re-serializes a date string back to the same unquoted scalar", () => {
+    const out = compose({ raw: "created: 2026-03-10", obj: { created: "2026-03-10" }, edited: true }, "# Body\n");
+    expect(out).toContain("created: 2026-03-10");
+    expect(out).not.toMatch(/T00:00:00/); // not an ISO timestamp
+  });
+
   it("preserves raw bytes when the form was NOT edited", () => {
     const raw = "tags:   [a]\ncreated: 2026-06-08"; // odd spacing on purpose
     expect(compose({ raw, obj: {}, edited: false }, "# Body\n")).toBe(`---\n${raw}\n---\n# Body\n`);

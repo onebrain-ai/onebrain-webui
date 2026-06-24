@@ -4,37 +4,24 @@
 // (which file is open, the daemon handle); panel-local state stays in the panel.
 
 import { signal } from "@preact/signals";
-import type { DaemonClient } from "./daemon";
-
-/** The active data client. Set once at boot (`main.tsx`); panels read it via
- *  their `PanelContext`, never this signal directly — but the shells need it to
- *  build the context. */
-export const daemon = signal<DaemonClient | null>(null);
-
-/** Vault-relative path of the note currently shown in the Preview panel, or
- *  `null` for the empty state. Explorer writes it, Preview reads it. */
-export const openFile = signal<string | null>(null);
-
-/** Lowercased note basename (without `.md`) → vault path, built from the tree by
- *  Explorer. Lets Preview resolve `[[wikilinks]]` to an openable path without a
- *  dedicated daemon resolve endpoint (that lands with qmd search in step 2b). */
-export const vaultIndex = signal<Map<string, string>>(new Map());
-
-/** Resolve a `[[wikilink]]` target to a vault path (or null). Matches on the
- *  note basename, case-insensitively, with or without a trailing `.md`. */
-export function resolveWikilink(target: string): string | null {
-  const key = target.trim().replace(/\.md$/i, "").toLowerCase();
-  return vaultIndex.value.get(key) ?? null;
-}
-
-/** Which view the main region shows: the note Preview or the Settings panel. */
-export const mainView = signal<"preview" | "settings">("preview");
 
 /** Active shell: the 2D CMS, or the 3D command center (spec D1, ModeRouter).
- *  Persisted so the chosen surface survives reloads. */
-export const mode = signal<"cms" | "command-center">(
-  loadString("onebrain.mode", "cms") === "command-center" ? "command-center" : "cms",
-);
+ *  The 2D CMS shell is the product surface — opening the app ALWAYS lands here.
+ *  The 3D command center is kept but opt-in only: reachable solely via an explicit
+ *  `?mode=command-center` URL param, never from a persisted/stale stored value.
+ *  This guarantees "open → 2D, no boot intro" regardless of any prior setMode(). */
+export const mode = signal<"cms" | "command-center">(initialMode());
+
+function initialMode(): "cms" | "command-center" {
+  try {
+    if (new URLSearchParams(window.location.search).get("mode") === "command-center") {
+      return "command-center";
+    }
+  } catch {
+    /* no window/location (unit tests) — fall through to CMS */
+  }
+  return "cms";
+}
 
 export function setMode(m: "cms" | "command-center"): void {
   mode.value = m;
@@ -72,6 +59,47 @@ export const chatOpen = signal<boolean>(loadBool("onebrain.chatOpen", false));
 export function setChatOpen(open: boolean): void {
   chatOpen.value = open;
   saveBool("onebrain.chatOpen", open);
+}
+
+// ── Sidebar (CMS explorer column) — resizable + collapsible ──────────────────
+/** Sidebar width in px (drag-resizable). Clamped to [SIDEBAR_MIN, SIDEBAR_MAX]. */
+export const SIDEBAR_MIN = 200;
+export const SIDEBAR_MAX = 560;
+export const sidebarWidth = signal<number>(
+  clampNum(loadNum("onebrain.sidebarWidth", 280), SIDEBAR_MIN, SIDEBAR_MAX),
+);
+/** Whether the sidebar is collapsed (hidden, leaving just the rail). */
+export const sidebarCollapsed = signal<boolean>(loadBool("onebrain.sidebarCollapsed", false));
+
+export function setSidebarWidth(px: number): void {
+  const w = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, Math.round(px)));
+  sidebarWidth.value = w;
+  saveString("onebrain.sidebarWidth", String(w));
+}
+export function setSidebarCollapsed(v: boolean): void {
+  sidebarCollapsed.value = v;
+  saveBool("onebrain.sidebarCollapsed", v);
+}
+export function toggleSidebar(): void {
+  setSidebarCollapsed(!sidebarCollapsed.value);
+}
+
+/** Chat dock width in px (drag-resizable, persisted). Collapse is `chatOpen`. */
+export const CHAT_MIN = 300;
+export const CHAT_MAX = 760;
+export const chatWidth = signal<number>(clampNum(loadNum("onebrain.chatWidth", 360), CHAT_MIN, CHAT_MAX));
+export function setChatWidth(px: number): void {
+  const w = Math.max(CHAT_MIN, Math.min(CHAT_MAX, Math.round(px)));
+  chatWidth.value = w;
+  saveString("onebrain.chatWidth", String(w));
+}
+
+/** Whether the editor's frontmatter Properties block is folded up (persisted, so
+ *  once collapsed it stays out of the way across notes). Default = expanded. */
+export const propertiesCollapsed = signal<boolean>(loadBool("onebrain.propsCollapsed", false));
+export function togglePropertiesCollapsed(): void {
+  propertiesCollapsed.value = !propertiesCollapsed.value;
+  saveBool("onebrain.propsCollapsed", propertiesCollapsed.value);
 }
 
 // ── Theme settings (DS accent + density) ─────────────────────────────────────
@@ -154,4 +182,11 @@ function loadString(key: string, dflt: string): string {
   } catch {
     return dflt;
   }
+}
+function loadNum(key: string, dflt: number): number {
+  const v = Number(loadString(key, String(dflt)));
+  return Number.isFinite(v) ? v : dflt;
+}
+function clampNum(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
 }

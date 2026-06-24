@@ -4,10 +4,22 @@ import type { DaemonClient } from "../../core/daemon";
 import type { PanelContext } from "../../panels/contract";
 import { getPanel } from "../../panels";
 import { initVault, openFile, previewPath } from "../../panels/bus";
-import { setMode, chatOpen, setChatOpen } from "../../core/stores";
+import {
+  chatOpen,
+  setChatOpen,
+  sidebarWidth,
+  sidebarCollapsed,
+  setSidebarWidth,
+  setSidebarCollapsed,
+  chatWidth,
+  setChatWidth,
+} from "../../core/stores";
 import { newNote, newFolder, renameEntry, deleteEntry } from "../../panels/explorer/actions";
+import { loadTasks } from "../../panels/tasks-store";
 import { editorBridge } from "../../core/editor-bridge";
-import { StatusBar } from "./StatusBar";
+import { Icon, type IconName } from "../../ui/Icon";
+import { promptModal, confirmModal, ModalHost } from "../../ui/Modal";
+import { Topbar } from "./Topbar";
 import { ConflictToast } from "./ConflictToast";
 import "./cms.css";
 
@@ -17,106 +29,175 @@ function ctxFor(daemon: DaemonClient): PanelContext {
   return { daemon, openFile, addPanel: () => {} };
 }
 
-const TABS = [
-  ["explorer", "Files"],
-  ["search", "Search"],
-  ["tasks", "Tasks"],
-  ["status", "Status"],
+type SidebarTab = "explorer" | "search" | "tasks" | "status";
+
+/** Left activity rail: each entry selects which panel fills the sidebar. */
+const NAV: ReadonlyArray<readonly [SidebarTab, IconName, string]> = [
+  ["explorer", "file", "Files"],
+  ["search", "search", "Search"],
+  ["tasks", "tasks", "Tasks"],
+  ["status", "activity", "Status"],
 ] as const;
 
-type SidebarTab = "explorer" | "search" | "tasks" | "status";
+/** Rail width (px) — used to convert a drag x-coordinate into a sidebar width. */
+const RAIL_W = 52;
 
 export function CmsShell({ daemon }: { daemon: DaemonClient }) {
   const sidebarTab = useSignal<SidebarTab>("explorer");
 
   useEffect(() => {
     void initVault(daemon);
+    void loadTasks(daemon);
   }, [daemon]);
 
   const onNewNote = async () => {
-    const p = window.prompt("New note path (e.g. 00-inbox/idea.md)");
+    const p = await promptModal({ title: "New note", placeholder: "00-inbox/idea.md", okLabel: "Create" });
     if (p) await newNote(daemon, p, openFile);
   };
   const onNewFolder = async () => {
-    const p = window.prompt("New folder path (e.g. 03-knowledge/topic)");
+    const p = await promptModal({ title: "New folder", placeholder: "03-knowledge/topic", okLabel: "Create" });
     if (p) await newFolder(daemon, p);
   };
   const onRename = async () => {
     const cur = previewPath.value;
     if (!cur) return;
-    const to = window.prompt("Rename / move to", cur);
+    const to = await promptModal({ title: "Rename / move", value: cur, okLabel: "Rename" });
     if (to && to !== cur) await renameEntry(daemon, cur, to);
   };
   const onDelete = async () => {
     const cur = previewPath.value;
     if (!cur) return;
-    await deleteEntry(daemon, cur, false, async (p) => window.confirm(`Move ${p} to .trash/?`));
+    await deleteEntry(daemon, cur, false, (p) =>
+      confirmModal({ title: "Move to trash?", message: `Move ${p} to .trash/?`, okLabel: "Delete", danger: true }),
+    );
+  };
+
+  // Rail click = VS-Code activity-bar behaviour: click a different tab → open it;
+  // click the ACTIVE tab → collapse; click anything while collapsed → re-open it.
+  const onNav = (id: SidebarTab) => {
+    if (sidebarCollapsed.value) {
+      setSidebarCollapsed(false);
+      sidebarTab.value = id;
+    } else if (sidebarTab.value === id) {
+      setSidebarCollapsed(true);
+    } else {
+      sidebarTab.value = id;
+    }
+  };
+
+  // Drag the sidebar's right edge to resize. Listeners live on document so the
+  // drag keeps tracking even when the cursor outruns the thin handle.
+  const startResize = (e: MouseEvent) => {
+    e.preventDefault();
+    const onMove = (ev: MouseEvent) => setSidebarWidth(ev.clientX - RAIL_W);
+    const stop = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", stop);
+      document.body.classList.remove("cms-resizing");
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", stop);
+    document.body.classList.add("cms-resizing");
+  };
+
+  // Drag the chat dock's LEFT edge to resize it (it's pinned to the right edge,
+  // so its width = viewport-width minus the cursor x).
+  const startChatResize = (e: MouseEvent) => {
+    e.preventDefault();
+    const onMove = (ev: MouseEvent) => setChatWidth(window.innerWidth - ev.clientX);
+    const stop = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", stop);
+      document.body.classList.remove("cms-resizing");
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", stop);
+    document.body.classList.add("cms-resizing");
   };
 
   const ctx = ctxFor(daemon);
+  const collapsed = sidebarCollapsed.value;
   const SidebarPanel = getPanel(sidebarTab.value)!.Component;
   const Main = getPanel("editor")!.Component;
   const Chat = getPanel("chat")!.Component;
 
   return (
-    <div class="cms" data-testid="cms-shell" data-chat={chatOpen.value ? "open" : "closed"}>
+    <div
+      class="cms"
+      data-testid="cms-shell"
+      data-chat={chatOpen.value ? "open" : "closed"}
+      data-sidebar={collapsed ? "collapsed" : "open"}
+      style={`--sidebar-w:${collapsed ? 0 : sidebarWidth.value}px;--chat-w:${chatWidth.value}px`}
+    >
+      <Topbar onSearch={() => { setSidebarCollapsed(false); sidebarTab.value = "search"; }} />
+
       <nav class="cms-rail" data-testid="cms-rail">
-        <button class="cms-rail-btn is-active" title="Notes">▪</button>
+        {NAV.map(([id, icon, label]) => (
+          <button
+            key={id}
+            class={sidebarTab.value === id && !collapsed ? "cms-rail-btn is-active" : "cms-rail-btn"}
+            type="button"
+            data-testid={`cms-tab-${id}`}
+            title={label}
+            aria-label={label}
+            onClick={() => onNav(id)}
+          >
+            <Icon name={icon} />
+          </button>
+        ))}
+        <div class="cms-rail-grow" />
         <button
-          class="cms-rail-btn"
-          data-testid="cms-mode-3d"
-          title="3D command center"
-          onClick={() => setMode("command-center")}
-        >
-          ◆
-        </button>
-        <button
-          class="cms-rail-btn"
+          class={chatOpen.value ? "cms-rail-btn is-active" : "cms-rail-btn"}
+          type="button"
           data-testid="cms-chat-toggle"
           title="Chat"
+          aria-label="Chat"
           onClick={() => setChatOpen(!chatOpen.value)}
         >
-          💬
+          <Icon name="chat" />
         </button>
       </nav>
+
       <aside class="cms-explorer" data-testid="cms-explorer">
         {sidebarTab.value === "explorer" && (
           <div class="cms-fileops" data-testid="cms-fileops">
-            <button data-testid="op-new-note" title="New note" onClick={onNewNote}>＋Note</button>
-            <button data-testid="op-new-folder" title="New folder" onClick={onNewFolder}>＋Folder</button>
-            <button data-testid="op-rename" title="Rename / move open note" onClick={onRename}>Rename</button>
-            <button data-testid="op-delete" title="Delete open note → .trash" onClick={onDelete}>Delete</button>
+            <button type="button" class="fo-btn" data-testid="op-new-note" title="New note" aria-label="New note" onClick={onNewNote}>
+              <Icon name="file-plus" />
+            </button>
+            <button type="button" class="fo-btn" data-testid="op-new-folder" title="New folder" aria-label="New folder" onClick={onNewFolder}>
+              <Icon name="folder-plus" />
+            </button>
+            <span class="fo-sep" />
+            <button type="button" class="fo-btn" data-testid="op-rename" title="Rename / move open note" aria-label="Rename" onClick={onRename}>
+              <Icon name="edit" />
+            </button>
+            <button type="button" class="fo-btn fo-danger" data-testid="op-delete" title="Delete open note → .trash" aria-label="Delete" onClick={onDelete}>
+              <Icon name="trash" />
+            </button>
           </div>
         )}
-        <div class="cms-tabs">
-          {TABS.map(([id, label]) => (
-            <button
-              key={id}
-              class={sidebarTab.value === id ? "cms-tab is-active" : "cms-tab"}
-              data-testid={`cms-tab-${id}`}
-              onClick={() => { sidebarTab.value = id; }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
         <div class="cms-sidebar-body">
           <SidebarPanel ctx={ctx} />
         </div>
+        <div class="cms-resize" onMouseDown={startResize} title="Drag to resize" />
       </aside>
+
       <main class="cms-main" data-testid="cms-main">
         <Main ctx={ctx} />
       </main>
+
       {chatOpen.value && (
         <aside class="cms-chat" data-testid="cms-chat">
+          <div class="cms-chat-resize" onMouseDown={startChatResize} title="Drag to resize" />
           <Chat ctx={ctx} />
         </aside>
       )}
-      <StatusBar />
+
       <ConflictToast
         onReload={() => { void editorBridge.value?.reload(); }}
         onOverwrite={() => { void editorBridge.value?.overwrite(); }}
       />
+      <ModalHost />
     </div>
   );
 }
