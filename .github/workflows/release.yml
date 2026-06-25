@@ -1,0 +1,38 @@
+name: release
+# On a vX.Y.Z tag: build the dist, run the offline guard, package it as a
+# versioned tarball + sha256, and attach both to the GitHub Release. This is the
+# single artifact every consumer pins — onebrain-cli embeds it (build.rs fetches
+# this release asset, verifying the sha256), and Studio/PWA reuse the same dist.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: offline guard (no external font/CDN refs)
+        run: node scripts/check-offline.mjs
+      - name: package dist
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          ART="onebrain-webui-v${V}-dist.tar.gz"
+          tar -czf "$ART" -C dist .
+          sha256sum "$ART" | awk '{print $1}' > "$ART.sha256"
+          echo "Packaged $ART ($(du -h "$ART" | cut -f1)); sha256 $(cat "$ART.sha256")"
+      - name: publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            onebrain-webui-v*-dist.tar.gz
+            onebrain-webui-v*-dist.tar.gz.sha256

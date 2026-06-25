@@ -1,5 +1,6 @@
 // WebUI entry. Resolves the token, builds the data client, applies theme, and
 // hands off to ModeRouter (CMS by default; 3D command center when chosen).
+import "./ds/fonts.css"; // self-hosted fonts (offline) — must load before the DS tokens that reference them
 import "./ds/tokens.css";
 import "./ds/base.css";
 import "./ui/callout.css";
