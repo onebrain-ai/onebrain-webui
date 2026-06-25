@@ -32,9 +32,9 @@ Requires a running daemon (from `onebrain-cli`, branch `v3.3-daemon` or later):
 ```sh
 # 1. start the daemon's HTTP surface against your real vault
 cd /path/to/your/vault
-onebrain serve            # prints http://127.0.0.1:4317/?token=<TOKEN>
+onebrain serve            # prints http://127.0.0.1:6789/?token=<TOKEN>
 
-# 2. start the WebUI dev server (proxies /api → 127.0.0.1:4317)
+# 2. start the WebUI dev server (proxies /api → 127.0.0.1:6789)
 npm install
 npm run dev               # http://localhost:5173
 

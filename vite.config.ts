@@ -3,8 +3,8 @@ import preact from "@preact/preset-vite";
 
 // The daemon (`onebrain serve` / `onebrain daemon`) the WebUI talks to in dev.
 // Override with `ONEBRAIN_DAEMON=http://host:port npm run dev` to point at a
-// remote / non-default daemon. Default matches `serve.rs` DEFAULT_PORT (4317).
-const DAEMON = process.env.ONEBRAIN_DAEMON ?? "http://127.0.0.1:4317";
+// remote / non-default daemon. Default matches `serve.rs` DEFAULT_PORT (6789).
+const DAEMON = process.env.ONEBRAIN_DAEMON ?? "http://127.0.0.1:6789";
 
 // https://vitejs.dev/config/
 export default defineConfig({
