@@ -1,0 +1,21 @@
+/* Self-hosted fonts (offline) — replaces the Google Fonts CDN <link> so the
+   embedded WebUI renders with zero network. Each @fontsource weight stylesheet
+   declares one @font-face per subset (latin, latin-ext, THAI, vietnamese) with a
+   unicode-range, so Chakra Petch keeps carrying Thai glyphs (DS rule:
+   tokens.css falls Thai text through to Chakra Petch). The browser fetches only
+   the subsets it actually renders; all subsets ship in the dist for offline use.
+
+   Weights mirror the former CDN request:
+     Chakra Petch  500/600/700 + italic   Inter  400/500/600   JetBrains Mono 400/500/700 */
+@import "@fontsource/chakra-petch/500.css";
+@import "@fontsource/chakra-petch/600.css";
+@import "@fontsource/chakra-petch/700.css";
+@import "@fontsource/chakra-petch/500-italic.css";
+@import "@fontsource/chakra-petch/600-italic.css";
+@import "@fontsource/chakra-petch/700-italic.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";

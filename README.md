@@ -55,7 +55,7 @@ injects the token into `index.html`, so no `?token=` is needed in production).
 
 ## License
 
-`MIT OR Apache-2.0` (permissive, dual) — part of OneBrain's open core. The
-`LICENSE-MIT` / `LICENSE-APACHE` files are added as part of the org-wide
-relicense (see the OneBrain strategy note); `package.json` already declares the
-dual license.
+`MIT OR Apache-2.0` (permissive, dual) — part of OneBrain's open core. See
+[`LICENSE-MIT`](LICENSE-MIT) and [`LICENSE-APACHE`](LICENSE-APACHE) in the repo
+root; `package.json` declares the same dual license. Use this project under
+either license, at your option.

@@ -6,12 +6,8 @@
     <meta name="color-scheme" content="dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>OneBrain</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fonts are self-hosted via @fontsource (src/ds/fonts.css) so the embedded
+         WebUI renders fully offline — no Google Fonts CDN. -->
     <!-- Token auth: the daemon injects a small script setting the token global
          right before the close of head when it serves this dist (server/static.rs).
          In vite dev there is no daemon, so core/token.ts uses the URL token param.
