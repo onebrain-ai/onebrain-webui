@@ -134,27 +134,40 @@
   font-weight: 600;
 }
 
-/* pptx — pptx-preview stacks each slide; centre them with breathing room */
-.rich-slides {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
+/* pptx — one slide in a pan/zoom/fullscreen viewport (richviewport); ◀ ▶ to nav.
+   The stage sits at the frame origin; the viewport transform fits + centres it. */
+.rich-slides-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  overflow: hidden;
+  background: var(--color-surface);
 }
-.rich-slides > * {
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+.rich-slides {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* hide pptx-preview's own nav arrows + pagination — the viewport carries its own
+   (◀ ▶ + "n / N"); we drive slides via its renderNext/PreSlide methods. */
+.rich-slides .pptx-preview-wrapper-next,
+.rich-slides .pptx-preview-wrapper-pre,
+.rich-slides .pptx-preview-wrapper-prev,
+.rich-slides .pptx-preview-wrapper-pagination {
+  display: none;
 }
 
 /* drawio — the diagram fills the whole pane by default; a floating toolbar
    (bottom-right) zooms in/out and re-fits. Drop the wrap's padding so the canvas
    goes edge-to-edge, and let the host stretch to full height. */
-.ed-richwrap:has(.rich-diagram-frame) {
+.ed-richwrap:has(.rich-diagram-frame),
+.ed-richwrap:has(.rich-slides-frame) {
   padding: 0;
   overflow: hidden;
 }
-.ed-richwrap:has(.rich-diagram-frame) > .ed-rich {
+.ed-richwrap:has(.rich-diagram-frame) > .ed-rich,
+.ed-richwrap:has(.rich-slides-frame) > .ed-rich {
   height: 100%;
 }
 .rich-diagram-frame {

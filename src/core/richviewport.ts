@@ -69,12 +69,17 @@ export function mountViewport(
   };
   const fit = () => {
     onFit?.();
-    // leave breathing room around the fitted content instead of going edge-to-edge
+    // Scale the content to fit the frame (with breathing room) and centre it,
+    // measured from the content's natural size — so it works whether the content
+    // already fills the frame (drawio / image) or has its own size (a pptx slide).
     const pad = 0.9;
-    const r = frame.getBoundingClientRect();
-    scale = pad;
-    tx = (r.width * (1 - pad)) / 2;
-    ty = (r.height * (1 - pad)) / 2;
+    const fr = frame.getBoundingClientRect();
+    content.style.transform = "none";
+    const cw = content.offsetWidth || fr.width;
+    const ch = content.offsetHeight || fr.height;
+    scale = Math.min((fr.width / cw) * pad, (fr.height / ch) * pad, MAX);
+    tx = (fr.width - cw * scale) / 2;
+    ty = (fr.height - ch * scale) / 2;
     apply();
   };
 

@@ -104,14 +104,30 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
   const buf = await arrayBuffer(path, daemon);
   const { init } = await import("pptx-preview");
   host.innerHTML = "";
+  const frame = document.createElement("div");
+  frame.className = "rich-slides-frame";
   const stage = document.createElement("div");
   stage.className = "rich-slides";
-  host.appendChild(stage);
-  // pptx-preview renders every slide stacked into a scrollable wrapper; width
-  // tracks the pane, height keeps a 16:9 slide.
-  const width = Math.min(host.clientWidth || 900, 1000);
-  const previewer = init(stage, { width, height: Math.round(width * 0.5625) });
+  frame.appendChild(stage);
+  host.appendChild(frame);
+  // One slide at a time (mode "slide") so the viewport fits/zooms a single slide;
+  // ◀ ▶ navigate. Width tracks the pane, height keeps a 16:9 slide.
+  const width = Math.min(host.clientWidth || 960, 1280);
+  const previewer = init(stage, { width, height: Math.round(width * 0.5625), mode: "slide" });
   await previewer.preview(buf);
+  const p = previewer as unknown as {
+    slideCount: number;
+    currentIndex: number;
+    renderNextSlide(): void;
+    renderPreSlide(): void;
+  };
+  mountViewport(frame, stage, {
+    nav: {
+      prev: () => p.renderPreSlide(),
+      next: () => p.renderNextSlide(),
+      label: () => `${(p.currentIndex ?? 0) + 1} / ${p.slideCount}`,
+    },
+  });
 }
 
 // ── drawio (@maxgraph/core) ─────────────────────────────────────────────────
