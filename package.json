@@ -34,7 +34,8 @@
     "katex": "^0.16.47",
     "mermaid": "^11.15.0",
     "preact": "^10.27.2",
-    "three": "^0.160.1"
+    "three": "^0.160.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",

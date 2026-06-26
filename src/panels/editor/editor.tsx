@@ -14,6 +14,7 @@ import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
 import { renderFile } from "../../core/markdown";
+import { isRichFile, renderRichFile, richLabel } from "../../core/richfile";
 import { renderMermaidIn } from "../../core/mermaid";
 import { renderMathIn } from "../../core/katex";
 import { Icon } from "../../ui/Icon";
@@ -102,6 +103,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const pendingHeading = useRef<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
+  const richHost = useRef<HTMLDivElement>(null);
+  const richErr = useSignal("");
   const mediaW = useRef<number>(0); // intrinsic width of the current image/svg
   const view = useRef<EditorView | null>(null);
   const saver = useRef<Autosaver | null>(null);
@@ -133,6 +136,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isImage = isSvg || ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico"].includes(ext);
   const isPdf = ext === "pdf";
   const isBinary = isImage || isPdf;
+  // Rich (Office / drawio) files preview read-only via richfile.ts, like binaries.
+  const isRich = isRichFile(path ?? "");
 
   useEffect(() => {
     if (!path) return;
@@ -191,6 +196,18 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         cancelled = true;
         editorBridge.value = null;
         if (url) URL.revokeObjectURL(url);
+      };
+    }
+
+    if (isRich) {
+      // Read-only rich preview — no CodeMirror / autosaver / text load. The
+      // dedicated rich effect below fetches the bytes and renders into richHost.
+      editorBridge.value = null;
+      props.value = {};
+      docText.value = "";
+      return () => {
+        cancelled = true;
+        editorBridge.value = null;
       };
     }
 
@@ -309,6 +326,24 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       }
     }
   }, [readingHtml]);
+
+  // Rich file (xlsx/docx/pptx/drawio) → lazy-load the parser and render read-only
+  // HTML into its host (the load effect skipped the text path for these).
+  useEffect(() => {
+    const el = richHost.current;
+    if (!isRich || !path || !el) return;
+    let cancelled = false;
+    richErr.value = "";
+    el.innerHTML = '<div class="rich-msg">Loading preview…</div>';
+    void renderRichFile(path, el, ctx.daemon).catch((e) => {
+      if (cancelled) return;
+      richErr.value = e instanceof Error ? e.message : String(e);
+      el.innerHTML = "";
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [path, isRich]);
 
   if (!path) return <div class="ed-empty">Select a note from the Explorer.</div>;
 
@@ -489,6 +524,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               <span class="ed-badge"><Icon name="code" />HTML preview</span>
               {downloadBtn}
             </>
+          ) : isRich ? (
+            <>
+              <span class="ed-badge"><Icon name="file" />{richLabel(path)}</span>
+              {downloadBtn}
+            </>
           ) : (
             <>
               <SaveBadge />
@@ -546,6 +586,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           srcdoc={docText.value}
           title="HTML preview"
         />
+      ) : isRich ? (
+        <div class="ed-richwrap" data-testid="ed-rich">
+          {richErr.value ? (
+            <div class="rich-msg rich-err">Couldn’t render this file: {richErr.value}</div>
+          ) : null}
+          <div class="ed-rich" ref={richHost} />
+        </div>
       ) : (
         <>
           <Properties value={props.value} onChange={onProps} />
