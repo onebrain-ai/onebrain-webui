@@ -134,18 +134,75 @@
   font-weight: 600;
 }
 
-/* drawio — maxGraph renders the diagram into this stage (fit-to-pane, read-only) */
-.rich-diagram {
-  position: relative;
-  width: 100%;
-  height: 76vh;
-  min-height: 400px;
-  overflow: hidden;
-  background: var(--color-surface);
+/* pptx — pptx-preview stacks each slide; centre them with breathing room */
+.rich-slides {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.rich-slides > * {
   border: 1px solid var(--color-border);
   border-radius: 4px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+}
+
+/* drawio — the diagram fills the whole pane by default; a floating toolbar
+   (bottom-right) zooms in/out and re-fits. Drop the wrap's padding so the canvas
+   goes edge-to-edge, and let the host stretch to full height. */
+.ed-richwrap:has(.rich-diagram-frame) {
+  padding: 0;
+  overflow: hidden;
+}
+.ed-richwrap:has(.rich-diagram-frame) > .ed-rich {
+  height: 100%;
+}
+.rich-diagram-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: var(--color-surface);
+}
+.rich-diagram {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 /* maxGraph draws an inline SVG; let its own viewport manage the canvas. */
 .rich-diagram svg {
   max-width: none;
+}
+.rich-zoom {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.28);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.rich-zoom-btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.rich-zoom-btn:hover {
+  background: var(--color-bg-deep);
+  color: var(--section-accent);
 }

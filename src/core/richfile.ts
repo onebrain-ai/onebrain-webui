@@ -36,6 +36,8 @@ export async function renderRichFile(path: string, host: HTMLElement, daemon: Da
       return renderXlsx(path, host, daemon);
     case "docx":
       return renderDocx(path, host, daemon);
+    case "pptx":
+      return renderPptx(path, host, daemon);
     case "drawio":
       return renderDrawio(path, host, daemon);
     default:
@@ -96,6 +98,21 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
     "</article>";
 }
 
+// ── pptx (pptx-preview) ─────────────────────────────────────────────────────
+async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+  const buf = await arrayBuffer(path, daemon);
+  const { init } = await import("pptx-preview");
+  host.innerHTML = "";
+  const stage = document.createElement("div");
+  stage.className = "rich-slides";
+  host.appendChild(stage);
+  // Render every slide stacked (mode "list"); width tracks the pane, 16:9 height.
+  const width = Math.min(host.clientWidth || 900, 1000);
+  const previewer = init(stage, { width, height: Math.round(width * 0.5625) });
+  await previewer.preview(buf);
+  host.dataset.slideCount = String((previewer as unknown as { slideCount: number }).slideCount);
+}
+
 // ── drawio (@maxgraph/core) ─────────────────────────────────────────────────
 async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
   // .drawio is XML text, not binary — read it as text.
@@ -107,19 +124,40 @@ async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClien
   }
   const { Graph, ModelXmlSerializer, FitPlugin } = await import("@maxgraph/core");
   host.innerHTML = "";
+  // A relative frame fills the whole pane and holds both the canvas and the
+  // floating zoom toolbar.
+  const frame = document.createElement("div");
+  frame.className = "rich-diagram-frame";
   const stage = document.createElement("div");
   stage.className = "rich-diagram";
-  host.appendChild(stage);
-  // FitPlugin adds graph.fit(); register it so we can scale the whole diagram in.
+  frame.appendChild(stage);
+  host.appendChild(frame);
+  // FitPlugin lets us scale the diagram to the pane; ZoomMixin gives zoomIn/zoomOut.
   const graph = new Graph(stage, undefined, [FitPlugin]);
   graph.setEnabled(false); // read-only preview — no editing/selection of cells
+  graph.centerZoom = true; // zoom toward the view centre, not the origin
   new ModelXmlSerializer(graph.getDataModel()).import(modelXml);
-  // FitPlugin (id "fit") exposes fit/fitCenter on the plugin instance, not on the
-  // graph — scale the whole diagram in and centre it within the pane.
+  // FitPlugin (id "fit") exposes fit/fitCenter on the plugin instance, not the graph.
   const fitPlugin = graph.getPlugin("fit") as unknown as
     | { fitCenter?: (o?: { border?: number }) => number }
     | undefined;
-  fitPlugin?.fitCenter?.({ border: 24 });
+  const fit = () => fitPlugin?.fitCenter?.({ border: 24 });
+  fit(); // default: the whole diagram scaled to fill the full-height pane
+
+  // Zoom controls — the host is plain DOM (no JSX), so wire buttons by hand.
+  const zoom = document.createElement("div");
+  zoom.className = "rich-zoom";
+  zoom.innerHTML =
+    '<button class="rich-zoom-btn" data-z="out" type="button" title="Zoom out" aria-label="Zoom out">−</button>' +
+    '<button class="rich-zoom-btn" data-z="fit" type="button" title="Fit to view" aria-label="Fit to view">Fit</button>' +
+    '<button class="rich-zoom-btn" data-z="in" type="button" title="Zoom in" aria-label="Zoom in">+</button>';
+  frame.appendChild(zoom);
+  zoom.addEventListener("click", (e) => {
+    const z = (e.target as HTMLElement).closest("button")?.dataset.z;
+    if (z === "in") graph.zoomIn();
+    else if (z === "out") graph.zoomOut();
+    else if (z === "fit") fit();
+  });
 }
 
 /** Pull the mxGraphModel XML out of a .drawio `<mxfile>` — handles both the
