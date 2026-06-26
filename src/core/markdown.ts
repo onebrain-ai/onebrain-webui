@@ -10,6 +10,8 @@
 // introduced by this renderer, never carried through from the source — so a note
 // containing `<script>` renders as literal text, not an injected element.
 
+import DOMPurify from "dompurify";
+
 export interface ParsedNote {
   /** Raw YAML frontmatter block (without the `---` fences), or null. */
   frontmatter: string | null;
@@ -310,6 +312,20 @@ function renderBody(src: string, lineBase = 0): string {
       continue;
     }
 
+    // Raw HTML block — a line starting with an HTML tag or comment (README
+    // badges, <p align="center">, <div>, <picture>, <table>, <!-- … -->). Passed
+    // through VERBATIM (no markdown/escape) so GitHub-style HTML renders; the
+    // DOMPurify pass in renderMarkdown then strips anything unsafe (script, event
+    // handlers, javascript: URLs). The tag-name + boundary requirement avoids
+    // catching prose like `<3` or an autolink `<https://…>`. Collected to the
+    // next blank line (CommonMark type-6 HTML block: no markdown inside).
+    if (/^\s*<(!--|\/?[a-zA-Z][a-zA-Z0-9-]*(?:[\s/>]|$))/.test(line)) {
+      const buf: string[] = [];
+      while (i < lines.length && !/^\s*$/.test(lines[i])) buf.push(lines[i++]);
+      out.push(buf.join("\n"));
+      continue;
+    }
+
     // ATX heading.
     const h = /^(#{1,6})\s+(.*)$/.exec(line);
     if (h) {
@@ -424,5 +440,46 @@ function renderBody(src: string, lineBase = 0): string {
 /** Parse a raw note into its frontmatter + rendered-HTML body. */
 export function renderMarkdown(src: string): ParsedNote {
   const { frontmatter, body } = splitFrontmatter(src);
-  return { frontmatter, html: renderBody(body) };
+  // The markdown passes escape their own text, but raw HTML blocks flow through
+  // verbatim (GitHub-style). DOMPurify is the final safety gate: it strips
+  // scripts, event handlers, and javascript:/data: URLs while keeping a safe
+  // subset. `data-*` + `class` are allowed by default, so the renderer's
+  // interactive hooks survive (task checkboxes, wikilinks, mermaid/math nodes,
+  // vault image refs); we additionally allow `target` for links.
+  const html = DOMPurify.sanitize(renderBody(body), {
+    // Keep the renderer's interactive hooks that aren't in DOMPurify's default
+    // allowlist: task checkboxes (<input>), heading anchor `id`s, the <details>
+    // `open` state, and `target` on links. `data-*` + `class` are allowed by
+    // default. Event handlers, scripts, and javascript:/data: URLs are still
+    // stripped — DOMPurify only adds these specific safe items.
+    ADD_TAGS: ["input"],
+    ADD_ATTR: ["id", "open", "target", "type", "checked"],
+    // Drop inline `style` entirely (GitHub does the same for user content): it's
+    // a CSS-injection surface we don't need — the renderer styles via classes,
+    // and README layout uses `align=`, not inline style.
+    FORBID_ATTR: ["style"],
+    // Keep heading anchor `id`s (used for in-note #heading navigation). This
+    // only relaxes DOMPurify's DOM-clobbering guard — script tags, event
+    // handlers, and javascript:/data: URLs are STILL stripped. Acceptable for a
+    // single-user, local tool rendering the user's own vault notes.
+    SANITIZE_DOM: false,
+  });
+  return { frontmatter, html };
+}
+
+/** Markdown file extensions — rendered through the full markdown pipeline. Any
+ *  other text file (yaml, json, toml, sh, …) is shown verbatim as a code block,
+ *  because markdown parsing would mangle it (collapse its newlines into one
+ *  paragraph, turn `- key:` lines into bullet lists). */
+const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdx"]);
+
+/** Render a vault file for the reading view by extension: a markdown note goes
+ *  through {@link renderMarkdown}; every other text file (yaml, json, toml, sh,
+ *  …) renders as a formatting-preserving code block. `esc()` makes the body
+ *  inert, so the static `<pre><code>` wrapper needs no DOMPurify pass. */
+export function renderFile(path: string, content: string): ParsedNote {
+  const ext = (path.split(".").pop() ?? "").toLowerCase();
+  if (MARKDOWN_EXTENSIONS.has(ext)) return renderMarkdown(content);
+  const langClass = ext ? ` class="language-${esc(ext)}"` : "";
+  return { frontmatter: null, html: `<pre><code${langClass}>${esc(content)}</code></pre>` };
 }

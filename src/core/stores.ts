@@ -87,7 +87,7 @@ export function toggleSidebar(): void {
 // ── Which panel fills the sidebar + the live search query ─────────────────────
 // Module-level (not CmsShell-local) so any surface can switch tabs — e.g. clicking
 // a #tag in the reading view opens the Search panel pre-filled.
-export type SidebarTab = "explorer" | "search" | "tasks" | "status";
+export type SidebarTab = "explorer" | "search" | "tasks" | "status" | "memory";
 export const sidebarTab = signal<SidebarTab>("explorer");
 export const searchQuery = signal<string>("");
 
@@ -134,6 +134,11 @@ export const accent = signal<AccentName>(loadAccent());
 export const density = signal<"comfortable" | "compact">(
   loadString("onebrain.density", "comfortable") === "compact" ? "compact" : "comfortable",
 );
+/** Light / dark colour scheme. Dark is the DS default; `[data-theme="light"]`
+ *  overrides the grayscale tokens (tokens.css). */
+export const theme = signal<"dark" | "light">(
+  loadString("onebrain.theme", "dark") === "light" ? "light" : "dark",
+);
 
 /** Re-tint the surface by overriding `--section-accent` on :root (DS pattern). */
 export function setAccent(name: AccentName): void {
@@ -148,10 +153,17 @@ export function setDensity(d: "comfortable" | "compact"): void {
   saveString("onebrain.density", d);
 }
 
+export function setTheme(t: "dark" | "light"): void {
+  theme.value = t;
+  applyTheme(t);
+  saveString("onebrain.theme", t);
+}
+
 /** Apply the persisted theme settings to the document. Call once at boot. */
 export function applyThemeSettings(): void {
   applyAccent(accent.value);
   applyDensity(density.value);
+  applyTheme(theme.value);
 }
 
 function applyAccent(name: AccentName): void {
@@ -168,6 +180,12 @@ function applyAccent(name: AccentName): void {
 function applyDensity(d: "comfortable" | "compact"): void {
   if (d === "compact") document.documentElement.setAttribute("data-density", "compact");
   else document.documentElement.removeAttribute("data-density");
+}
+function applyTheme(t: "dark" | "light"): void {
+  // Dark is the default token set; the attribute drives the `[data-theme="light"]`
+  // overrides. `color-scheme` lets the browser theme native controls/scrollbars.
+  document.documentElement.setAttribute("data-theme", t);
+  document.documentElement.style.colorScheme = t;
 }
 
 function loadAccent(): AccentName {

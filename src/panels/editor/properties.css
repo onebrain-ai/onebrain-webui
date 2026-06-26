@@ -85,3 +85,75 @@
 .props-val:focus {
   border-color: var(--section-accent);
 }
+
+/* date-valued property → native calendar picker (dark-themed, compact) */
+.props-date {
+  color-scheme: dark;
+  max-width: 170px;
+}
+
+/* list-valued property (tags / topics) → Obsidian-style removable pills + adder */
+.props-row:has(.props-tags) {
+  align-items: start;
+}
+.props-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.props-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--section-accent);
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
+  border-radius: 11px;
+}
+.props-tag-x {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--section-accent);
+  opacity: 0.6;
+  cursor: pointer;
+}
+.props-tag-x > .ic {
+  width: 9px;
+  height: 9px;
+  display: block;
+  /* margin:auto + place-self centre the replaced SVG reliably (grid place-items
+     alone can leave an inline SVG a sub-pixel off, visible against the hover ring). */
+  margin: auto;
+  place-self: center;
+}
+.props-tag-x:hover {
+  opacity: 1;
+  background: color-mix(in oklab, var(--section-accent) 22%, transparent);
+}
+.props-tag-add {
+  flex: 1 1 64px;
+  min-width: 64px;
+  padding: 3px 2px;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+}
+.props-tag-add::placeholder {
+  color: var(--color-ghost);
+}
+.props-tag-add:focus {
+  border-bottom-color: var(--accent-line);
+}

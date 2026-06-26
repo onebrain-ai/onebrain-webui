@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderMarkdown } from "./markdown";
+import { renderMarkdown, renderFile } from "./markdown";
 
 const html = (src: string) => renderMarkdown(src).html;
 
@@ -7,9 +7,10 @@ describe("renderMarkdown — security (XSS invariants)", () => {
   // These lock the "escape-first" guarantee the renderer's safety rests on.
   // A failure here is a security regression, not a cosmetic one.
 
-  it("escapes raw HTML in body text", () => {
-    expect(html("<script>alert(1)</script>")).not.toContain("<script>");
-    expect(html("<script>alert(1)</script>")).toContain("&lt;script&gt;");
+  it("strips a raw <script> from the body (raw HTML renders, then DOMPurify sanitizes)", () => {
+    const out = html("<script>alert(1)</script>");
+    expect(out).not.toContain("<script>");
+    expect(out).not.toContain("alert(1)"); // DOMPurify removes the script element AND its contents
   });
 
   it("escapes HTML inside headings, list items, blockquotes and code", () => {
@@ -37,12 +38,46 @@ describe("renderMarkdown — security (XSS invariants)", () => {
   });
 
   it("prevents attribute breakout via quotes in href and wikilink target", () => {
-    const link = html('[a](https://x" onmouseover="alert(1))');
-    expect(link).not.toContain('onmouseover="alert(1)"');
-    const wiki = html('[[a" onmouseover="alert(1)]]');
-    expect(wiki).not.toContain('onmouseover="alert');
-    // The quote survives only as the escaped entity.
-    expect(wiki).toContain("&quot;");
+    // No EXECUTABLE event-handler attribute survives on any rendered element —
+    // the malicious quotes land in text / attribute VALUES, never as a real attr.
+    // Parse the output so we test real attributes, not substrings of a value.
+    const noHandlers = (src: string) => {
+      const doc = new DOMParser().parseFromString(html(src), "text/html");
+      for (const el of Array.from(doc.querySelectorAll("*"))) {
+        for (const attr of Array.from(el.attributes)) {
+          expect(attr.name.startsWith("on")).toBe(false);
+        }
+      }
+    };
+    noHandlers('[a](https://x" onmouseover="alert(1))');
+    noHandlers('[[a" onmouseover="alert(1)]]');
+  });
+
+  it("neutralises a battery of raw-HTML XSS payloads (DOMPurify gate)", () => {
+    // Raw HTML blocks render (GitHub-style) but must never carry executable
+    // script, event handlers, javascript:/data:text URLs, or inline style.
+    const payloads = [
+      "<script>alert(1)</script>",
+      "<img src=x onerror=alert(1)>",
+      "<svg onload=alert(1)></svg>",
+      "<svg><script>alert(1)</script></svg>",
+      "<iframe src=javascript:alert(1)></iframe>",
+      '<a href="javascript:alert(1)">x</a>',
+      '<a href="java\tscript:alert(1)">x</a>',
+      '<a href="data:text/html,<script>alert(1)</script>">x</a>',
+      "<details open ontoggle=alert(1)>x</details>",
+      "<style>*{x:expression(alert(1))}</style>",
+      '<p style="background:url(javascript:alert(1))">x</p>',
+      "<object data=javascript:alert(1)></object>",
+      "<embed src=javascript:alert(1)>",
+      "<base href=javascript:alert(1)>",
+    ];
+    for (const p of payloads) {
+      const out = html(p);
+      expect(out).not.toMatch(
+        /<script|onerror|onload|onclick|ontoggle|javascript:|expression\(|<iframe|<object|<embed|<base|style=/i,
+      );
+    }
   });
 });
 
@@ -126,7 +161,8 @@ describe("renderMarkdown — rendering", () => {
     expect(collapsed).toContain('<summary class="callout-title">');
     expect(collapsed).toContain("details here");
     const open = html("> [!tip]+ Pro tip\n> body");
-    expect(open).toContain('<details class="callout" data-callout="tip" open>');
+    // DOMPurify normalises the boolean `open` to `open=""`.
+    expect(open).toContain('<details class="callout" data-callout="tip" open="">');
   });
 
   it("renders ~~strikethrough~~ and ==highlight==", () => {
@@ -157,9 +193,10 @@ describe("renderMarkdown — rendering", () => {
     expect(out).toContain("<li>b<ul><li>b1</li><li>b2</li></ul></li>");
     const tasks = html("- [ ] open\n  - [x] sub done");
     expect(tasks).toContain('class="task-list"');
-    // checkboxes are clickable + carry a data-line for write-back (0-based body line)
+    // checkboxes are clickable + carry a data-line for write-back (0-based body line).
+    // DOMPurify normalises the boolean `checked` to `checked=""`.
     expect(tasks).toContain('<input type="checkbox" class="task-check" data-line="0"> open');
-    expect(tasks).toContain('<input type="checkbox" class="task-check" data-line="1" checked> sub done');
+    expect(tasks).toContain('<input type="checkbox" class="task-check" data-line="1" checked=""> sub done');
   });
 
   it("gives a task nested in a callout an ABSOLUTE data-line (not callout-relative)", () => {
@@ -204,8 +241,8 @@ describe("renderMarkdown — rendering", () => {
   });
 
   it("renders inline $math$ and block $$math$$ for KaTeX (verbatim)", () => {
-    expect(html("euler $e^{i\\pi}+1=0$ ok")).toContain('<span class="math-inline" data-math>e^{i\\pi}+1=0</span>');
-    expect(html("$$\\int_0^1 x\\,dx$$")).toContain('<div class="math-block" data-math>');
+    expect(html("euler $e^{i\\pi}+1=0$ ok")).toContain('<span class="math-inline" data-math="">e^{i\\pi}+1=0</span>');
+    expect(html("$$\\int_0^1 x\\,dx$$")).toContain('<div class="math-block" data-math="">');
     expect(html("price $5 and $10 total")).not.toContain("math-inline"); // not math
   });
 
@@ -219,7 +256,20 @@ describe("renderMarkdown — rendering", () => {
     const out = html("- [ ] open\n- [x] done");
     expect(out).toContain('class="task-list"');
     expect(out).toContain('<input type="checkbox" class="task-check" data-line="0"> open');
-    expect(out).toContain('<input type="checkbox" class="task-check" data-line="1" checked> done');
+    expect(out).toContain('<input type="checkbox" class="task-check" data-line="1" checked=""> done');
+  });
+
+  it("renders safe raw HTML blocks (GitHub-style) and strips unsafe parts", () => {
+    // README-style centered badge block — should render as real HTML.
+    const out = html('<p align="center"><a href="https://x.com"><img src="https://x.com/b.png" alt="badge"></a></p>');
+    expect(out).toContain('<p align="center">');
+    expect(out).toContain('href="https://x.com"');
+    expect(out).toContain('src="https://x.com/b.png"');
+    expect(out).toContain('alt="badge"');
+    // …but an event handler in a raw HTML block is stripped by DOMPurify.
+    const evil = html('<div onclick="alert(1)">hi</div>');
+    expect(evil).toContain(">hi</div>");
+    expect(evil).not.toMatch(/onclick/i);
   });
 
   it("renders a ```mermaid fence as a mermaid container, not a code block", () => {
@@ -239,5 +289,39 @@ describe("renderMarkdown — rendering", () => {
     const { frontmatter, html } = renderMarkdown("---\nonly: meta\n---\n");
     expect(frontmatter).toBe("only: meta");
     expect(html.trim()).toBe("");
+  });
+});
+
+describe("renderFile — non-markdown files render as code, not markdown", () => {
+  const yaml = "folders:\n  projects: 01-projects\n  areas: 02-areas\nschedule:\n  - cron: 0 9 * * *\n    skill: /daily\n";
+
+  it("renders a .yml file verbatim in a <pre><code> block (newlines + structure preserved)", () => {
+    const { html, frontmatter } = renderFile("onebrain.yml", yaml);
+    expect(frontmatter).toBeNull();
+    expect(html.startsWith('<pre><code class="language-yml">')).toBe(true);
+    expect(html.endsWith("</code></pre>")).toBe(true);
+    // YAML must NOT be mangled into markdown: no <p>, no <ul>/<li> from `- cron:`.
+    expect(html).not.toContain("<p>");
+    expect(html).not.toContain("<li>");
+    // newlines preserved (markdown would have collapsed them into a paragraph)
+    expect(html).toContain("folders:\n  projects: 01-projects");
+    expect(html).toContain("  - cron: 0 9 * * *");
+  });
+
+  it("tags the code block with the file's extension for highlighting", () => {
+    expect(renderFile("a.json", "{}").html).toContain('class="language-json"');
+    expect(renderFile("deploy.sh", "echo hi").html).toContain('class="language-sh"');
+    expect(renderFile("Cargo.toml", "[package]").html).toContain('class="language-toml"');
+  });
+
+  it("escapes content in the code block (no HTML injection via a non-md file)", () => {
+    const out = renderFile("config.yml", 'x: "<img src=x onerror=alert(1)>"').html;
+    expect(out).not.toContain("<img");
+    expect(out).toContain("&lt;img");
+  });
+
+  it("still renders .md / .markdown through the full markdown pipeline", () => {
+    expect(renderFile("note.md", "# Title").html).toContain('<h1 id="title">Title</h1>');
+    expect(renderFile("NOTE.MARKDOWN", "**bold**").html).toContain("<strong>bold</strong>");
   });
 });

@@ -6,6 +6,12 @@
   width: 360px;
 }
 
+/* The chat dock has no horizontal padding of its own, so inset the header to
+   line up with the feed/input below and keep the action buttons off the edge. */
+.cms-chat .w-head {
+  padding-left: 13px;
+  padding-right: 13px;
+}
 /* header actions (sit right of the .w-head pill) */
 .ch-acts {
   margin-left: auto;
@@ -227,6 +233,9 @@
   line-height: 1.5;
   padding: 8px 10px;
   outline: none;
+  /* Floor at ~2 lines so the multi-line placeholder + hint never clip (the JS
+     auto-grow sets an inline height that this min-height keeps from collapsing). */
+  min-height: 54px;
   max-height: 160px;
   overflow-y: auto;
   transition: border-color 0.15s;
@@ -334,6 +343,14 @@
   font-size: 12px;
   color: var(--section-accent);
   flex: 0 0 auto;
+}
+.ch-att-thumb {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--accent-line);
 }
 .ch-att.uploading {
   opacity: 0.6;

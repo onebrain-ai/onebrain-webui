@@ -6,7 +6,7 @@
 import { useSignal, computed } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import type { PanelDef, PanelContext } from "../contract";
-import { renderMarkdown } from "../../core/markdown";
+import { renderFile } from "../../core/markdown";
 import { previewPath, resolveWikilink, openFile } from "../bus";
 import "./preview.css";
 
@@ -73,7 +73,6 @@ export function PreviewBody({ ctx }: { ctx: PanelContext }) {
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
   const isImg = IMG_EXT.includes(ext);
   const isHtml = ext === "html" || ext === "htm";
-  const isYml = ext === "yml" || ext === "yaml";
 
   // fetch the file when the path changes (images aren't fetched — binary)
   useEffect(() => {
@@ -133,14 +132,10 @@ export function PreviewBody({ ctx }: { ctx: PanelContext }) {
     body = <div class="pv-empty">{data.value.error}</div>;
   } else if (isHtml) {
     body = <iframe class="pv-frame" sandbox="" srcdoc={data.value.content ?? ""} />;
-  } else if (isYml) {
-    body = (
-      <pre>
-        <code>{data.value.content}</code>
-      </pre>
-    );
   } else {
-    const parsed = renderMarkdown(data.value.content ?? "");
+    // renderFile renders markdown notes via the markdown pipeline and every other
+    // text file (yaml, json, toml, …) as a formatting-preserving code block.
+    const parsed = renderFile(path, data.value.content ?? "");
     body = (
       <>
         {frontmatterBlock(parsed.frontmatter)}

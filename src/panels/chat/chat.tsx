@@ -62,6 +62,9 @@ function Chat({ ctx }: { ctx: PanelContext }) {
   const slashOpen = slashMatches.length > 0;
 
   // Keep the feed pinned to the latest message + render any mermaid as it streams.
+  // Re-runs only when a message is added (length) or the last one grows (streaming
+  // content) — not on every render (e.g. typing in the draft), which would scroll
+  // + re-scan for mermaid needlessly.
   useEffect(() => {
     requestAnimationFrame(() => {
       const el = feedRef.current;
@@ -70,7 +73,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
         void renderMermaidIn(el);
       }
     });
-  });
+  }, [msgs.length, msgs.at(-1)?.text]);
 
   // Auto-grow the composer up to a max height.
   const grow = () => {
@@ -108,14 +111,20 @@ function Chat({ ctx }: { ctx: PanelContext }) {
     void send(ctx.daemon, msg);
   };
 
-  const onFiles = async (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const files = input.files ? Array.from(input.files) : [];
-    input.value = ""; // allow re-selecting the same file
-    for (const file of files) {
-      const safe = file.name.replace(/[^\w.\-ก-๙]+/g, "_");
+  // Max attachments per message — shared by the file picker and clipboard paste.
+  const MAX_ATTACHMENTS = 5;
+
+  const addFiles = async (incoming: File[]) => {
+    const room = MAX_ATTACHMENTS - attachments.value.length;
+    if (room <= 0) return; // already at the cap — silently ignore the rest
+    for (const file of incoming.slice(0, room)) {
+      // Pasted images often have no name → synthesise one from the MIME type so
+      // the daemon stores it with a real image extension.
+      const ext = (file.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "");
+      const rawName = file.name || `pasted-image.${ext}`;
+      const safe = rawName.replace(/[^\w.\-ก-๙]+/g, "_");
       const path = `00-inbox/imports/chat-${Math.random().toString(36).slice(2, 8)}-${safe}`;
-      attachments.value = [...attachments.value, { name: file.name, path, uploading: true }];
+      attachments.value = [...attachments.value, { name: rawName, path, uploading: true }];
       try {
         const buf = await file.arrayBuffer();
         await ctx.daemon.uploadFile(path, buf);
@@ -124,6 +133,24 @@ function Chat({ ctx }: { ctx: PanelContext }) {
         attachments.value = attachments.value.filter((a) => a.path !== path);
       }
     }
+  };
+
+  const onFiles = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const files = input.files ? Array.from(input.files) : [];
+    input.value = ""; // allow re-selecting the same file
+    void addFiles(files);
+  };
+
+  // Paste images straight into the composer (≤ MAX_ATTACHMENTS total).
+  const onPaste = (e: ClipboardEvent) => {
+    const imgs = Array.from(e.clipboardData?.items ?? [])
+      .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (imgs.length === 0) return; // let normal text paste through
+    e.preventDefault();
+    void addFiles(imgs);
   };
 
   const pickSkill = (cmd: string) => {
@@ -165,7 +192,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
             <Icon name="history" />
           </button>
           <button class="ch-iconbtn" type="button" title="New chat" aria-label="New chat" onClick={() => { newThread(); showThreads.value = false; }}>
-            <Icon name="edit" />
+            <Icon name="plus" />
           </button>
         </span>
       </div>
@@ -231,13 +258,18 @@ function Chat({ ctx }: { ctx: PanelContext }) {
           <div class="ch-attachments" data-testid="chat-attachments">
             {attachments.value.map((a) => (
               <span key={a.path} class={a.uploading ? "ch-att uploading" : "ch-att"}>
-                <Icon name="paperclip" />
+                {/\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i.test(a.path) && !a.uploading ? (
+                  <img class="ch-att-thumb" src={ctx.daemon.rawUrl(a.path)} alt={a.name} />
+                ) : (
+                  <Icon name="paperclip" />
+                )}
                 <span class="ch-att-name">{a.name}</span>
                 {!a.uploading && (
                   <button
                     type="button"
                     class="ch-att-x"
                     aria-label="Remove attachment"
+                    title="Remove attachment"
                     onClick={() => { attachments.value = attachments.value.filter((x) => x.path !== a.path); }}
                   >
                     <Icon name="x" />
@@ -252,30 +284,32 @@ function Chat({ ctx }: { ctx: PanelContext }) {
           <button
             class="chat-attach"
             type="button"
-            title="แนบไฟล์ / รูป"
+            title={attachments.value.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} files` : "แนบไฟล์ / รูป (วางรูปได้)"}
             aria-label="Attach file"
-            disabled={busy}
+            disabled={busy || attachments.value.length >= MAX_ATTACHMENTS}
             onClick={() => fileRef.current?.click()}
           >
             <Icon name="paperclip" />
           </button>
           <textarea
             ref={inputRef}
-            rows={1}
-            placeholder="ถามจิโอ้…  Enter ส่ง · Shift+Enter ขึ้นบรรทัด · / เรียก skill"
+            rows={2}
+            placeholder="ถามจิโอ้…  วางรูป ≤5
+Enter ส่ง · Shift+Enter บรรทัดใหม่"
             autocomplete="off"
             spellcheck={false}
             value={draft.value}
             disabled={busy}
             onInput={(e) => { draft.value = (e.target as HTMLTextAreaElement).value; slashIdx.value = 0; grow(); }}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
           />
           {busy && thread ? (
-            <button class="chat-send stop" type="button" onClick={() => stop(thread.id)} aria-label="Stop">
+            <button class="chat-send stop" type="button" onClick={() => stop(thread.id)} aria-label="Stop" title="Stop">
               <Icon name="x" />
             </button>
           ) : (
-            <button class="chat-send" type="button" onClick={onSend} aria-label="Send">
+            <button class="chat-send" type="button" onClick={onSend} aria-label="Send" title="Send">
               <Icon name="send" />
             </button>
           )}

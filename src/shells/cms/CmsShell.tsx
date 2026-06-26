@@ -5,7 +5,6 @@ import { getPanel } from "../../panels";
 import { initVault, openFile, previewPath, loadConfig } from "../../panels/bus";
 import {
   chatOpen,
-  setChatOpen,
   sidebarWidth,
   sidebarCollapsed,
   setSidebarWidth,
@@ -36,6 +35,7 @@ const NAV: ReadonlyArray<readonly [SidebarTab, IconName, string]> = [
   ["explorer", "file", "Files"],
   ["search", "search", "Search"],
   ["tasks", "tasks", "Tasks"],
+  ["memory", "book", "Memory"],
   ["status", "activity", "Status"],
 ] as const;
 
@@ -152,10 +152,10 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
       data-sidebar={collapsed ? "collapsed" : "open"}
       style={`--sidebar-w:${collapsed ? 0 : sidebarWidth.value}px;--chat-w:${chatWidth.value}px`}
     >
-      <Topbar onSearch={() => { setSidebarCollapsed(false); sidebarTab.value = "search"; }} />
+      <Topbar />
 
       <nav class="cms-rail" data-testid="cms-rail">
-        {NAV.map(([id, icon, label]) => (
+        {NAV.filter(([id]) => id !== "status").map(([id, icon, label]) => (
           <button
             key={id}
             class={sidebarTab.value === id && !collapsed ? "cms-rail-btn is-active" : "cms-rail-btn"}
@@ -169,16 +169,21 @@ export function CmsShell({ daemon }: { daemon: DaemonClient }) {
           </button>
         ))}
         <div class="cms-rail-grow" />
-        <button
-          class={chatOpen.value ? "cms-rail-btn is-active" : "cms-rail-btn"}
-          type="button"
-          data-testid="cms-chat-toggle"
-          title="Chat"
-          aria-label="Chat"
-          onClick={() => setChatOpen(!chatOpen.value)}
-        >
-          <Icon name="chat" />
-        </button>
+        {/* System sits at the bottom of the rail (where the chat toggle used to
+            be, before it moved to the topbar) — a meta/status anchor. */}
+        {NAV.filter(([id]) => id === "status").map(([id, icon, label]) => (
+          <button
+            key={id}
+            class={sidebarTab.value === id && !collapsed ? "cms-rail-btn is-active" : "cms-rail-btn"}
+            type="button"
+            data-testid={`cms-tab-${id}`}
+            title={label}
+            aria-label={label}
+            onClick={() => onNav(id)}
+          >
+            <Icon name={icon} />
+          </button>
+        ))}
       </nav>
 
       <aside class="cms-explorer" data-testid="cms-explorer">

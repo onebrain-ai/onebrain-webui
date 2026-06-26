@@ -13,7 +13,7 @@ import { editorBridge } from "../../core/editor-bridge";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
-import { renderMarkdown } from "../../core/markdown";
+import { renderFile } from "../../core/markdown";
 import { renderMermaidIn } from "../../core/mermaid";
 import { renderMathIn } from "../../core/katex";
 import { Icon } from "../../ui/Icon";
@@ -266,22 +266,38 @@ function Editor({ ctx }: { ctx: PanelContext }) {
 
   // Rendered reading-view HTML + a mermaid pass after it mounts. Computed here
   // (before the early return) so the effect's hook order stays stable.
-  const readingHtml = reading.value && path && !isHtml && !isBinary ? renderMarkdown(docText.value).html : "";
+  // renderFile picks markdown vs code-block by extension, so a .yml / .json /
+  // .toml note renders verbatim (preserving its newlines) instead of being
+  // mangled by the markdown parser.
+  const readingHtml =
+    reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : "";
   useEffect(() => {
     if (readingHost.current) {
       void renderMermaidIn(readingHost.current);
       void renderMathIn(readingHost.current);
       // Resolve vault image refs to the authed raw endpoint (img can't send the
       // token header, so rawUrl carries it in the query).
+      const hideImg = (img: HTMLImageElement) => {
+        img.style.display = "none";
+      };
       readingHost.current
         .querySelectorAll<HTMLImageElement>("img[data-vault-src],img[data-vault-embed]")
         .forEach((img) => {
           const ref = img.getAttribute("data-vault-src") ?? img.getAttribute("data-vault-embed") ?? "";
           const path = resolveAsset(ref);
-          if (path) img.src = ctx.daemon.rawUrl(path);
           img.removeAttribute("data-vault-src");
           img.removeAttribute("data-vault-embed");
+          if (path) img.src = ctx.daemon.rawUrl(path);
+          else hideImg(img); // unresolvable vault ref → hide, don't show a broken icon
         });
+      // Hide ANY image that fails to load (a missing vault embed, a broken
+      // README asset like `assets/header.png`, a dead external URL) so the
+      // reading view shows nothing rather than a broken-image "?" placeholder.
+      readingHost.current.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+        img.addEventListener("error", () => hideImg(img));
+        // Already failed before the listener attached (e.g. cached 404).
+        if (img.getAttribute("src") && img.complete && img.naturalWidth === 0) hideImg(img);
+      });
       // Scroll to a pending [[note#heading]] anchor once the new content is laid out.
       if (pendingHeading.current) {
         const slug = pendingHeading.current;

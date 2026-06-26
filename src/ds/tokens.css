@@ -46,3 +46,23 @@
   /* button-scale chamfer (6px) for chrome controls — --clip-tech is panel-scale (12px) */
   --clip-chip: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
 }
+
+/* ── Light theme ─────────────────────────────────────────────────────────────
+ * Flips the grayscale scale (bg/surface/text/border) to a light palette. The
+ * neon accents stay vivid — they're used as strokes, tints, and glows (never
+ * solid fills), so the operator-console identity carries over to light. Driven
+ * by `data-theme="light"` on <html> (core/stores applyTheme). */
+:root[data-theme="light"] {
+  --color-bg: #f4f5f8;
+  --color-bg-deep: #e6e8ee;
+  --color-surface: #ffffff;
+  --color-surface-2: rgba(255, 255, 255, 0.86);
+  --color-border: rgba(12, 14, 22, 0.14);
+  --color-border-2: rgba(12, 14, 22, 0.09);
+  --color-text: #14151a;
+  --color-muted: #585c66;
+  --color-faint: rgba(12, 14, 22, 0.62);
+  --color-ghost: rgba(12, 14, 22, 0.22);
+  /* `--color-white` is the BRIGHTEST foreground on dark → the darkest on light. */
+  --color-white: #0a0b10;
+}

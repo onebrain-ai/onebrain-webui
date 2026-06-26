@@ -3,8 +3,10 @@
 import "./ds/fonts.css"; // self-hosted fonts (offline) — must load before the DS tokens that reference them
 import "./ds/tokens.css";
 import "./ds/base.css";
+import "./ds/density.css"; // [data-density="compact"] overrides (toggled in Settings)
 import "./ui/callout.css";
 import "./shells/command-center/widget.css";
+import "./ds/effects.css"; // panel-header redesign + button motion + ambient cues — LAST so it wins over widget.css
 
 import { render } from "preact";
 import { resolveToken } from "./core/token";

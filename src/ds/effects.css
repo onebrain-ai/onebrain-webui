@@ -1,0 +1,140 @@
+/* ── UI polish: panel-header redesign + button motion + ambient "alive" cues ──
+ * Loaded LAST (main.tsx) so these win over the component CSS without !important.
+ * Scoped selectors only — nothing here changes a component's structure. */
+
+/* #2 — Sleeker panel header.
+ * The old `.pill` box was bulky: heavy border + accent-weak fill + 0.34em
+ * tracking that spread "VAULT · EXPLORER" onto two lines. Scoped to .w-head so
+ * the boxed `.pill` used elsewhere (composer, chat, firstrun) is untouched. */
+.w-head {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  position: relative;
+}
+.w-head .pill {
+  /* Light, not boxy: no border/fill, but keep enough padding that the corner
+     L-brackets (.pill::before/::after) frame the dot + label with breathing room
+     instead of sitting right on top of the blinking dot. */
+  padding: 4px 10px;
+  border: 0;
+  background: transparent;
+  gap: 9px;
+  font-size: 10px;
+  letter-spacing: 0.18em; /* fits one line, still techy */
+}
+.w-head .w-meta {
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+/* The blinking dot is redundant now that the header underline sweeps — drop it
+   and pull the label back to the left so the pill reads cleanly. */
+.w-head .pill .dot {
+  display: none;
+}
+.w-head .pill {
+  gap: 0;
+}
+/* #4 — a slow accent sweep riding the header's underline: quietly "alive". */
+.w-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 34%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--section-accent), transparent);
+  opacity: 0.5;
+  animation: ob-head-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ob-head-sweep {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.18;
+  }
+  50% {
+    transform: translateX(180%);
+    opacity: 0.6;
+  }
+}
+
+/* #3 — buttons get a springy hover (lift + accent glow) and a press dip. */
+.tb-icon-btn,
+.fo-btn,
+.cms-rail-btn,
+.tb-search,
+.st-seg button,
+.tb-acc {
+  transition:
+    transform 0.14s ease,
+    color 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.2s ease,
+    background 0.15s ease;
+}
+.tb-icon-btn:hover,
+.fo-btn:hover,
+.cms-rail-btn:hover,
+.tb-search:hover {
+  transform: translateY(-1px);
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  box-shadow: 0 0 18px -8px var(--section-accent);
+}
+.tb-icon-btn:active,
+.fo-btn:active,
+.cms-rail-btn:active,
+.tb-search:active {
+  transform: translateY(0) scale(0.94);
+}
+.tb-acc:hover {
+  transform: scale(1.18);
+}
+/* The topbar chat toggle shows its open state (accent + glow). */
+.tb-icon-btn.is-active,
+.tb-icon-btn[aria-pressed="true"] {
+  color: var(--section-accent);
+  border-color: var(--accent-line);
+  box-shadow: 0 0 18px -8px var(--section-accent);
+}
+
+/* #4 — the active rail tab breathes a faint accent glow (Tron-ish status cue). */
+.cms-rail-btn.is-active {
+  animation: ob-rail-glow 2.6s ease-in-out infinite;
+}
+@keyframes ob-rail-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 14px -8px var(--section-accent);
+  }
+  50% {
+    box-shadow: 0 0 20px -4px var(--section-accent);
+  }
+}
+
+/* #1 — Icon centering (generic, root-cause fix). An icon-only button grid-/flex-
+   centres its single child with `place-items:center`, which centres the glyph
+   WITHIN its track — but the track itself defaults to `justify-content:start`, so
+   it parks at the content-box's left edge. With horizontal padding shrinking the
+   box below the icon's width (small buttons: 28px box, ~19.5px icon), the glyph
+   spills to the right — measured +2.77px on .tb-collapse, +2.20px on .tb-icon-btn,
+   while the roomier 36px rail button sat dead-centre. `place-content:center`
+   centres the whole track instead, fixing every icon-only button at once
+   (current and future) without enumerating class names or touching padding.
+   `:only-child` keeps icon+label buttons (where the glyph sits beside text)
+   untouched — those still want their baseline. */
+button:has(> .ic:only-child) {
+  place-content: center;
+}
+button > .ic:only-child {
+  display: block;
+}
+
+/* Honour reduced-motion: drop the ambient animations, keep hover feedback. */
+@media (prefers-reduced-motion: reduce) {
+  .w-head::after,
+  .cms-rail-btn.is-active,
+  .dot {
+    animation: none;
+  }
+}

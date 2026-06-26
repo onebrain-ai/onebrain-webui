@@ -6,8 +6,9 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { vaultTree, allFiles } from "../../panels/bus";
-import { ACCENTS, accent, setAccent, toggleSidebar, type AccentName } from "../../core/stores";
+import { toggleSidebar, chatOpen, setChatOpen } from "../../core/stores";
 import { Icon } from "../../ui/Icon";
+import { SettingsModal } from "./SettingsModal";
 import "./topbar.css";
 
 function Clock() {
@@ -25,55 +26,25 @@ function currentTime(): string {
 
 function Settings() {
   const open = useSignal(false);
-  useEffect(() => {
-    if (!open.value) return;
-    const onDown = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest(".tb-settings")) open.value = false;
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") open.value = false;
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open.value]);
-
   return (
     <div class="tb-settings">
       <button
         class="tb-icon-btn"
         type="button"
-        aria-label="Accent color"
+        aria-label="Settings"
+        title="Settings"
+        aria-haspopup="dialog"
         aria-expanded={open.value}
-        onClick={() => (open.value = !open.value)}
+        onClick={() => (open.value = true)}
       >
         <Icon name="settings" />
       </button>
-      {open.value && (
-        <div class="tb-pop" role="group" aria-label="Accent color">
-          <div class="tb-grp">Accent</div>
-          <div class="tb-acc-row">
-            {(Object.keys(ACCENTS) as AccentName[]).map((name) => (
-              <button
-                key={name}
-                type="button"
-                class={`tb-acc${accent.value === name ? " on" : ""}`}
-                style={`--sw:${ACCENTS[name]}`}
-                aria-label={name}
-                onClick={() => setAccent(name)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {open.value && <SettingsModal onClose={() => (open.value = false)} />}
     </div>
   );
 }
 
-export function Topbar({ onSearch }: { onSearch: () => void }) {
+export function Topbar() {
   const tree = vaultTree.value; // subscribe → stats refresh when the vault loads
   const files = tree ? allFiles() : [];
   const notes = files.filter((p) => p.toLowerCase().endsWith(".md")).length;
@@ -109,10 +80,16 @@ export function Topbar({ onSearch }: { onSearch: () => void }) {
         </span>
         <span class="tb-div" />
         <Clock />
-        <button class="tb-search" type="button" onClick={onSearch} aria-label="Search vault">
-          <Icon name="search" />
-          <span class="tb-s-lab">Search</span>
-          <span class="kbd">⌘K</span>
+        <button
+          class={chatOpen.value ? "tb-icon-btn is-active" : "tb-icon-btn"}
+          type="button"
+          aria-label="Toggle chat"
+          title={chatOpen.value ? "Close chat" : "Open chat"}
+          aria-pressed={chatOpen.value}
+          data-testid="cms-topbar-chat-toggle"
+          onClick={() => setChatOpen(!chatOpen.value)}
+        >
+          <Icon name="chat" />
         </button>
         <Settings />
       </div>

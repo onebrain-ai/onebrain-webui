@@ -12,6 +12,7 @@ import { chatPanel } from "./chat/chat";
 import { cliPanel } from "./cli/cli";
 import { searchPanel } from "./search/search";
 import { statusPanel } from "./status/status";
+import { memoryPanel } from "./memory/memory";
 import { composerPanel } from "./composer/composer";
 import { skillsPanel } from "./skills/skills";
 import { logPanel } from "./log/log";
@@ -30,6 +31,7 @@ const PANELS = [
   cliPanel,
   searchPanel,
   statusPanel,
+  memoryPanel,
   composerPanel,
   skillsPanel,
   logPanel,
