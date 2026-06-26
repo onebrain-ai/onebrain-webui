@@ -429,21 +429,17 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       zoomBy(e.deltaY < 0 ? 1.15 : 0.87);
     }
   };
-  const downloadFile = async () => {
-    let url = blobUrl.value;
-    let revoke = false;
-    if (!url) {
-      const b = await ctx.daemon.fileBlob(path);
-      url = URL.createObjectURL(b);
-      revoke = true;
-    }
+  const downloadFile = () => {
+    // Stream from the daemon with &download=1 so it sends a
+    // `Content-Disposition: attachment` carrying the real name — that keeps the
+    // original filename + extension even in webviews that ignore the `download`
+    // attribute on a blob: URL.
     const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
+    a.href = `${ctx.daemon.rawUrl(path)}&download=1`;
+    a.download = fileName; // honoured where the attribute already works
     document.body.appendChild(a);
     a.click();
     a.remove();
-    if (revoke) URL.revokeObjectURL(url);
   };
 
   const segs = path.split("/");
