@@ -54,15 +54,33 @@ async function renderXlsx(path: string, host: HTMLElement, daemon: DaemonClient)
   const buf = await arrayBuffer(path, daemon);
   const XLSX = await import("xlsx");
   const wb = XLSX.read(new Uint8Array(buf), { type: "array" });
-  const sheets = wb.SheetNames.map((name) => {
-    // sheet_to_html emits a full <table> (SheetJS wraps it in a document; DOMPurify
-    // strips the html/head/body shell and keeps the table + its inline styles).
-    const table = XLSX.utils.sheet_to_html(wb.Sheets[name], { id: "", editable: false });
-    return `<section class="rich-sheet"><div class="rich-sheet-name">${escapeHtml(name)}</div>${table}</section>`;
-  });
-  host.innerHTML = DOMPurify.sanitize(
-    sheets.join("") || '<div class="rich-msg">This workbook has no sheets.</div>',
-  );
+  const names = wb.SheetNames;
+  if (names.length === 0) {
+    host.innerHTML = '<div class="rich-msg">This workbook has no sheets.</div>';
+    return;
+  }
+  // sheet_to_html emits a full <table> (SheetJS wraps it in a document; DOMPurify
+  // strips the html/head/body shell and keeps the table + its inline styles).
+  const tab = (n: string, i: number) =>
+    `<button class="rich-tab${i === 0 ? " is-active" : ""}" data-sheet="${i}" type="button">${escapeHtml(n)}</button>`;
+  const panel = (n: string, i: number) =>
+    `<div class="rich-tab-panel${i === 0 ? "" : " rich-hidden"}" data-sheet="${i}">${XLSX.utils.sheet_to_html(wb.Sheets[n], { id: "", editable: false })}</div>`;
+  // One tab per sheet (mirrors Excel's sheet tabs). A single-sheet book skips the bar.
+  const bar = names.length > 1 ? `<div class="rich-tabs" role="tablist">${names.map(tab).join("")}</div>` : "";
+  host.innerHTML = DOMPurify.sanitize(`${bar}<div class="rich-tab-body">${names.map(panel).join("")}</div>`);
+
+  // Wire tab switching by hand — richfile renders into a plain host, not a Preact
+  // tree, so there's no JSX onClick. Toggling classes keeps every sheet in the DOM
+  // (instant switch, no re-parse).
+  const tabs = [...host.querySelectorAll<HTMLButtonElement>(".rich-tab")];
+  const panels = [...host.querySelectorAll<HTMLElement>(".rich-tab-panel")];
+  for (const btn of tabs) {
+    btn.addEventListener("click", () => {
+      const idx = btn.dataset.sheet;
+      for (const b of tabs) b.classList.toggle("is-active", b === btn);
+      for (const p of panels) p.classList.toggle("rich-hidden", p.dataset.sheet !== idx);
+    });
+  }
 }
 
 // ── docx (mammoth) ──────────────────────────────────────────────────────────
