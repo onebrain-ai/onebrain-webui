@@ -47,7 +47,9 @@ export type IconName =
   | "maximize"
   | "paperclip"
   | "arrow-left"
-  | "arrow-right";
+  | "arrow-right"
+  | "expand-h"
+  | "shrink-h";
 
 const PATHS: Record<IconName, preact.JSX.Element> = {
   file: (
@@ -207,6 +209,9 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
   paperclip: <path d="M21.4 11.6l-8.5 8.5a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />,
   "arrow-left": <path d="M19 12H5M11 18l-6-6 6-6" />,
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
+  // expand to full width (arrows out) / shrink back to a centred column (arrows in)
+  "expand-h": <path d="M21 12H3M7 8l-4 4 4 4M17 8l4 4-4 4" />,
+  "shrink-h": <path d="M7 12h10M3 8l4 4-4 4M21 8l-4 4 4 4" />,
 };
 
 export function Icon({

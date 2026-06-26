@@ -120,6 +120,8 @@
    text ~780px and centred, instead of a thin column jammed against the left with
    a huge empty right). Every block then fills the same column → consistent. */
 .ed-reading { flex: 1; overflow: auto; padding: 16px max(24px, calc((100% - 780px) / 2)); -webkit-user-select: text; user-select: text; }
+/* Wide-screen reading: drop the centred-column cap so tables can use the full pane. */
+.ed-reading.is-wide { padding: 16px 24px; }
 
 /* Unpreviewable (binary) file — a centred icon + filename + Download button. */
 .ed-unpreview {

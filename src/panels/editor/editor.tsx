@@ -141,6 +141,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const imgZoom = useSignal(1);
   // Set when a file can't be shown as text (binary) — render an icon + Download.
   const unpreviewable = useSignal(false);
+  // .md reading view: false = centred column, true = full-width (wide-screen tables).
+  const wideView = useSignal(false);
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -547,6 +549,17 @@ function Editor({ ctx }: { ctx: PanelContext }) {
             <>
               <SaveBadge />
               {downloadBtn}
+              {reading.value && (
+                <button
+                  class="ed-toggle"
+                  title={wideView.value ? "Centred column" : "Full width"}
+                  aria-label={wideView.value ? "Centred column" : "Full width"}
+                  onClick={() => { wideView.value = !wideView.value; }}
+                >
+                  <Icon name={wideView.value ? "shrink-h" : "expand-h"} />
+                  <span>{wideView.value ? "Center" : "Wide"}</span>
+                </button>
+              )}
               <button
                 class="ed-toggle"
                 data-testid="ed-reading-toggle"
@@ -615,7 +628,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           <Properties value={props.value} onChange={onProps} />
           {reading.value && (
             <div
-              class="ed-reading"
+              class={wideView.value ? "ed-reading is-wide" : "ed-reading"}
               data-testid="ed-reading"
               ref={readingHost}
               onClick={onReadingClick}
