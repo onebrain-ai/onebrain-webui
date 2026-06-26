@@ -5,6 +5,15 @@
   min-height: 0;
   overflow: auto;
   padding: 16px 20px;
+  /* The app sets `user-select: none` for the operator-console chrome; the rendered
+     content is meant to be read AND copied, so opt it back in. */
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* …but the sheet-tab bar is UI, not data — keep it unselectable. */
+.rich-tabs {
+  -webkit-user-select: none;
+  user-select: none;
 }
 .rich-msg {
   color: var(--color-muted);

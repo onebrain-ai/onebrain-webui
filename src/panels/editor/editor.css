@@ -119,7 +119,7 @@
 /* Centre a readable-width column on wide screens (side padding grows to keep the
    text ~780px and centred, instead of a thin column jammed against the left with
    a huge empty right). Every block then fills the same column → consistent. */
-.ed-reading { flex: 1; overflow: auto; padding: 16px max(24px, calc((100% - 780px) / 2)); }
+.ed-reading { flex: 1; overflow: auto; padding: 16px max(24px, calc((100% - 780px) / 2)); -webkit-user-select: text; user-select: text; }
 
 /* Sandboxed HTML-file preview — fills the pane below the header. */
 .ed-frame {
