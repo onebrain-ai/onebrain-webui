@@ -177,49 +177,42 @@
   background: #fff;
 }
 
-/* Image preview — centered on a faint checkerboard so transparent PNGs/SVGs read.
-   The wrap scrolls so a zoomed-in image can be panned. */
-.ed-binwrap {
+/* Image / SVG preview — a pan-zoom-fullscreen viewport (richviewport mounts onto
+   .ed-mediawrap) over a faint checkerboard so transparent PNGs/SVGs read. */
+.ed-mediawrap {
+  position: relative;
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  overflow: hidden;
   background:
     linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 0 0 / 22px 22px,
     linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 11px 11px / 22px 22px;
 }
-.ed-media {
-  display: block;
-  flex: 0 0 auto;
+/* the viewport transforms this; the media is centred + capped to its box */
+.ed-media-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
-.ed-img {
+.ed-media-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+}
+/* SVG is inlined (not <img>) so it uses the page's web fonts. */
+.ed-media-svg {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.ed-media-svg > svg {
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
-  object-fit: contain;
-  border: 1px solid var(--color-border);
-}
-/* SVG is inlined (not <img>) so it uses the page's web fonts. Fit: cap to the pane
-   keeping aspect; zoomed: fill the wrapper's explicit pixel width. */
-.ed-svg {
-  max-width: 100%;
-}
-.ed-svg svg {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: calc(100vh - 150px);
-}
-.ed-svg.zoomed svg {
-  width: 100%;
-  height: auto;
-  max-width: none;
-  max-height: none;
 }
 
 /* Header icon buttons (download / zoom) + zoom readout. */
@@ -248,28 +241,6 @@
   display: flex;
   gap: 1px;
   flex: 0 0 auto;
-}
-.ed-zoom {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-}
-.ed-zoom-pct {
-  min-width: 44px;
-  height: 28px;
-  padding: 0 6px;
-  background: none;
-  border: 1px solid transparent;
-  color: var(--color-faint);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-align: center;
-  transition: color 0.15s;
-}
-.ed-zoom-pct:hover {
-  color: var(--section-accent);
 }
 
 /* PDF preview — the browser's built-in viewer fills the pane. */

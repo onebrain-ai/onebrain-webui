@@ -15,6 +15,7 @@ import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
 import { renderFile } from "../../core/markdown";
 import { isRichFile, renderRichFile, richLabel } from "../../core/richfile";
+import { mountViewport } from "../../core/richviewport";
 import { renderMermaidIn } from "../../core/mermaid";
 import { renderMathIn } from "../../core/katex";
 import { Icon } from "../../ui/Icon";
@@ -41,10 +42,6 @@ const UNPREVIEWABLE_EXT = new Set([
  * In production this is called by CodeMirror; the `sv` closure is set per-load.
  */
 export let _cmdSaveRun: (() => boolean) | null = null;
-
-const ZOOM_MIN = 0.1;
-const ZOOM_MAX = 8;
-const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 
 /** Clean an inline SVG before it's injected into the *page* DOM (it renders
  *  inline, not in a sandboxed iframe, so page fonts apply — which means it MUST
@@ -85,16 +82,6 @@ function sanitizeSvg(s: string): string {
   return new XMLSerializer().serializeToString(svg);
 }
 
-/** The SVG's intrinsic width (viewBox width, else the width attribute) — the base
- *  for pixel-zoom. Defaults to 800 when neither is present. */
-function svgIntrinsicWidth(s: string): number {
-  const vb = s.match(/viewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)/i);
-  if (vb) return parseFloat(vb[1]) || 800;
-  const w = s.match(/\bwidth\s*=\s*["']?\s*([\d.]+)/i);
-  if (w) return parseFloat(w[1]) || 800;
-  return 800;
-}
-
 /** Inline save indicator for the editor header (markdown notes only). */
 function SaveBadge() {
   const s = saveStatus.value;
@@ -115,11 +102,10 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // A heading anchor to scroll to once the next reading render lands (set when a
   // [[note#heading]] link is clicked, consumed by the reading-render effect).
   const pendingHeading = useRef<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const svgRef = useRef<HTMLDivElement>(null);
+  const mediaFrameRef = useRef<HTMLDivElement>(null);
+  const mediaContentRef = useRef<HTMLDivElement>(null);
   const richHost = useRef<HTMLDivElement>(null);
   const richErr = useSignal("");
-  const mediaW = useRef<number>(0); // intrinsic width of the current image/svg
   const view = useRef<EditorView | null>(null);
   const saver = useRef<Autosaver | null>(null);
   const fm = useRef<{ raw: string | null; obj: Record<string, unknown>; edited: boolean }>({
@@ -137,8 +123,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // <img>, so it can use the page's web fonts — an <img>-embedded SVG cannot).
   const svgHtml = useSignal("");
   // Image zoom: `fit` = scale to the pane; otherwise a numeric factor of intrinsic.
-  const imgFit = useSignal(true);
-  const imgZoom = useSignal(1);
   // Set when a file can't be shown as text (binary) — render an icon + Download.
   const unpreviewable = useSignal(false);
   // .md reading view: false = centred column, true = full-width (wide-screen tables).
@@ -185,9 +169,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       // Read-only preview — no editor/autosaver (a preview must never write back).
       editorBridge.value = null;
       props.value = {};
-      imgFit.value = true; // every new image opens fit-to-pane
-      imgZoom.value = 1;
-      mediaW.current = 0;
 
       if (isSvg) {
         // Inline the SVG so it renders with the page's fonts (Chakra Petch / etc).
@@ -195,7 +176,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         void ctx.daemon.file(path).then((f) => {
           if (cancelled) return;
           svgHtml.value = sanitizeSvg(f.content);
-          mediaW.current = svgIntrinsicWidth(f.content);
         });
         return () => {
           cancelled = true;
@@ -294,6 +274,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       editorBridge.value = null;
       _cmdSaveRun = null;
     };
+  }, [path]);
+
+  // Image / SVG preview: mount the shared pan-zoom-fullscreen viewport on the frame.
+  useEffect(() => {
+    if (!(isSvg || isImage) || !mediaFrameRef.current || !mediaContentRef.current) return;
+    const handle = mountViewport(mediaFrameRef.current, mediaContentRef.current);
+    return () => handle.destroy();
   }, [path]);
 
   // Rendered reading-view HTML + a mermaid pass after it mounts. Computed here
@@ -425,25 +412,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     }
   };
 
-  // ── Image zoom + download ──────────────────────────────────────────────────
-  const zoomBy = (mult: number) => {
-    if (imgFit.value) {
-      // Continue smoothly from the current fitted scale.
-      const el = isSvg ? svgRef.current?.querySelector("svg") : imgRef.current;
-      const base = mediaW.current || 1;
-      const cur = el ? (el as Element).getBoundingClientRect().width / base : 1;
-      imgFit.value = false;
-      imgZoom.value = clampZoom(cur * mult);
-    } else {
-      imgZoom.value = clampZoom(imgZoom.value * mult);
-    }
-  };
-  const onWheel = (e: WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      zoomBy(e.deltaY < 0 ? 1.15 : 0.87);
-    }
-  };
+  // ── Download ────────────────────────────────────────────────────────────────
   const downloadFile = () => {
     // Stream from the daemon with &download=1 so it sends a
     // `Content-Disposition: attachment` carrying the real name — that keeps the
@@ -460,32 +429,12 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const segs = path.split("/");
   const fileName = segs[segs.length - 1];
   const dirSegs = segs.slice(0, -1);
-  const zoomedStyle = imgFit.value
-    ? ""
-    : `width:${Math.round((mediaW.current || 800) * imgZoom.value)}px;max-width:none;max-height:none;height:auto`;
 
   const downloadBtn = (
     <button class="ed-iconbtn" type="button" title="Download file" aria-label="Download" onClick={() => void downloadFile()}>
       <Icon name="download" />
     </button>
   );
-  const zoomControls = (
-    <div class="ed-zoom">
-      <button class="ed-iconbtn" type="button" title="Zoom out" aria-label="Zoom out" onClick={() => zoomBy(0.8)}>
-        <Icon name="minus" />
-      </button>
-      <button class="ed-zoom-pct" type="button" title="Fit to pane" onClick={() => { imgFit.value = true; }}>
-        {imgFit.value ? "Fit" : `${Math.round(imgZoom.value * 100)}%`}
-      </button>
-      <button class="ed-iconbtn" type="button" title="Zoom in" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
-        <Icon name="plus" />
-      </button>
-      <button class="ed-iconbtn" type="button" title="Fit to pane" aria-label="Fit" onClick={() => { imgFit.value = true; }}>
-        <Icon name="maximize" />
-      </button>
-    </div>
-  );
-
   return (
     <div class="ed-wrap">
       <div class="ed-toolbar">
@@ -522,7 +471,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           {isImage ? (
             <>
               <span class="ed-badge"><Icon name="image" />{isSvg ? "SVG" : "Image"}</span>
-              {zoomControls}
               {downloadBtn}
             </>
           ) : isPdf ? (
@@ -573,25 +521,15 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         </div>
       </div>
 
-      {isSvg ? (
-        <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
-          <div
-            class={imgFit.value ? "ed-media ed-svg" : "ed-media ed-svg zoomed"}
-            ref={svgRef}
-            style={zoomedStyle}
-            dangerouslySetInnerHTML={{ __html: svgHtml.value }}
-          />
-        </div>
-      ) : isImage ? (
-        <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
-          <img
-            class="ed-media ed-img"
-            ref={imgRef}
-            src={ctx.daemon.rawUrl(path)}
-            alt={fileName}
-            style={zoomedStyle}
-            onLoad={(e) => { mediaW.current = (e.target as HTMLImageElement).naturalWidth || 0; }}
-          />
+      {isSvg || isImage ? (
+        <div class="ed-mediawrap" ref={mediaFrameRef} data-testid="ed-image">
+          <div class="ed-media-content" ref={mediaContentRef}>
+            {isSvg ? (
+              <div class="ed-media-svg" dangerouslySetInnerHTML={{ __html: svgHtml.value }} />
+            ) : (
+              <img class="ed-media-img" src={ctx.daemon.rawUrl(path)} alt={fileName} />
+            )}
+          </div>
         </div>
       ) : isPdf ? (
         <iframe class="ed-pdf" data-testid="ed-pdf" src={ctx.daemon.rawUrl(path)} title="PDF preview" />
