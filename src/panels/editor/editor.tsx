@@ -1,9 +1,13 @@
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
-import { EditorView, keymap, drawSelection, highlightActiveLine } from "@codemirror/view";
+import { EditorView, keymap, drawSelection, highlightActiveLine, lineNumbers } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { syntaxHighlighting, LanguageDescription } from "@codemirror/language";
+import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { showMinimap } from "@replit/codemirror-minimap";
+import { languages } from "@codemirror/language-data";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
 import { openSearch } from "../../core/stores";
@@ -34,6 +38,53 @@ const UNPREVIEWABLE_EXT = new Set([
   "blend", "obj", "stl", "fbx", "glb", "gltf",
   "db", "sqlite", "sqlite3", "dat", "pyc", "class", "so", "dll", "dylib", "parquet",
 ]);
+
+/** Pretty-print structured text before it's shown (the view is read-only, so the
+ *  file itself is never changed). Malformed input is returned unchanged — better a
+ *  raw view than an error. */
+async function formatStructured(path: string, text: string): Promise<string> {
+  const e = (path.split(".").pop() ?? "").toLowerCase();
+  try {
+    if (e === "json" || e === "jsonc") return JSON.stringify(JSON.parse(text), null, 2);
+    if (e === "yaml" || e === "yml") {
+      const { loadAll, dump } = await import("js-yaml");
+      return (loadAll(text) as unknown[])
+        .map((d) => dump(d, { indent: 2, lineWidth: 100, noRefs: true }))
+        .join("---\n")
+        .trimEnd();
+    }
+    if (e === "xml" || e === "xsd" || e === "xsl" || e === "rss" || e === "plist") return formatXml(text);
+  } catch {
+    /* malformed → show as-is */
+  }
+  return text;
+}
+
+/** Indent an XML document for the read-only preview; unchanged on a parse error. */
+function formatXml(xml: string): string {
+  const doc = new DOMParser().parseFromString(xml, "application/xml");
+  if (doc.querySelector("parsererror") || !doc.documentElement) return xml;
+  const ser = (node: Element, depth: number): string => {
+    const pad = "  ".repeat(depth);
+    const attrs = Array.from(node.attributes)
+      .map((a) => ` ${a.name}="${a.value}"`)
+      .join("");
+    const els = Array.from(node.children);
+    const txt = Array.from(node.childNodes)
+      .filter((c) => c.nodeType === 3)
+      .map((c) => c.textContent?.trim())
+      .filter(Boolean)
+      .join(" ");
+    if (els.length === 0) {
+      return txt
+        ? `${pad}<${node.tagName}${attrs}>${txt}</${node.tagName}>`
+        : `${pad}<${node.tagName}${attrs} />`;
+    }
+    const inner = els.map((c) => ser(c, depth + 1)).join("\n");
+    return `${pad}<${node.tagName}${attrs}>\n${inner}\n${pad}</${node.tagName}>`;
+  };
+  return ser(doc.documentElement, 0);
+}
 
 /**
  * The run-function wired to the Mod-s keybinding.
@@ -107,6 +158,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const richHost = useRef<HTMLDivElement>(null);
   const richErr = useSignal("");
   const view = useRef<EditorView | null>(null);
+  const sourceHost = useRef<HTMLDivElement>(null);
+  const sourceView = useRef<EditorView | null>(null);
   const saver = useRef<Autosaver | null>(null);
   const fm = useRef<{ raw: string | null; obj: Record<string, unknown>; edited: boolean }>({
     raw: null,
@@ -140,6 +193,10 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isRich = isRichFile(path ?? "");
   // Known-binary extension → never attempt a text preview (icon + Download instead).
   const isUnpreviewableExt = UNPREVIEWABLE_EXT.has(ext);
+  const isMarkdown = ext === "md" || ext === "markdown";
+  // Any other text file (source / config / data) → read-only syntax view with line
+  // numbers + minimap. Binaries that slip through fall back via the load-time catch.
+  const isSourceText = !isMarkdown && !isBinary && !isHtml && !isRich && !isUnpreviewableExt;
 
   useEffect(() => {
     if (!path) return;
@@ -281,6 +338,51 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     if (!(isSvg || isImage) || !mediaFrameRef.current || !mediaContentRef.current) return;
     const handle = mountViewport(mediaFrameRef.current, mediaContentRef.current);
     return () => handle.destroy();
+  }, [path]);
+
+  // Source / code / config text: read-only CodeMirror with syntax highlighting,
+  // line numbers, and a minimap. json/yaml/xml are pretty-printed first.
+  useEffect(() => {
+    if (!isSourceText || !sourceHost.current) return;
+    let cancelled = false;
+    void ctx.daemon
+      .file(path)
+      .then(async (f) => {
+        if (cancelled || !sourceHost.current) return;
+        const text = await formatStructured(path, f.content);
+        const desc = LanguageDescription.matchFilename(languages, fileName);
+        const lang = desc ? await desc.load() : [];
+        if (cancelled || !sourceHost.current) return;
+        sourceView.current?.destroy();
+        sourceView.current = new EditorView({
+          parent: sourceHost.current,
+          state: EditorState.create({
+            doc: text,
+            extensions: [
+              lineNumbers(),
+              highlightActiveLine(),
+              drawSelection(),
+              EditorState.readOnly.of(true),
+              EditorView.editable.of(false),
+              syntaxHighlighting(oneDarkHighlightStyle),
+              lang,
+              showMinimap.of({
+                create: () => ({ dom: document.createElement("div") }),
+                displayText: "blocks",
+                showOverlay: "always",
+              }),
+            ],
+          }),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) unpreviewable.value = true;
+      });
+    return () => {
+      cancelled = true;
+      sourceView.current?.destroy();
+      sourceView.current = null;
+    };
   }, [path]);
 
   // Rendered reading-view HTML + a mermaid pass after it mounts. Computed here
@@ -495,6 +597,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               <span class="ed-badge"><Icon name="file" />{ext ? ext.toUpperCase() : "File"}</span>
               {downloadBtn}
             </>
+          ) : isSourceText ? (
+            <>
+              <span class="ed-badge"><Icon name="code" />{ext ? ext.toUpperCase() : "Text"}</span>
+              {downloadBtn}
+            </>
           ) : (
             <>
               <SaveBadge />
@@ -563,6 +670,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
             <span>Download</span>
           </button>
         </div>
+      ) : isSourceText ? (
+        <div class="ed ed-source" ref={sourceHost} data-testid="ed-source" />
       ) : (
         <>
           <Properties value={props.value} onChange={onProps} />
