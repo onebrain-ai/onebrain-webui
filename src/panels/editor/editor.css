@@ -121,6 +121,51 @@
    a huge empty right). Every block then fills the same column → consistent. */
 .ed-reading { flex: 1; overflow: auto; padding: 16px max(24px, calc((100% - 780px) / 2)); -webkit-user-select: text; user-select: text; }
 
+/* Unpreviewable (binary) file — a centred icon + filename + Download button. */
+.ed-unpreview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+.ed-unpreview > svg {
+  width: 56px;
+  height: 56px;
+  color: var(--color-faint);
+}
+.ed-unpreview-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text);
+  word-break: break-all;
+  text-align: center;
+}
+.ed-unpreview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--section-accent);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.ed-unpreview-btn > svg {
+  width: 16px;
+  height: 16px;
+}
+.ed-unpreview-btn:hover {
+  background: var(--color-bg-deep);
+}
+
 /* Sandboxed HTML-file preview — fills the pane below the header. */
 .ed-frame {
   flex: 1;

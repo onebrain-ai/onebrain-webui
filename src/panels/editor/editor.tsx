@@ -20,6 +20,20 @@ import { renderMathIn } from "../../core/katex";
 import { Icon } from "../../ui/Icon";
 import "./editor.css";
 
+/** Binary file types with no in-app preview — shown as an icon + Download button
+ *  instead of being force-loaded as text (which would fail / show garbage). Any
+ *  other non-UTF-8 file is caught at load time and falls back the same way. */
+const UNPREVIEWABLE_EXT = new Set([
+  "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz",
+  "exe", "dmg", "app", "pkg", "deb", "rpm", "msi", "bin", "iso", "wasm",
+  "mp4", "mov", "avi", "mkv", "webm", "m4v",
+  "mp3", "wav", "flac", "ogg", "m4a", "aac",
+  "woff", "woff2", "ttf", "otf", "eot",
+  "psd", "ai", "sketch", "fig", "xd", "eps",
+  "blend", "obj", "stl", "fbx", "glb", "gltf",
+  "db", "sqlite", "sqlite3", "dat", "pyc", "class", "so", "dll", "dylib", "parquet",
+]);
+
 /**
  * The run-function wired to the Mod-s keybinding.
  * Exported so tests can invoke it directly (jsdom does not propagate key events
@@ -125,6 +139,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // Image zoom: `fit` = scale to the pane; otherwise a numeric factor of intrinsic.
   const imgFit = useSignal(true);
   const imgZoom = useSignal(1);
+  // Set when a file can't be shown as text (binary) — render an icon + Download.
+  const unpreviewable = useSignal(false);
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -136,6 +152,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isBinary = isImage || isPdf;
   // Rich (Office / drawio) files preview read-only via richfile.ts, like binaries.
   const isRich = isRichFile(path ?? "");
+  // Known-binary extension → never attempt a text preview (icon + Download instead).
+  const isUnpreviewableExt = UNPREVIEWABLE_EXT.has(ext);
 
   useEffect(() => {
     if (!path) return;
@@ -144,6 +162,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     saveStatus.value = "idle";
     dirty.value = false;
     conflictRev.value = null;
+    unpreviewable.value = false;
     let cancelled = false;
 
     if (isHtml) {
@@ -262,6 +281,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         saveStatus.value = "saved";
       };
       editorBridge.value = { overwrite: () => sv.overwrite(), reload };
+    }).catch(() => {
+      // Not UTF-8 text (binary) or unreadable → show an icon + Download instead.
+      if (!cancelled) unpreviewable.value = true;
     });
     return () => {
       cancelled = true;
@@ -516,6 +538,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               <span class="ed-badge"><Icon name="file" />{richLabel(path)}</span>
               {downloadBtn}
             </>
+          ) : isUnpreviewableExt || unpreviewable.value ? (
+            <>
+              <span class="ed-badge"><Icon name="file" />{ext ? ext.toUpperCase() : "File"}</span>
+              {downloadBtn}
+            </>
           ) : (
             <>
               <SaveBadge />
@@ -573,6 +600,15 @@ function Editor({ ctx }: { ctx: PanelContext }) {
             <div class="rich-msg rich-err">Couldn’t render this file: {richErr.value}</div>
           ) : null}
           <div class="ed-rich" ref={richHost} />
+        </div>
+      ) : isUnpreviewableExt || unpreviewable.value ? (
+        <div class="ed-unpreview" data-testid="ed-unpreview">
+          <Icon name="file" />
+          <div class="ed-unpreview-name">{fileName}</div>
+          <button class="ed-unpreview-btn" type="button" onClick={() => downloadFile()}>
+            <Icon name="download" />
+            <span>Download</span>
+          </button>
         </div>
       ) : (
         <>
