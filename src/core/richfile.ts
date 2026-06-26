@@ -34,6 +34,8 @@ export async function renderRichFile(path: string, host: HTMLElement, daemon: Da
   switch (ext(path)) {
     case "xlsx":
       return renderXlsx(path, host, daemon);
+    case "docx":
+      return renderDocx(path, host, daemon);
     default:
       host.innerHTML = '<div class="rich-msg">Preview isn’t available for this file type yet.</div>';
   }
@@ -61,4 +63,15 @@ async function renderXlsx(path: string, host: HTMLElement, daemon: DaemonClient)
   host.innerHTML = DOMPurify.sanitize(
     sheets.join("") || '<div class="rich-msg">This workbook has no sheets.</div>',
   );
+}
+
+// ── docx (mammoth) ──────────────────────────────────────────────────────────
+async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+  const buf = await arrayBuffer(path, daemon);
+  const mammoth = await import("mammoth");
+  const { value } = await mammoth.convertToHtml({ arrayBuffer: buf });
+  host.innerHTML =
+    '<article class="rich-doc">' +
+    DOMPurify.sanitize(value || '<p class="rich-msg">This document is empty.</p>') +
+    "</article>";
 }

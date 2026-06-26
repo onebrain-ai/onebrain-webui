@@ -47,3 +47,46 @@
   background: var(--color-bg-deep);
   font-weight: 600;
 }
+
+/* docx — clean document body (mammoth HTML) */
+.rich-doc {
+  max-width: 780px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+.rich-doc h1,
+.rich-doc h2,
+.rich-doc h3 {
+  font-family: var(--font-display);
+  color: var(--color-text);
+  margin: 1.4em 0 0.5em;
+  line-height: 1.25;
+}
+.rich-doc h1 {
+  font-size: 1.7em;
+}
+.rich-doc h2 {
+  font-size: 1.35em;
+}
+.rich-doc h3 {
+  font-size: 1.12em;
+}
+.rich-doc p {
+  margin: 0 0 0.9em;
+}
+.rich-doc ul,
+.rich-doc ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.5em;
+}
+.rich-doc li {
+  margin: 0.2em 0;
+}
+.rich-doc a {
+  color: var(--section-accent);
+}
+.rich-doc strong {
+  font-weight: 600;
+}
