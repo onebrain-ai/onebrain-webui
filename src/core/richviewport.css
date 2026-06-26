@@ -75,3 +75,82 @@
   height: 100vh;
   background: var(--color-bg);
 }
+
+/* mermaid diagram in the reading view: hover reveals an "open full screen" button */
+.mermaid-zoomable {
+  position: relative;
+}
+.mermaid-expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s, background 0.14s, color 0.14s;
+}
+.mermaid-zoomable:hover .mermaid-expand,
+.mermaid-expand:focus-visible {
+  opacity: 1;
+}
+.mermaid-expand:hover {
+  color: var(--section-accent);
+  background: var(--color-bg-deep);
+}
+.mermaid-expand > svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* full-viewport overlay diagram viewer (pan/zoom/fit via mountViewport) */
+.mermaid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: color-mix(in srgb, var(--color-bg) 92%, #000);
+}
+.mermaid-overlay-frame {
+  position: absolute;
+  inset: 0;
+}
+.mermaid-overlay-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.mermaid-overlay-content > svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+.mermaid-overlay-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s;
+}
+.mermaid-overlay-close:hover {
+  color: var(--acc-magenta);
+  background: var(--color-bg-deep);
+}
+.mermaid-overlay-close > svg {
+  width: 18px;
+  height: 18px;
+}

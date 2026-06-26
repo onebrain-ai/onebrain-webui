@@ -19,6 +19,7 @@
 // official engine self-sanitizes via `securityLevel: "strict"`.)
 
 import DOMPurify from "dompurify";
+import { mountViewport } from "./richviewport";
 
 /** Diagram types `beautiful-mermaid` can render. Header keywords, lowercased.
  *  Everything not here routes straight to the official engine. */
@@ -152,4 +153,68 @@ export async function renderMermaidIn(root: HTMLElement): Promise<void> {
   } catch {
     /* a malformed diagram — mermaid writes its own error box into the node */
   }
+}
+
+// ── Full-screen pan/zoom for rendered diagrams ──────────────────────────────
+const ZICON = (inner: string) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const EXPAND_ICON = ZICON('<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/>');
+const CLOSE_ICON = ZICON('<path d="M6 6l12 12M18 6L6 18"/>');
+
+/** Add a hover "open full screen" button to each rendered mermaid diagram. The
+ *  button opens a pan/zoom/fit overlay (the shared richviewport). Idempotent, so
+ *  it's safe to re-run after every reading render. */
+export function addMermaidZoomControls(root: HTMLElement): void {
+  for (const node of Array.from(root.querySelectorAll<HTMLElement>("pre.mermaid"))) {
+    const svg = node.querySelector("svg");
+    if (!svg || node.querySelector(":scope > .mermaid-expand")) continue;
+    node.classList.add("mermaid-zoomable");
+    const btn = document.createElement("button");
+    btn.className = "mermaid-expand";
+    btn.type = "button";
+    btn.title = "Open full screen";
+    btn.setAttribute("aria-label", "Open full screen");
+    btn.innerHTML = EXPAND_ICON; // static markup, no diagram/user content
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openMermaidOverlay(svg);
+    });
+    node.appendChild(btn);
+  }
+}
+
+/** Clone the diagram into a full-viewport overlay with pan/zoom/fit/fullscreen
+ *  (richviewport) and a close button (× / Esc). */
+function openMermaidOverlay(source: SVGElement): void {
+  const overlay = document.createElement("div");
+  overlay.className = "mermaid-overlay";
+  const frame = document.createElement("div");
+  frame.className = "mermaid-overlay-frame";
+  const content = document.createElement("div");
+  content.className = "mermaid-overlay-content";
+  content.appendChild(source.cloneNode(true)); // the already-sanitised diagram SVG
+  frame.appendChild(content);
+  overlay.appendChild(frame);
+
+  const close = document.createElement("button");
+  close.className = "mermaid-overlay-close";
+  close.type = "button";
+  close.title = "Close (Esc)";
+  close.setAttribute("aria-label", "Close");
+  close.innerHTML = CLOSE_ICON; // static markup
+  overlay.appendChild(close);
+
+  document.body.appendChild(overlay);
+  const handle = mountViewport(frame, content);
+  const dismiss = () => {
+    handle.destroy();
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") dismiss();
+  };
+  close.addEventListener("click", dismiss);
+  document.addEventListener("keydown", onKey);
 }

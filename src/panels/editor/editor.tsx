@@ -16,7 +16,7 @@ import { livePreview } from "./live-preview/plugin";
 import { renderFile } from "../../core/markdown";
 import { isRichFile, renderRichFile, richLabel } from "../../core/richfile";
 import { mountViewport } from "../../core/richviewport";
-import { renderMermaidIn } from "../../core/mermaid";
+import { renderMermaidIn, addMermaidZoomControls } from "../../core/mermaid";
 import { renderMathIn } from "../../core/katex";
 import { Icon } from "../../ui/Icon";
 import "./editor.css";
@@ -292,7 +292,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : "";
   useEffect(() => {
     if (readingHost.current) {
-      void renderMermaidIn(readingHost.current);
+      void renderMermaidIn(readingHost.current).then(() => {
+        if (readingHost.current) addMermaidZoomControls(readingHost.current);
+      });
       void renderMathIn(readingHost.current);
       // Resolve vault image refs to the authed raw endpoint (img can't send the
       // token header, so rawUrl carries it in the query).
