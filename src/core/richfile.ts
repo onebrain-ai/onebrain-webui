@@ -9,6 +9,7 @@
 
 import DOMPurify from "dompurify";
 import type { DaemonClient } from "./daemon";
+import { mountViewport } from "./richviewport";
 import "./richfile.css";
 
 /** Extensions the editor previews via renderRichFile() instead of as text. */
@@ -132,32 +133,18 @@ async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClien
   stage.className = "rich-diagram";
   frame.appendChild(stage);
   host.appendChild(frame);
-  // FitPlugin lets us scale the diagram to the pane; ZoomMixin gives zoomIn/zoomOut.
+  // FitPlugin (id "fit") scales the diagram to the pane.
   const graph = new Graph(stage, undefined, [FitPlugin]);
   graph.setEnabled(false); // read-only preview — no editing/selection of cells
-  graph.centerZoom = true; // zoom toward the view centre, not the origin
   new ModelXmlSerializer(graph.getDataModel()).import(modelXml);
-  // FitPlugin (id "fit") exposes fit/fitCenter on the plugin instance, not the graph.
   const fitPlugin = graph.getPlugin("fit") as unknown as
     | { fitCenter?: (o?: { border?: number }) => number }
     | undefined;
-  const fit = () => fitPlugin?.fitCenter?.({ border: 24 });
-  fit(); // default: the whole diagram scaled to fill the full-height pane
+  const fitGraph = () => fitPlugin?.fitCenter?.({ border: 8 });
 
-  // Zoom controls — the host is plain DOM (no JSX), so wire buttons by hand.
-  const zoom = document.createElement("div");
-  zoom.className = "rich-zoom";
-  zoom.innerHTML =
-    '<button class="rich-zoom-btn" data-z="out" type="button" title="Zoom out" aria-label="Zoom out">−</button>' +
-    '<button class="rich-zoom-btn" data-z="fit" type="button" title="Fit to view" aria-label="Fit to view">Fit</button>' +
-    '<button class="rich-zoom-btn" data-z="in" type="button" title="Zoom in" aria-label="Zoom in">+</button>';
-  frame.appendChild(zoom);
-  zoom.addEventListener("click", (e) => {
-    const z = (e.target as HTMLElement).closest("button")?.dataset.z;
-    if (z === "in") graph.zoomIn();
-    else if (z === "out") graph.zoomOut();
-    else if (z === "fit") fit();
-  });
+  // Shared pan / zoom / fullscreen controls (drag, wheel, Z, Space, F). mountViewport
+  // runs the initial fit (with padding) and the Fit button re-runs maxGraph's fit.
+  mountViewport(frame, stage, { onFit: fitGraph });
 }
 
 /** Pull the mxGraphModel XML out of a .drawio `<mxfile>` — handles both the
