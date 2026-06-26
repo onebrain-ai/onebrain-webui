@@ -36,6 +36,8 @@ export async function renderRichFile(path: string, host: HTMLElement, daemon: Da
       return renderXlsx(path, host, daemon);
     case "docx":
       return renderDocx(path, host, daemon);
+    case "drawio":
+      return renderDrawio(path, host, daemon);
     default:
       host.innerHTML = '<div class="rich-msg">Preview isn’t available for this file type yet.</div>';
   }
@@ -92,4 +94,52 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
     '<article class="rich-doc">' +
     DOMPurify.sanitize(value || '<p class="rich-msg">This document is empty.</p>') +
     "</article>";
+}
+
+// ── drawio (@maxgraph/core) ─────────────────────────────────────────────────
+async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+  // .drawio is XML text, not binary — read it as text.
+  const { content } = await daemon.file(path);
+  const modelXml = await extractDrawioModel(content);
+  if (!modelXml) {
+    host.innerHTML = '<div class="rich-msg">Couldn’t read this diagram (unsupported drawio format).</div>';
+    return;
+  }
+  const { Graph, ModelXmlSerializer, FitPlugin } = await import("@maxgraph/core");
+  host.innerHTML = "";
+  const stage = document.createElement("div");
+  stage.className = "rich-diagram";
+  host.appendChild(stage);
+  // FitPlugin adds graph.fit(); register it so we can scale the whole diagram in.
+  const graph = new Graph(stage, undefined, [FitPlugin]);
+  graph.setEnabled(false); // read-only preview — no editing/selection of cells
+  new ModelXmlSerializer(graph.getDataModel()).import(modelXml);
+  // FitPlugin (id "fit") exposes fit/fitCenter on the plugin instance, not on the
+  // graph — scale the whole diagram in and centre it within the pane.
+  const fitPlugin = graph.getPlugin("fit") as unknown as
+    | { fitCenter?: (o?: { border?: number }) => number }
+    | undefined;
+  fitPlugin?.fitCenter?.({ border: 24 });
+}
+
+/** Pull the mxGraphModel XML out of a .drawio `<mxfile>` — handles both the
+ *  uncompressed form (a literal <mxGraphModel> child) and the compressed form
+ *  (base64 + raw-deflate + url-encode of the model). Returns null if neither. */
+async function extractDrawioModel(xml: string): Promise<string | null> {
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  if (doc.querySelector("parsererror")) return null;
+  const diagram = doc.querySelector("diagram");
+  // A bare mxGraphModel file, or an uncompressed <diagram><mxGraphModel>…
+  const modelEl = (diagram ?? doc).querySelector("mxGraphModel");
+  if (modelEl) return new XMLSerializer().serializeToString(modelEl);
+  // Compressed: the <diagram> text is base64(raw-deflate(url-encoded model)).
+  const data = diagram?.textContent?.trim();
+  if (!data) return null;
+  try {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const pako = await import("pako");
+    return decodeURIComponent(new TextDecoder().decode(pako.inflateRaw(bytes)));
+  } catch {
+    return null;
+  }
 }
