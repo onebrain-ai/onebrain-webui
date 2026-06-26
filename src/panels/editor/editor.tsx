@@ -119,8 +119,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // Current doc text, mirrored into a signal so the reading view (markdown) or
   // the iframe srcdoc (html) re-renders when the note loads or is edited.
   const docText = useSignal("");
-  // Object URL for a raster-image / PDF preview (created from the raw-bytes blob).
-  const blobUrl = useSignal("");
   // Sanitized markup for an inline SVG preview (rendered into the DOM, NOT via an
   // <img>, so it can use the page's web fonts — an <img>-embedded SVG cannot).
   const svgHtml = useSignal("");
@@ -184,18 +182,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         };
       }
 
-      // Raster image / PDF → object URL from the raw bytes (revoked on cleanup).
-      blobUrl.value = "";
-      let url: string | null = null;
-      void ctx.daemon.fileBlob(path).then((b) => {
-        if (cancelled) return;
-        url = URL.createObjectURL(b);
-        blobUrl.value = url;
-      });
+      // Raster image / PDF render straight from the daemon URL — the CSP allows
+      // `'self'` but not `blob:` on img-src, so a blob: object URL won't load.
       return () => {
         cancelled = true;
         editorBridge.value = null;
-        if (url) URL.revokeObjectURL(url);
       };
     }
 
@@ -553,23 +544,17 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         </div>
       ) : isImage ? (
         <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
-          {blobUrl.value && (
-            <img
-              class="ed-media ed-img"
-              ref={imgRef}
-              src={blobUrl.value}
-              alt={fileName}
-              style={zoomedStyle}
-              onLoad={(e) => { mediaW.current = (e.target as HTMLImageElement).naturalWidth || 0; }}
-            />
-          )}
+          <img
+            class="ed-media ed-img"
+            ref={imgRef}
+            src={ctx.daemon.rawUrl(path)}
+            alt={fileName}
+            style={zoomedStyle}
+            onLoad={(e) => { mediaW.current = (e.target as HTMLImageElement).naturalWidth || 0; }}
+          />
         </div>
       ) : isPdf ? (
-        blobUrl.value ? (
-          <iframe class="ed-pdf" data-testid="ed-pdf" src={blobUrl.value} title="PDF preview" />
-        ) : (
-          <div class="ed-binwrap" />
-        )
+        <iframe class="ed-pdf" data-testid="ed-pdf" src={ctx.daemon.rawUrl(path)} title="PDF preview" />
       ) : isHtml ? (
         <iframe
           class="ed-frame"
