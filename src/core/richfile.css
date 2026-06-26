@@ -20,11 +20,25 @@
 .rich-tabs {
   display: flex;
   gap: 2px;
-  flex-wrap: wrap;
+  /* single line — scroll horizontally when the sheet tabs overflow the viewport
+     instead of wrapping onto a second row. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
   margin-bottom: 14px;
   border-bottom: 1px solid var(--color-border);
 }
+.rich-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+.rich-tabs::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
 .rich-tab {
+  flex: 0 0 auto; /* keep their width, don't shrink — the bar scrolls instead */
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
@@ -44,7 +58,6 @@
   color: var(--section-accent);
   background: var(--color-bg-deep);
   border-color: var(--color-border);
-  margin-bottom: -1px; /* overlap the divider so the active tab reads as connected */
 }
 .rich-hidden {
   display: none;
