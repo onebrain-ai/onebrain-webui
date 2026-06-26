@@ -106,11 +106,11 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
   const stage = document.createElement("div");
   stage.className = "rich-slides";
   host.appendChild(stage);
-  // Render every slide stacked (mode "list"); width tracks the pane, 16:9 height.
+  // pptx-preview renders every slide stacked into a scrollable wrapper; width
+  // tracks the pane, height keeps a 16:9 slide.
   const width = Math.min(host.clientWidth || 900, 1000);
   const previewer = init(stage, { width, height: Math.round(width * 0.5625) });
   await previewer.preview(buf);
-  host.dataset.slideCount = String((previewer as unknown as { slideCount: number }).slideCount);
 }
 
 // ── drawio (@maxgraph/core) ─────────────────────────────────────────────────
