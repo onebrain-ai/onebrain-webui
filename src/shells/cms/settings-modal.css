@@ -61,7 +61,7 @@
   font-size: 11px;
   font-family: var(--font-mono, ui-monospace, monospace);
   color: var(--color-text-muted, rgba(255, 255, 255, 0.6));
-  background: rgba(7, 7, 13, 0.7);
+  background: var(--color-bg-deep);
   cursor: pointer;
 }
 .st-seg button + button {

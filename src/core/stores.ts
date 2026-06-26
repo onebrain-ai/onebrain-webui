@@ -171,11 +171,16 @@ function applyAccent(name: AccentName): void {
   // the DS component layer (.cyber-*, .accent-dot, switches) reads
   // `--action-primary` (+ its weak tint). `--focus-ring` is `var(--action-primary)`
   // in the DS, so it follows automatically.
-  const hex = ACCENTS[name];
+  // Bind to the theme TOKEN (`var(--acc-*)`), not the fixed hex from ACCENTS, so
+  // the accent adapts to light/dark: tokens.css darkens the neon `--acc-*` on a
+  // light surface (cyan #00f3ff is ~1.3:1 / unreadable on the light bg). The named
+  // accent only picks the HUE; the token supplies the theme-correct shade. (ACCENTS
+  // hexes are still used for the settings-modal swatches.)
+  const v = `var(--acc-${name})`;
   const root = document.documentElement.style;
-  root.setProperty("--section-accent", hex);
-  root.setProperty("--action-primary", hex);
-  root.setProperty("--action-primary-weak", `color-mix(in srgb, ${hex} 12%, transparent)`);
+  root.setProperty("--section-accent", v);
+  root.setProperty("--action-primary", v);
+  root.setProperty("--action-primary-weak", `color-mix(in srgb, ${v} 12%, transparent)`);
 }
 function applyDensity(d: "comfortable" | "compact"): void {
   if (d === "compact") document.documentElement.setAttribute("data-density", "compact");
