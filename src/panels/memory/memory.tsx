@@ -117,10 +117,22 @@ function Item({ e }: { e: MemEntry }) {
 }
 
 function Memory({ ctx }: { ctx: PanelContext }) {
-  const tree = vaultTree.value; // subscribe → load once the vault is ready
+  const tree = vaultTree.value; // subscribe → (re)load when the vault tree changes
+  // Fingerprint the memory-file set so an external add/delete — a focus rescan,
+  // /learn, or an edit in Obsidian — reloads the panel, not just the first mount.
+  // Gating on `entries === null` alone pinned the very first load forever.
+  const memSig =
+    tree === null
+      ? ""
+      : allFiles()
+          .filter((p) => {
+            const lp = p.toLowerCase();
+            return lp.startsWith(memoryPrefix()) && lp.endsWith(".md") && !lp.endsWith("/memory.md");
+          })
+          .join("|");
   useEffect(() => {
-    if (tree !== null && entries.value === null && !loading.value) void load(ctx);
-  }, [tree]);
+    if (tree !== null && !loading.value) void load(ctx);
+  }, [memSig]);
 
   const list = entries.value;
   const total = (list ?? []).length;
