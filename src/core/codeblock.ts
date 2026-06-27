@@ -19,15 +19,24 @@ const esc = (s: string) =>
  *  segment is escaped and the class names are library-controlled constants. */
 async function highlightToHtml(code: string, lang: string): Promise<string | null> {
   if (!lang) return null;
-  const desc = LanguageDescription.matchLanguageName(languages, lang, true);
-  if (!desc) return null;
-  let support;
-  try {
-    support = await desc.load();
-  } catch {
-    return null;
+  let parser;
+  if (/^(hcl|tf|terraform|tfvars)$/.test(lang)) {
+    // HCL / Terraform isn't in @codemirror/language-data — use the dedicated grammar.
+    try {
+      parser = (await import("codemirror-lang-hcl")).hclLanguage.parser;
+    } catch {
+      return null;
+    }
+  } else {
+    const desc = LanguageDescription.matchLanguageName(languages, lang, true);
+    if (!desc) return null;
+    try {
+      parser = (await desc.load()).language.parser;
+    } catch {
+      return null;
+    }
   }
-  const tree = support.language.parser.parse(code);
+  const tree = parser.parse(code);
   let html = "";
   let pos = 0;
   highlightTree(tree, classHighlighter, (from, to, classes) => {
