@@ -142,6 +142,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const wideView = useSignal(false);
   // Source-preview font zoom (1 = base) — +/− and Cmd-wheel resize the code.
   const sourceFontScale = useSignal(1);
+  // HTML preview: false = sandboxed (scripts off), true = "Run" (allow-scripts).
+  const htmlInteractive = useSignal(false);
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -171,6 +173,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     dirty.value = false;
     conflictRev.value = null;
     unpreviewable.value = false;
+    htmlInteractive.value = false; // every file opens sandboxed; "Run" is per-file opt-in
     let cancelled = false;
 
     if (isHtml) {
@@ -582,7 +585,16 @@ function Editor({ ctx }: { ctx: PanelContext }) {
             </>
           ) : isHtml ? (
             <>
-              <span class="ed-badge"><Icon name="code" />HTML preview</span>
+              <span class="ed-badge"><Icon name="code" />HTML</span>
+              <button
+                class={htmlInteractive.value ? "ed-run is-on" : "ed-run"}
+                type="button"
+                title={htmlInteractive.value ? "Scripts enabled — click to sandbox again" : "Run interactively (enable scripts in a sandboxed frame)"}
+                onClick={() => { htmlInteractive.value = !htmlInteractive.value; }}
+              >
+                <Icon name="play" />
+                <span>{htmlInteractive.value ? "Scripts on" : "Run"}</span>
+              </button>
               {downloadBtn}
             </>
           ) : isVideo ? (
@@ -663,13 +675,16 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         <iframe class="ed-pdf" data-testid="ed-pdf" src={ctx.daemon.rawUrl(path)} title="PDF preview" />
       ) : isHtml ? (
         <iframe
+          // re-key on the toggle so flipping it reloads the frame — changing the
+          // sandbox attribute alone doesn't re-run the document's scripts.
+          key={`html-${path}-${htmlInteractive.value ? "run" : "static"}`}
           class="ed-frame"
           data-testid="ed-html-frame"
-          // sandbox="" — fully isolated, scripts DISABLED. Vault .html files are
-          // untrusted (imported / AI-generated / synced), so the preview renders
-          // them as static documents. (Interactive HTML would be a deliberate
-          // `allow-scripts` opt-in, never with allow-same-origin.)
-          sandbox=""
+          // sandbox="" disables scripts (vault .html is untrusted — imported /
+          // AI-generated / synced). The "Run" toggle opts INTO allow-scripts, still
+          // WITHOUT allow-same-origin: the frame stays an opaque origin that can't
+          // reach the parent, cookies, or the vault.
+          sandbox={htmlInteractive.value ? "allow-scripts" : ""}
           srcdoc={docText.value}
           title="HTML preview"
         />
