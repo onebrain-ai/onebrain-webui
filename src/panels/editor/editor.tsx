@@ -352,7 +352,19 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     // (e.g. a window maximise) — changing canvas dimensions doesn't always force a
     // repaint. Re-init the minimap (fresh config) once the resize settles.
     let resizeT: ReturnType<typeof setTimeout> | undefined;
-    const ro = new ResizeObserver(() => {
+    let lastW = -1;
+    let lastH = -1;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[entries.length - 1]?.contentRect;
+      if (!r) return;
+      const first = lastW < 0;
+      // Only a REAL box resize should re-init. Skip the initial observe + sub-pixel
+      // / scrollbar jitter so scrolling never re-inits (which would flash the
+      // minimap on Safari). The minimap is already created at the opening size.
+      if (!first && Math.abs(r.width - lastW) < 3 && Math.abs(r.height - lastH) < 3) return;
+      lastW = r.width;
+      lastH = r.height;
+      if (first) return;
       clearTimeout(resizeT);
       resizeT = setTimeout(() => {
         sourceView.current?.dispatch({ effects: minimapCompartment.reconfigure(makeMinimap()) });
