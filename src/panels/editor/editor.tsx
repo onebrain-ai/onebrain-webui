@@ -10,7 +10,7 @@ import { showMinimap } from "@replit/codemirror-minimap";
 import { languages } from "@codemirror/language-data";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
-import { openSearch } from "../../core/stores";
+import { openSearch, htmlAutorun } from "../../core/stores";
 import { loadTasks } from "../tasks-store";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
@@ -173,7 +173,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     dirty.value = false;
     conflictRev.value = null;
     unpreviewable.value = false;
-    htmlInteractive.value = false; // every file opens sandboxed; "Run" is per-file opt-in
+    htmlInteractive.value = htmlAutorun.peek(); // follow the Settings "Run HTML scripts" toggle; "Run" overrides per-file
     let cancelled = false;
 
     if (isHtml) {

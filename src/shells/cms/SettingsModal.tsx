@@ -14,6 +14,8 @@ import {
   setDensity,
   theme,
   setTheme,
+  htmlAutorun,
+  setHtmlAutorun,
   type AccentName,
 } from "../../core/stores";
 import { vaultConfig } from "../../panels/bus";
@@ -167,6 +169,33 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         </div>
+
+        <div class="st-section">Preview</div>
+        <div class="st-row">
+          <span class="st-label">Run HTML scripts</span>
+          <div class="st-seg" role="group" aria-label="Run HTML scripts">
+            <button
+              type="button"
+              class={!htmlAutorun.value ? "on" : ""}
+              aria-pressed={!htmlAutorun.value}
+              onClick={() => setHtmlAutorun(false)}
+            >
+              Off
+            </button>
+            <button
+              type="button"
+              class={htmlAutorun.value ? "on" : ""}
+              aria-pressed={htmlAutorun.value}
+              onClick={() => setHtmlAutorun(true)}
+            >
+              On
+            </button>
+          </div>
+        </div>
+        <p class="st-hint">
+          Off (recommended): .html previews are static — use the <b>Run</b> button per file. On:
+          scripts auto-run in a sandbox that still can’t reach the app, vault, or token.
+        </p>
 
         <div class="st-section">
           Vault config <span class="st-ro">read-only · onebrain.yml</span>

@@ -27,6 +27,17 @@
   color: var(--color-text-muted, rgba(255, 255, 255, 0.4));
 }
 
+.st-hint {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
+}
+.st-hint b {
+  color: var(--color-text, #fff);
+  font-weight: 600;
+}
+
 .st-row {
   display: flex;
   align-items: center;

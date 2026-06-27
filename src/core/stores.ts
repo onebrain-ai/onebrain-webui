@@ -159,6 +159,18 @@ export function setTheme(t: "dark" | "light"): void {
   saveString("onebrain.theme", t);
 }
 
+// ── HTML preview: auto-run scripts (default OFF — safe-by-default) ────────────
+// When ON, .html previews open with scripts enabled (still sandboxed:
+// allow-scripts WITHOUT allow-same-origin, so the frame can't reach the app,
+// vault, token, or cookies). When OFF, previews are static and the editor's
+// "Run" button is a per-file opt-in. Untrusted .html (import / sync / AI) is why
+// this defaults off.
+export const htmlAutorun = signal<boolean>(loadString("onebrain.htmlAutorun", "0") === "1");
+export function setHtmlAutorun(on: boolean): void {
+  htmlAutorun.value = on;
+  saveString("onebrain.htmlAutorun", on ? "1" : "0");
+}
+
 /** Apply the persisted theme settings to the document. Call once at boot. */
 export function applyThemeSettings(): void {
   applyAccent(accent.value);
