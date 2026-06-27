@@ -73,6 +73,28 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** Sanitise the HTML in a drawio model's cell labels (drawio stores styled,
+ *  multi-line labels as `<br>` / `<font …>` markup in each cell's `value`). This
+ *  lets maxGraph render them as HTML without a crafted .drawio smuggling a
+ *  script/handler into the foreignObject the label is drawn into. Returns the
+ *  rewritten XML, or null if it couldn't be parsed — the caller then keeps HTML
+ *  labels OFF and renders plain text instead. */
+function sanitizeDrawioLabels(xml: string): string | null {
+  try {
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    if (doc.querySelector("parsererror")) return null;
+    for (const el of Array.from(doc.querySelectorAll("[value]"))) {
+      const v = el.getAttribute("value") ?? "";
+      // Only touch labels that actually contain a tag — leave plain text (incl. a
+      // literal "A < B") untouched so DOMPurify can't eat a stray "<".
+      if (/<[a-z!/]/i.test(v)) el.setAttribute("value", DOMPurify.sanitize(v));
+    }
+    return new XMLSerializer().serializeToString(doc);
+  } catch {
+    return null;
+  }
+}
+
 // ── xlsx (SheetJS) ──────────────────────────────────────────────────────────
 async function renderXlsx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
   const buf = await arrayBuffer(path, daemon);
@@ -250,7 +272,12 @@ async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClien
   // FitPlugin (id "fit") scales the diagram to the pane.
   const graph = new Graph(stage, undefined, [FitPlugin]);
   graph.setEnabled(false); // read-only preview — no editing/selection of cells
-  new ModelXmlSerializer(graph.getDataModel()).import(modelXml);
+  // drawio labels carry HTML (<br>, styled <font>) — render them as HTML so the
+  // diagram reads as authored, but only once the labels are sanitised. On a parse
+  // failure keep HTML off (plain text) rather than risk an unsanitised label.
+  const safeXml = sanitizeDrawioLabels(modelXml);
+  if (safeXml) graph.setHtmlLabels(true);
+  new ModelXmlSerializer(graph.getDataModel()).import(safeXml ?? modelXml);
   const fitPlugin = graph.getPlugin("fit") as unknown as
     | { fitCenter?: (o?: { border?: number }) => number }
     | undefined;

@@ -388,7 +388,9 @@ function renderBody(src: string, lineBase = 0): string {
           );
         }
       } else {
-        out.push(`<blockquote>${inline(buf.join(" "))}</blockquote>`);
+        // Render the quote body recursively (like a callout) so lists, line breaks,
+        // and paragraphs inside `>` survive instead of collapsing into one line.
+        out.push(`<blockquote>${renderBody(buf.join("\n"), lineBase + blockStart)}</blockquote>`);
       }
       continue;
     }
