@@ -51,7 +51,8 @@ export type IconName =
   | "expand-h"
   | "shrink-h"
   | "play"
-  | "copy";
+  | "copy"
+  | "contrast";
 
 const PATHS: Record<IconName, preact.JSX.Element> = {
   file: (
@@ -219,6 +220,12 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
     <>
       <rect x="9" y="9" width="13" height="13" rx="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </>
+  ),
+  contrast: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />
     </>
   ),
 };

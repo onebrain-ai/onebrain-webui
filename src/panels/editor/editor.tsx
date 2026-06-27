@@ -10,7 +10,7 @@ import { showMinimap } from "@replit/codemirror-minimap";
 import { languages } from "@codemirror/language-data";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
-import { openSearch, htmlAutorun, mediaAutoplay } from "../../core/stores";
+import { openSearch, htmlAutorun, mediaAutoplay, theme } from "../../core/stores";
 import { loadTasks } from "../tasks-store";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
@@ -146,6 +146,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const htmlInteractive = useSignal(false);
   // Source-preview copy button: brief "copied" tick.
   const sourceCopied = useSignal(false);
+  // Per-preview background theme (source / text / csv / tsv / docx / xlsx / ipynb).
+  // Defaults to the app theme; the ◐ toolbar button flips it. Persists across files.
+  const previewTheme = useSignal<"light" | "dark">(theme.peek());
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -159,6 +162,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isBinary = isImage || isPdf;
   // Rich (Office / drawio) files preview read-only via richfile.ts, like binaries.
   const isRich = isRichFile(path ?? "");
+  // Rich files that get the ◐ background toggle (docs/tables/notebooks). pptx +
+  // drawio are excluded — they have their own bg toggle in the viewport.
+  const isDocPreview = ["xlsx", "csv", "tsv", "docx", "ipynb"].includes(ext);
   // Known-binary extension → never attempt a text preview (icon + Download instead).
   const isUnpreviewableExt = UNPREVIEWABLE_EXT.has(ext);
   const isMarkdown = ext === "md" || ext === "markdown";
@@ -346,11 +352,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               drawSelection(),
               EditorState.readOnly.of(true),
               EditorView.editable.of(false),
-              // syntax colours follow the app theme for consistency
+              // syntax colours follow the per-preview theme (the ◐ toggle)
               syntaxHighlighting(
-                document.documentElement.getAttribute("data-theme") === "light"
-                  ? defaultHighlightStyle
-                  : oneDarkHighlightStyle,
+                previewTheme.peek() === "light" ? defaultHighlightStyle : oneDarkHighlightStyle,
               ),
               lang,
               showMinimap.of({
@@ -370,7 +374,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       sourceView.current?.destroy();
       sourceView.current = null;
     };
-  }, [path]);
+  }, [path, previewTheme.value]);
 
   // Rendered reading-view HTML + a mermaid pass after it mounts. Computed here
   // (before the early return) so the effect's hook order stays stable.
@@ -550,6 +554,20 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       <Icon name="download" />
     </button>
   );
+  // ◐ background light/dark toggle for the doc/table/code previews.
+  const pvThemeBtn = (
+    <button
+      class="ed-iconbtn"
+      type="button"
+      title={`Background: ${previewTheme.value} — click to flip`}
+      aria-label="Toggle preview background light / dark"
+      onClick={() => {
+        previewTheme.value = previewTheme.value === "light" ? "dark" : "light";
+      }}
+    >
+      <Icon name="contrast" />
+    </button>
+  );
   return (
     <div class="ed-wrap">
       <div class="ed-toolbar">
@@ -620,6 +638,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           ) : isRich ? (
             <>
               <span class="ed-badge"><Icon name="file" />{richLabel(path)}</span>
+              {isDocPreview ? pvThemeBtn : null}
               {downloadBtn}
             </>
           ) : isUnpreviewableExt || unpreviewable.value ? (
@@ -650,6 +669,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               >
                 <Icon name={sourceCopied.value ? "check" : "copy"} />
               </button>
+              {pvThemeBtn}
               {downloadBtn}
             </>
           ) : (
@@ -718,7 +738,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           <audio key={path} class="ed-audio" controls autoplay={mediaAutoplay.value} src={ctx.daemon.rawUrl(path)} />
         </div>
       ) : isRich ? (
-        <div class="ed-richwrap" data-testid="ed-rich">
+        <div class="ed-richwrap" data-testid="ed-rich" data-pv-theme={isDocPreview ? previewTheme.value : undefined}>
           {richErr.value ? (
             <div class="rich-msg rich-err">Couldn’t render this file: {richErr.value}</div>
           ) : null}
@@ -738,6 +758,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           class="ed ed-source"
           ref={sourceHost}
           data-testid="ed-source"
+          data-pv-theme={previewTheme.value}
           style={`--src-fs:${(13 * sourceFontScale.value).toFixed(1)}px`}
           onWheel={onSourceWheel}
         />

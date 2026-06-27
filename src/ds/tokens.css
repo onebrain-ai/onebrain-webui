@@ -80,3 +80,44 @@
   --acc-amber: #b45309;
   --c-success: #4d7c0f;
 }
+
+/* ── Per-preview theme override ───────────────────────────────────────────────
+ * The doc/table/code preview "background light/dark" toggle. Mirrors the :root
+ * light + dark token sets onto a subtree marker so one preview can be themed
+ * independently of the app (`[data-theme]` is :root-scoped and won't cascade). */
+[data-pv-theme="light"] {
+  --color-bg: #f4f5f8;
+  --color-bg-deep: #e6e8ee;
+  --color-surface: #ffffff;
+  --color-surface-2: rgba(255, 255, 255, 0.86);
+  --color-border: rgba(12, 14, 22, 0.14);
+  --color-border-2: rgba(12, 14, 22, 0.09);
+  --color-text: #14151a;
+  --color-muted: #585c66;
+  --color-faint: rgba(12, 14, 22, 0.62);
+  --color-ghost: rgba(12, 14, 22, 0.22);
+  --color-white: #0a0b10;
+  --acc-cyan: #0e7490;
+  --acc-violet: #7c3aed;
+  --acc-magenta: #be185d;
+  --acc-amber: #b45309;
+  --c-success: #4d7c0f;
+}
+[data-pv-theme="dark"] {
+  --color-bg: #050507;
+  --color-bg-deep: #020204;
+  --color-surface: #0a0a12;
+  --color-surface-2: rgba(8, 8, 14, 0.82);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-2: rgba(255, 255, 255, 0.06);
+  --color-text: #f0f0f2;
+  --color-muted: #a1a1aa;
+  --color-faint: rgba(255, 255, 255, 0.62);
+  --color-ghost: rgba(255, 255, 255, 0.2);
+  --color-white: #fff;
+  --acc-cyan: #00f3ff;
+  --acc-violet: #bc13fe;
+  --acc-magenta: #ff2d92;
+  --acc-amber: #ffb000;
+  --c-success: #a8d000;
+}

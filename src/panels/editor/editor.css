@@ -20,6 +20,10 @@
 
 /* Source / code preview — zoomable font (--src-fs) + gutter & minimap themed to the DS. */
 .ed-source .cm-scroller { font-size: var(--src-fs, 13px); }
+/* preview surface + text re-tint with [data-pv-theme] (the ◐ background toggle) */
+.ed-source,
+.ed-richwrap { background: var(--color-bg); }
+.ed-source .cm-content { color: var(--color-text); }
 .ed-source .cm-gutters {
   background: var(--color-bg-deep);
   border-right: 1px solid var(--color-border);
@@ -488,6 +492,27 @@
 .cm-codeblock .tok-emphasis { font-style: italic; }
 .cm-codeblock .tok-strong { font-weight: 600; }
 .cm-codeblock .tok-invalid { color: #ff5555; }
+/* light-preview ([data-pv-theme="light"]) syntax palette — one-light, readable on white */
+[data-pv-theme="light"] .cm-codeblock .tok-keyword { color: #a626a4; }
+[data-pv-theme="light"] .cm-codeblock .tok-comment { color: #9598a0; }
+[data-pv-theme="light"] .cm-codeblock .tok-string,
+[data-pv-theme="light"] .cm-codeblock .tok-string2,
+[data-pv-theme="light"] .cm-codeblock .tok-link,
+[data-pv-theme="light"] .cm-codeblock .tok-inserted,
+[data-pv-theme="light"] .cm-codeblock .tok-literal { color: #50a14f; }
+[data-pv-theme="light"] .cm-codeblock .tok-number,
+[data-pv-theme="light"] .cm-codeblock .tok-bool,
+[data-pv-theme="light"] .cm-codeblock .tok-atom { color: #986801; }
+[data-pv-theme="light"] .cm-codeblock .tok-variableName,
+[data-pv-theme="light"] .cm-codeblock .tok-deleted { color: #e45649; }
+[data-pv-theme="light"] .cm-codeblock .tok-propertyName,
+[data-pv-theme="light"] .cm-codeblock .tok-labelName,
+[data-pv-theme="light"] .cm-codeblock .tok-macroName { color: #4078f2; }
+[data-pv-theme="light"] .cm-codeblock .tok-typeName,
+[data-pv-theme="light"] .cm-codeblock .tok-className,
+[data-pv-theme="light"] .cm-codeblock .tok-namespace { color: #c18401; }
+[data-pv-theme="light"] .cm-codeblock .tok-operator { color: #0184bc; }
+[data-pv-theme="light"] .cm-codeblock .tok-heading { color: #e45649; }
 .ed-reading blockquote { margin: .9em auto; padding: .2em 0 .2em 14px; border-left: 3px solid var(--color-border); opacity: .85; }
 .ed-reading hr { border: 0; border-top: 1px solid var(--color-border); margin: 1.6em auto; }
 .ed-reading table { border-collapse: collapse; margin: 1em auto; width: 100%; }
