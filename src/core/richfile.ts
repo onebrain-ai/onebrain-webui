@@ -303,13 +303,14 @@ async function docxFontFaces(buf: ArrayBuffer): Promise<{ css: string; family: s
 
 /** Build @font-face CSS from a pptx's embedded fonts (ppt/presentation.xml's
  *  embeddedFontLst → relationship → ppt/fonts/*.fntdata). Returns "" if none. */
-async function pptxFontFaces(buf: ArrayBuffer): Promise<string> {
+async function pptxFontFaces(buf: ArrayBuffer): Promise<{ css: string; families: Set<string> }> {
+  const families = new Set<string>();
   try {
     const JSZip = (await import("jszip")).default;
     const zip = await JSZip.loadAsync(buf);
     const pres = await zip.file("ppt/presentation.xml")?.async("string");
     const rels = await zip.file("ppt/_rels/presentation.xml.rels")?.async("string");
-    if (!pres || !rels) return "";
+    if (!pres || !rels) return { css: "", families };
     const relMap = new Map<string, string>();
     for (const m of rels.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]+)"/g)) {
       relMap.set(m[1], m[2]);
@@ -319,6 +320,7 @@ async function pptxFontFaces(buf: ArrayBuffer): Promise<string> {
       const block = ef[1];
       const family = /typeface="([^"]+)"/.exec(block)?.[1];
       if (!family) continue;
+      families.add(family);
       for (const slot of block.matchAll(/<p:(regular|bold|italic|boldItalic)\b[^>]*\br:id="([^"]+)"/g)) {
         const target = relMap.get(slot[2]);
         if (!target) continue;
@@ -329,9 +331,23 @@ async function pptxFontFaces(buf: ArrayBuffer): Promise<string> {
         faces.push(fontFaceRule(family, data, w.includes("bold"), w.includes("italic")));
       }
     }
-    return faces.join("");
+    return { css: faces.join(""), families };
   } catch {
-    return "";
+    return { css: "", families };
+  }
+}
+
+/** Append a bundled fallback (Inter / JetBrains Mono) to slide text whose font
+ *  isn't embedded, so it lands on a real typeface instead of the browser's serif
+ *  default. Picks mono vs sans from the font name. Idempotent. */
+function applyBundledFallback(root: HTMLElement, embedded: Set<string>): void {
+  for (const el of Array.from(root.querySelectorAll<HTMLElement>("[style*='font-family']"))) {
+    const fam = el.style.fontFamily;
+    if (!fam || /var\(--font/.test(fam)) continue; // already has our fallback
+    const first = fam.split(",")[0].replace(/["']/g, "").trim();
+    if (!first || embedded.has(first)) continue; // embedded → leave the real font
+    const mono = /\b(mono|code|consol|courier|menlo|typewriter)\b/i.test(first);
+    el.style.fontFamily = `${fam}, ${mono ? "var(--font-mono)" : "var(--font-sans)"}`;
   }
 }
 
@@ -346,10 +362,10 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
   frame.appendChild(stage);
   host.appendChild(frame);
   // Inject the deck's embedded fonts so slide text renders in its real typeface.
-  const faces = await pptxFontFaces(buf);
-  if (faces) {
+  const fonts = await pptxFontFaces(buf);
+  if (fonts.css) {
     const style = document.createElement("style");
-    style.textContent = faces;
+    style.textContent = fonts.css;
     frame.appendChild(style);
   }
   // One slide at a time so the viewport pans/zooms a single slide; ◀ ▶ navigate.
@@ -357,11 +373,12 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
   // This renderer sizes shape/picture-filled images correctly (pptx-preview
   // collapsed them to 0×0) and resolves embedded media as blob: URLs.
   const viewer = await PptxViewer.open(buf, stage, { renderMode: "slide", fitMode: "none" });
+  applyBundledFallback(stage, fonts.families);
   const count = viewer.slideCount;
   let cur = 0;
   const show = (i: number) => {
     cur = Math.max(0, Math.min(count - 1, i));
-    void viewer.renderSlide(cur);
+    void Promise.resolve(viewer.renderSlide(cur)).then(() => applyBundledFallback(stage, fonts.families));
   };
   const handle = mountViewport(frame, stage, {
     nav: {
