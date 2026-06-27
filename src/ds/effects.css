@@ -33,31 +33,6 @@
 .w-head .pill {
   gap: 0;
 }
-/* #4 — a slow accent sweep riding the header's underline: quietly "alive". */
-.w-head::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 34%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--section-accent), transparent);
-  opacity: 0.5;
-  animation: ob-head-sweep 5s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes ob-head-sweep {
-  0%,
-  100% {
-    transform: translateX(0);
-    opacity: 0.18;
-  }
-  50% {
-    transform: translateX(180%);
-    opacity: 0.6;
-  }
-}
-
 /* #3 — buttons get a springy hover (lift + accent glow) and a press dip. */
 .tb-icon-btn,
 .fo-btn,
@@ -132,7 +107,6 @@ button > .ic:only-child {
 
 /* Honour reduced-motion: drop the ambient animations, keep hover feedback. */
 @media (prefers-reduced-motion: reduce) {
-  .w-head::after,
   .cms-rail-btn.is-active,
   .dot {
     animation: none;
