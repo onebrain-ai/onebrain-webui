@@ -220,6 +220,13 @@ export function mountViewport(
       window.removeEventListener("keyup", onKeyUp);
       document.removeEventListener("fullscreenchange", onFsChange);
       frame.removeEventListener("wheel", onWheel);
+      // The toolbar + frame classes/attrs are imperative DOM — remove them
+      // explicitly. Preact may REUSE the host div for the next file's branch
+      // (e.g. an image's .ed-mediawrap reused as .ed-richwrap) rather than
+      // unmounting it, which would otherwise strand the old toolbar.
+      bar.remove();
+      frame.classList.remove("rich-vframe", "is-pannable", "is-grabbing", "is-full", "rich-bg-dark", "rich-bg-light");
+      frame.removeAttribute("tabindex");
     },
   };
 }

@@ -59,6 +59,9 @@
 /* the pan-zoom frame — cursor affordances + fullscreen surface */
 .rich-vframe {
   cursor: default;
+  /* clip the transformed content (and its checkerboard) to the frame so zooming
+     / panning never spills past the background into the surrounding pane */
+  overflow: hidden;
 }
 .rich-vframe:focus,
 .rich-vframe:focus-visible {
