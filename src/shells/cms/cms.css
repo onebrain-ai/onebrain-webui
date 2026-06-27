@@ -30,6 +30,12 @@ body.cms-resizing {
   cursor: col-resize;
   user-select: none;
 }
+/* An iframe (PDF / HTML preview) swallows the mouseup mid-drag — it goes to the
+   iframe's document, not ours — so the resize never ends and the panel "sticks"
+   to the cursor. Disable iframe hit-testing while a resize is in progress. */
+body.cms-resizing iframe {
+  pointer-events: none;
+}
 
 /* ── Activity rail (sidebar switcher + chat toggle) ───────────────────────── */
 .cms-rail {
