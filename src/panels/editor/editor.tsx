@@ -8,6 +8,7 @@ import { syntaxHighlighting, defaultHighlightStyle, LanguageDescription } from "
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { showMinimap } from "@replit/codemirror-minimap";
 import { languages } from "@codemirror/language-data";
+import DOMPurify from "dompurify";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
 import { openSearch, htmlAutorun, mediaAutoplay, theme, accent } from "../../core/stores";
@@ -54,43 +55,15 @@ const AUDIO_EXT = new Set(["mp3", "wav", "flac", "ogg", "oga", "m4a", "aac"]);
  */
 export let _cmdSaveRun: (() => boolean) | null = null;
 
-/** Clean an inline SVG before it's injected into the *page* DOM (it renders
- *  inline, not in a sandboxed iframe, so page fonts apply — which means it MUST
- *  be sanitized properly, not by regex). Vault files are treated as untrusted
- *  (imported / AI-generated / synced), so we parse the SVG and drop:
- *   - active/foreign elements (<script>, <foreignObject>, <animate*>, <set>, <handler>)
- *   - every on* event-handler attribute (quoted OR unquoted)
- *   - any href / xlink:href whose scheme isn't a safe `#`, http(s), or data:image
- *   - inline style with url()/expression()/javascript:
- *  Returns "" on a parse error so a malformed/hostile file renders nothing. */
-const SVG_BAD_EL = new Set(["script", "foreignobject", "animate", "animatetransform", "animatemotion", "set", "handler"]);
+/** Sanitize an untrusted vault SVG before it's injected inline into the *page*
+ *  DOM (it renders inline, not via `<img>`, so the page's web fonts apply). Vault
+ *  files are untrusted (imported / AI-generated / synced), so we run them through
+ *  DOMPurify's SVG profile — a maintained allowlist hardened against mutation-XSS,
+ *  far safer than a hand-rolled denylist (which can miss namespaced elements,
+ *  `<style>` beacons, and the XML→HTML reparse mismatch). Returns "" for empty or
+ *  unparseable input. */
 function sanitizeSvg(s: string): string {
-  let doc: Document;
-  try {
-    doc = new DOMParser().parseFromString(s, "image/svg+xml");
-  } catch {
-    return "";
-  }
-  if (doc.querySelector("parsererror")) return "";
-  const svg = doc.querySelector("svg");
-  if (!svg) return "";
-  const clean = (el: Element): void => {
-    for (const child of Array.from(el.children)) {
-      if (SVG_BAD_EL.has(child.tagName.toLowerCase())) child.remove();
-      else clean(child);
-    }
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      if (name.startsWith("on")) el.removeAttribute(attr.name);
-      else if (name === "href" || name === "xlink:href") {
-        if (!/^(#|https?:|data:image\/)/i.test(attr.value.trim())) el.removeAttribute(attr.name);
-      } else if (name === "style" && /url\s*\(|expression|javascript:/i.test(attr.value)) {
-        el.removeAttribute(attr.name);
-      }
-    }
-  };
-  clean(svg);
-  return new XMLSerializer().serializeToString(svg);
+  return DOMPurify.sanitize(s, { USE_PROFILES: { svg: true, svgFilters: true } });
 }
 
 /** Inline save indicator for the editor header (markdown notes only). */
