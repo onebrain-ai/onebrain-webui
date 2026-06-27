@@ -17,6 +17,42 @@
 .ed .cm-selectionBackground,
 .ed .cm-content ::selection { background: color-mix(in oklab, var(--section-accent) 22%, transparent); }
 .ed .cm-focused .cm-selectionBackground { background: color-mix(in oklab, var(--section-accent) 30%, transparent); }
+
+/* Source / code preview — zoomable font (--src-fs) + gutter & minimap themed to the DS. */
+.ed-source .cm-scroller { font-size: var(--src-fs, 13px); }
+.ed-source .cm-gutters {
+  background: var(--color-bg-deep);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-faint);
+}
+.ed-source .cm-lineNumbers .cm-gutterElement { color: var(--color-faint); }
+.ed-source .cm-activeLineGutter { background: var(--accent-weak); color: var(--section-accent); }
+/* @replit minimap — deep panel, separating border, accent viewport overlay */
+.ed-source .cm-minimap-gutter,
+.ed-source .cm-minimap {
+  background: var(--color-bg-deep);
+  border-left: 1px solid var(--color-border);
+}
+.ed-source .cm-minimap-overlay { background: var(--accent-weak); }
+
+/* zoom control (source preview): − [%] + */
+.ed-zoom { display: inline-flex; align-items: center; gap: 1px; }
+.ed-zoom-pct {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  transition: color 0.15s;
+}
+.ed-zoom-pct:hover { color: var(--section-accent); }
+
 .ed-empty { padding: 32px; color: var(--color-muted); }
 /* ── Editor header bar — breadcrumb + save state + read/edit toggle ───────── */
 .ed-toolbar {

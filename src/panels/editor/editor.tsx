@@ -4,7 +4,7 @@ import { EditorView, keymap, drawSelection, highlightActiveLine, lineNumbers } f
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { syntaxHighlighting, LanguageDescription } from "@codemirror/language";
+import { syntaxHighlighting, defaultHighlightStyle, LanguageDescription } from "@codemirror/language";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { showMinimap } from "@replit/codemirror-minimap";
 import { languages } from "@codemirror/language-data";
@@ -180,6 +180,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const unpreviewable = useSignal(false);
   // .md reading view: false = centred column, true = full-width (wide-screen tables).
   const wideView = useSignal(false);
+  // Source-preview font zoom (1 = base) — +/− and Cmd-wheel resize the code.
+  const sourceFontScale = useSignal(1);
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -364,7 +366,12 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               drawSelection(),
               EditorState.readOnly.of(true),
               EditorView.editable.of(false),
-              syntaxHighlighting(oneDarkHighlightStyle),
+              // syntax colours follow the app theme for consistency
+              syntaxHighlighting(
+                document.documentElement.getAttribute("data-theme") === "light"
+                  ? defaultHighlightStyle
+                  : oneDarkHighlightStyle,
+              ),
               lang,
               showMinimap.of({
                 create: () => ({ dom: document.createElement("div") }),
@@ -537,6 +544,12 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     a.click();
     a.remove();
   };
+  const onSourceWheel = (e: WheelEvent) => {
+    if (!(e.ctrlKey || e.metaKey)) return; // Cmd/Ctrl-wheel zooms the code font
+    e.preventDefault();
+    const next = sourceFontScale.value * (e.deltaY < 0 ? 1.1 : 0.9);
+    sourceFontScale.value = Math.max(0.6, Math.min(3, next));
+  };
 
   const segs = path.split("/");
   const fileName = segs[segs.length - 1];
@@ -608,6 +621,17 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           ) : isSourceText ? (
             <>
               <span class="ed-badge"><Icon name="code" />{ext ? ext.toUpperCase() : "Text"}</span>
+              <div class="ed-zoom">
+                <button class="ed-iconbtn" type="button" title="Smaller" aria-label="Smaller" onClick={() => { sourceFontScale.value = Math.max(0.6, sourceFontScale.value - 0.1); }}>
+                  <Icon name="minus" />
+                </button>
+                <button class="ed-zoom-pct" type="button" title="Reset zoom" onClick={() => { sourceFontScale.value = 1; }}>
+                  {Math.round(sourceFontScale.value * 100)}%
+                </button>
+                <button class="ed-iconbtn" type="button" title="Larger" aria-label="Larger" onClick={() => { sourceFontScale.value = Math.min(3, sourceFontScale.value + 0.1); }}>
+                  <Icon name="plus" />
+                </button>
+              </div>
               {downloadBtn}
             </>
           ) : (
@@ -679,7 +703,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           </button>
         </div>
       ) : isSourceText ? (
-        <div class="ed ed-source" ref={sourceHost} data-testid="ed-source" />
+        <div
+          class="ed ed-source"
+          ref={sourceHost}
+          data-testid="ed-source"
+          style={`--src-fs:${(13 * sourceFontScale.value).toFixed(1)}px`}
+          onWheel={onSourceWheel}
+        />
       ) : (
         <>
           <Properties value={props.value} onChange={onProps} />
