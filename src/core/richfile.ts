@@ -134,8 +134,14 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
   const buf = await arrayBuffer(path, daemon);
   const mammoth = await import("mammoth");
   const { value } = await mammoth.convertToHtml({ arrayBuffer: buf });
+  const fonts = await docxFontFaces(buf);
+  // mammoth drops per-run fonts, so apply the document's primary embedded font to
+  // the whole body (a fair approximation for a single-font document). `fonts.family`
+  // is already restricted to a safe character set.
+  const famAttr = fonts.family ? ` style="font-family:'${fonts.family}',var(--font-sans)"` : "";
   host.innerHTML =
-    '<article class="rich-doc">' +
+    (fonts.css ? `<style>${fonts.css}</style>` : "") +
+    `<article class="rich-doc"${famAttr}>` +
     DOMPurify.sanitize(value || '<p class="rich-msg">This document is empty.</p>') +
     "</article>";
 }
@@ -222,10 +228,77 @@ async function renderIpynb(path: string, host: HTMLElement, daemon: DaemonClient
 // font bytes out of the zip and inject @font-face rules (data: URIs — the CSP
 // already allows font-src 'self' data:) so the document shows its real fonts.
 
+/** Restrict a font family name to a safe character set (font names are
+ *  alphanumeric + space/dot/hyphen) so an untrusted name can't break out of the
+ *  CSS string / inject markup. */
+function safeFontFamily(s: string): string {
+  return s.replace(/[^\w .\-]/g, "").trim().slice(0, 64);
+}
+
 /** One @font-face rule for an embedded font (base64 bytes). No format() hint —
  *  the browser sniffs TTF/OTF from the data. */
 function fontFaceRule(family: string, b64: string, bold: boolean, italic: boolean): string {
-  return `@font-face{font-family:${JSON.stringify(family)};font-weight:${bold ? 700 : 400};font-style:${italic ? "italic" : "normal"};src:url("data:font/ttf;base64,${b64}");}`;
+  return `@font-face{font-family:"${safeFontFamily(family)}";font-weight:${bold ? 700 : 400};font-style:${italic ? "italic" : "normal"};src:url("data:font/ttf;base64,${b64}");}`;
+}
+
+/** De-obfuscate a Word .odttf (ECMA-376 §17.8.1): the first 32 bytes are XORed
+ *  with the 16-byte font-key GUID, byte-reversed, applied twice. */
+function deobfuscateOdttf(bytes: Uint8Array, guid: string): Uint8Array {
+  const hex = guid.replace(/[{}-]/g, "");
+  if (hex.length < 32) return bytes;
+  const key = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) key[i] = parseInt(hex.substr(i * 2, 2), 16);
+  key.reverse();
+  const out = bytes.slice();
+  for (let i = 0; i < 32 && i < out.length; i++) out[i] ^= key[i % 16];
+  return out;
+}
+
+function u8ToBase64(u8: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/** Build @font-face CSS from a docx's embedded fonts (word/fontTable.xml →
+ *  relationship → word/fonts/*.odttf, de-obfuscated). Returns the CSS + the
+ *  primary family — mammoth drops per-run fonts, so the caller applies that
+ *  family to the whole body. */
+async function docxFontFaces(buf: ArrayBuffer): Promise<{ css: string; family: string | null }> {
+  try {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(buf);
+    const ft = await zip.file("word/fontTable.xml")?.async("string");
+    const rels = await zip.file("word/_rels/fontTable.xml.rels")?.async("string");
+    if (!ft || !rels) return { css: "", family: null };
+    const relMap = new Map<string, string>();
+    for (const m of rels.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]+)"/g)) {
+      relMap.set(m[1], m[2]);
+    }
+    const faces: string[] = [];
+    let primary: string | null = null;
+    for (const fm of ft.matchAll(/<w:font\b[^>]*\bw:name="([^"]+)"[^>]*>([\s\S]*?)<\/w:font>/g)) {
+      const family = fm[1];
+      let added = false;
+      for (const slot of fm[2].matchAll(
+        /<w:(embedRegular|embedBold|embedItalic|embedBoldItalic)\b[^>]*\br:id="([^"]+)"[^>]*\bw:fontKey="([^"]+)"/g,
+      )) {
+        const target = relMap.get(slot[2]);
+        if (!target) continue;
+        const p = target.startsWith("/") ? target.slice(1) : `word/${target}`;
+        const raw = await zip.file(p)?.async("uint8array");
+        if (!raw) continue;
+        const b64 = u8ToBase64(deobfuscateOdttf(raw, slot[3]));
+        const w = slot[1].toLowerCase();
+        faces.push(fontFaceRule(family, b64, w.includes("bold"), w.includes("italic")));
+        added = true;
+      }
+      if (added && !primary) primary = safeFontFamily(family);
+    }
+    return { css: faces.join(""), family: primary };
+  } catch {
+    return { css: "", family: null };
+  }
 }
 
 /** Build @font-face CSS from a pptx's embedded fonts (ppt/presentation.xml's
