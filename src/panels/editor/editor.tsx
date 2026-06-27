@@ -10,7 +10,7 @@ import { showMinimap } from "@replit/codemirror-minimap";
 import { languages } from "@codemirror/language-data";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
-import { openSearch, htmlAutorun, mediaAutoplay, theme } from "../../core/stores";
+import { openSearch, htmlAutorun, mediaAutoplay, theme, accent } from "../../core/stores";
 import { loadTasks } from "../tasks-store";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
@@ -149,6 +149,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // Per-preview background theme (source / text / csv / tsv / docx / xlsx / ipynb).
   // Defaults to the app theme; the ◐ toolbar button flips it. Persists across files.
   const previewTheme = useSignal<"light" | "dark">(theme.peek());
+  // --section-accent is resolved once at :root (to the dark accent), so a
+  // data-pv-theme subtree inherits the bright value even after it re-tints --acc-*.
+  // Re-declare the accent vars on the preview wrapper so they re-resolve against
+  // the subtree's (theme-correct) --acc-* — keeps the accent legible on a light bg.
+  const pvAccentStyle =
+    `--section-accent:var(--acc-${accent.value});` +
+    `--accent-weak:color-mix(in oklab,var(--acc-${accent.value}) 14%,transparent);` +
+    `--accent-line:color-mix(in oklab,var(--acc-${accent.value}) 32%,transparent)`;
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -738,7 +746,12 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           <audio key={path} class="ed-audio" controls autoplay={mediaAutoplay.value} src={ctx.daemon.rawUrl(path)} />
         </div>
       ) : isRich ? (
-        <div class="ed-richwrap" data-testid="ed-rich" data-pv-theme={isDocPreview ? previewTheme.value : undefined}>
+        <div
+          class="ed-richwrap"
+          data-testid="ed-rich"
+          data-pv-theme={isDocPreview ? previewTheme.value : undefined}
+          style={isDocPreview ? pvAccentStyle : undefined}
+        >
           {richErr.value ? (
             <div class="rich-msg rich-err">Couldn’t render this file: {richErr.value}</div>
           ) : null}
@@ -759,7 +772,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           ref={sourceHost}
           data-testid="ed-source"
           data-pv-theme={previewTheme.value}
-          style={`--src-fs:${(13 * sourceFontScale.value).toFixed(1)}px`}
+          style={`--src-fs:${(13 * sourceFontScale.value).toFixed(1)}px;${pvAccentStyle}`}
           onWheel={onSourceWheel}
         />
       ) : (
