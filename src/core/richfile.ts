@@ -165,7 +165,7 @@ async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClien
 
   // Shared pan / zoom / fullscreen controls (drag, wheel, Z, Space, F). mountViewport
   // runs the initial fit (with padding) and the Fit button re-runs maxGraph's fit.
-  const handle = mountViewport(frame, stage, { onFit: fitGraph });
+  const handle = mountViewport(frame, stage, { onFit: fitGraph, bgToggle: true });
   return () => handle.destroy();
 }
 

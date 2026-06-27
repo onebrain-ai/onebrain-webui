@@ -184,9 +184,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 0 0 / 22px 22px,
-    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 11px 11px / 22px 22px;
+  /* checkerboard comes from the viewport's .rich-bg-dark / .rich-bg-light toggle */
 }
 /* the viewport transforms this; the media is centred + capped to its box */
 .ed-media-content {

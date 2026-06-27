@@ -336,7 +336,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // Image / SVG preview: mount the shared pan-zoom-fullscreen viewport on the frame.
   useEffect(() => {
     if (!(isSvg || isImage) || !mediaFrameRef.current || !mediaContentRef.current) return;
-    const handle = mountViewport(mediaFrameRef.current, mediaContentRef.current);
+    const handle = mountViewport(mediaFrameRef.current, mediaContentRef.current, { bgToggle: true });
     return () => handle.destroy();
   }, [path]);
 

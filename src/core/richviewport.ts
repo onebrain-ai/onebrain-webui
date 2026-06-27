@@ -17,6 +17,7 @@ const ICON = {
   exit: SVG('<path d="M9 3v6H3M21 9h-6V3M15 21v-6h6M3 15h6v6"/>'),
   prev: SVG('<path d="M15 18l-6-6 6-6"/>'),
   next: SVG('<path d="M9 18l6-6-6-6"/>'),
+  contrast: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'),
 };
 
 export interface NavOptions {
@@ -42,10 +43,21 @@ const MAX = 8;
 export function mountViewport(
   frame: HTMLElement,
   content: HTMLElement,
-  { onFit, nav }: { onFit?: () => void; nav?: NavOptions } = {},
+  { onFit, nav, bgToggle }: { onFit?: () => void; nav?: NavOptions; bgToggle?: boolean } = {},
 ): ViewportHandle {
   frame.classList.add("rich-vframe");
   frame.tabIndex = 0; // focusable, so the keyboard shortcuts fire when it's active
+  // optional checkerboard background (light / dark) for transparent content — the
+  // initial side follows the app theme; the toolbar button flips it so dark-on-
+  // transparent assets (a light-mode logo / diagram) read against a light board.
+  let bg: "dark" | "light" =
+    document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  const applyBg = () => {
+    if (!bgToggle) return;
+    frame.classList.toggle("rich-bg-dark", bg === "dark");
+    frame.classList.toggle("rich-bg-light", bg === "light");
+  };
+  applyBg();
   let scale = 1;
   let tx = 0;
   let ty = 0;
@@ -98,6 +110,7 @@ export function mountViewport(
     btn("fit", ICON.fit, "Fit (0)") +
     btn("in", ICON.in, "Zoom in (+)") +
     sep +
+    (bgToggle ? btn("bg", ICON.contrast, "Toggle background (light / dark)") : "") +
     btn("full", ICON.full, "Full screen (F)");
   frame.appendChild(bar);
 
@@ -127,6 +140,7 @@ export function mountViewport(
     else if (a === "out") centerZoom(0.8);
     else if (a === "fit") fit();
     else if (a === "full") toggleFull();
+    else if (a === "bg") { bg = bg === "dark" ? "light" : "dark"; applyBg(); }
     else if (a === "prev") { nav?.prev(); refreshLabel(); }
     else if (a === "next") { nav?.next(); refreshLabel(); }
   });
