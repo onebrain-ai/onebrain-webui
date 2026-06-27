@@ -42,8 +42,28 @@ function highlight(text: string, query: string): (string | preact.JSX.Element)[]
   return text.split(re).map((part, i) => (want.has(part.toLowerCase()) ? <mark key={i}>{part}</mark> : part));
 }
 
-/** Which tier produced the currently-shown hits. */
-type Tier = "keyword" | "semantic" | null;
+/** Client-side fallback for when qmd is unavailable (no `qmd_collection`, qmd not
+ *  installed, or the endpoint errored): the old filename/path substring match over
+ *  the loaded tree. Returns REAL, openable paths — so no slug resolution needed. */
+function searchVault(q: string, files: string[]): SearchHit[] {
+  const term = q.toLowerCase();
+  const out: SearchHit[] = [];
+  for (const path of files) {
+    const name = path.split("/").pop() ?? path;
+    const lpath = path.toLowerCase();
+    const nameIdx = name.toLowerCase().indexOf(term);
+    const pathIdx = lpath.indexOf(term);
+    if (nameIdx < 0 && pathIdx < 0) continue;
+    let score = 0.55;
+    if (nameIdx >= 0) score += 0.3;
+    if (pathIdx >= 0) score += Math.min(0.3, (lpath.split(term).length - 1) * 0.1);
+    out.push({ path, score: Math.min(0.99, score), title: name, snippet: "" });
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 20);
+}
+
+/** Which tier produced the currently-shown hits ("offline" = the client-side fallback). */
+type Tier = "keyword" | "semantic" | "offline" | null;
 
 function Search({ ctx }: { ctx: PanelContext }) {
   // Module-level signal so a #tag click in the reading view can pre-fill the box.
@@ -54,6 +74,9 @@ function Search({ ctx }: { ctx: PanelContext }) {
   const [loading, setLoading] = useState(false);
   const [tier, setTier] = useState<Tier>(null);
   const [errMsg, setErrMsg] = useState("");
+  // Once a search hits "qmd unavailable" (503 / network), drop to the client-side
+  // fallback for the rest of the session instead of re-hammering the endpoint.
+  const [qmdOff, setQmdOff] = useState(false);
 
   // Focus the search box the moment the panel opens, so you can type straight away.
   const inputRef = useRef<HTMLInputElement>(null);
@@ -84,6 +107,14 @@ function Search({ ctx }: { ctx: PanelContext }) {
       setErrMsg("");
       return;
     }
+    // qmd already known unavailable → client-side filename/path match, instantly.
+    if (qmdOff) {
+      setHits(searchVault(q, allFiles()));
+      setTier("offline");
+      setLoading(false);
+      setErrMsg("");
+      return;
+    }
     const ac = new AbortController();
     let live = true;
     setLoading(true);
@@ -97,8 +128,12 @@ function Search({ ctx }: { ctx: PanelContext }) {
         setTier("keyword");
       } catch (e) {
         if (!live || ac.signal.aborted) return;
+        // qmd is unavailable (not configured/installed, or it errored) → fall back
+        // to the client-side filename/path search so search keeps working.
+        setQmdOff(true);
+        setHits(searchVault(q, allFiles()));
+        setTier("offline");
         setLoading(false);
-        setErrMsg(e instanceof Error ? e.message : "search failed");
         return;
       }
       // tier 2 — hybrid keyword + semantic (replaces the keyword list)
@@ -118,7 +153,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
       ac.abort();
       window.clearTimeout(timer);
     };
-  }, [q]);
+  }, [q, qmdOff]);
 
   // Status line above the results: live progress, then the final tier + count.
   let status: preact.JSX.Element | null = null;
@@ -131,9 +166,11 @@ function Search({ ctx }: { ctx: PanelContext }) {
       </div>
     );
   } else if (tier && hits.length) {
+    const label =
+      tier === "semantic" ? "keyword + semantic" : tier === "offline" ? "filename match" : "keyword";
     status = (
       <div class="qs-status">
-        {tier === "semantic" ? "keyword + semantic" : "keyword"} · {hits.length} result{hits.length === 1 ? "" : "s"}
+        {label} · {hits.length} result{hits.length === 1 ? "" : "s"}
       </div>
     );
   }
@@ -147,7 +184,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
           <>
             พิมพ์เพื่อค้นทั่ว vault
             <br />
-            keyword + semantic · {total.toLocaleString()} notes
+            {qmdOff ? "filename match" : "keyword + semantic"} · {total.toLocaleString()} notes
           </>
         ) : vaultError.value ? (
           <>⚠ {vaultError.value}</>
@@ -164,7 +201,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
           const name = h.title || real.split("/").pop() || real;
           const dir = real.split("/").slice(0, -1).join("/") || "root";
           return (
-            <div class={`qs-hit${real === active ? " active" : ""}`} onClick={() => ctx.openFile(real)}>
+            <div key={real} class={`qs-hit${real === active ? " active" : ""}`} onClick={() => ctx.openFile(real)}>
               <div class="qh-top">
                 <span class="qh-name">{name}</span>
                 <span class="qh-score">{h.score.toFixed(2)}</span>
