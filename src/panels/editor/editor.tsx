@@ -439,15 +439,23 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     const el = richHost.current;
     if (!isRich || !path || !el) return;
     let cancelled = false;
+    let teardown: (() => void) | void;
     richErr.value = "";
     el.innerHTML = '<div class="rich-msg">Loading preview…</div>';
-    void renderRichFile(path, el, ctx.daemon).catch((e) => {
-      if (cancelled) return;
-      richErr.value = e instanceof Error ? e.message : String(e);
-      el.innerHTML = "";
-    });
+    void renderRichFile(path, el, ctx.daemon)
+      .then((t) => {
+        if (cancelled) t?.(); // switched away mid-load — tear it straight back down
+        else teardown = t;
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        richErr.value = e instanceof Error ? e.message : String(e);
+        el.innerHTML = "";
+      });
     return () => {
       cancelled = true;
+      teardown?.(); // destroy the viewport (window listeners + fullscreen handler)
+      el.innerHTML = ""; // drop the rendered content so it can't bleed into the next file
     };
   }, [path, isRich]);
 

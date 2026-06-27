@@ -31,7 +31,11 @@ export function richLabel(path: string): string {
 
 /** Render a rich file into `host` (read-only). Rejects on a load/parse failure so
  *  the caller can surface an error instead of a blank pane. */
-export async function renderRichFile(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+export async function renderRichFile(
+  path: string,
+  host: HTMLElement,
+  daemon: DaemonClient,
+): Promise<(() => void) | void> {
   switch (ext(path)) {
     case "xlsx":
       return renderXlsx(path, host, daemon);
@@ -100,7 +104,7 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
 }
 
 // ── pptx (pptx-preview) ─────────────────────────────────────────────────────
-async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<() => void> {
   const buf = await arrayBuffer(path, daemon);
   const { init } = await import("pptx-preview");
   host.innerHTML = "";
@@ -121,23 +125,24 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
     renderNextSlide(): void;
     renderPreSlide(): void;
   };
-  mountViewport(frame, stage, {
+  const handle = mountViewport(frame, stage, {
     nav: {
       prev: () => p.renderPreSlide(),
       next: () => p.renderNextSlide(),
       label: () => `${(p.currentIndex ?? 0) + 1} / ${p.slideCount}`,
     },
   });
+  return () => handle.destroy();
 }
 
 // ── drawio (@maxgraph/core) ─────────────────────────────────────────────────
-async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClient): Promise<() => void> {
   // .drawio is XML text, not binary — read it as text.
   const { content } = await daemon.file(path);
   const modelXml = await extractDrawioModel(content);
   if (!modelXml) {
     host.innerHTML = '<div class="rich-msg">Couldn’t read this diagram (unsupported drawio format).</div>';
-    return;
+    return () => {};
   }
   const { Graph, ModelXmlSerializer, FitPlugin } = await import("@maxgraph/core");
   host.innerHTML = "";
@@ -160,7 +165,8 @@ async function renderDrawio(path: string, host: HTMLElement, daemon: DaemonClien
 
   // Shared pan / zoom / fullscreen controls (drag, wheel, Z, Space, F). mountViewport
   // runs the initial fit (with padding) and the Fit button re-runs maxGraph's fit.
-  mountViewport(frame, stage, { onFit: fitGraph });
+  const handle = mountViewport(frame, stage, { onFit: fitGraph });
+  return () => handle.destroy();
 }
 
 /** Pull the mxGraphModel XML out of a .drawio `<mxfile>` — handles both the
