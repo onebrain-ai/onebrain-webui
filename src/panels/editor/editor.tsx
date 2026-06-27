@@ -22,6 +22,8 @@ import { isRichFile, renderRichFile, richLabel } from "../../core/richfile";
 import { mountViewport } from "../../core/richviewport";
 import { renderMermaidIn, addMermaidZoomControls } from "../../core/mermaid";
 import { renderMathIn } from "../../core/katex";
+import { enhanceCodeBlocksIn } from "../../core/codeblock";
+import { formatCode } from "../../core/codeformat";
 import { Icon } from "../../ui/Icon";
 import "./editor.css";
 
@@ -38,53 +40,6 @@ const UNPREVIEWABLE_EXT = new Set([
   "blend", "obj", "stl", "fbx", "glb", "gltf",
   "db", "sqlite", "sqlite3", "dat", "pyc", "class", "so", "dll", "dylib", "parquet",
 ]);
-
-/** Pretty-print structured text before it's shown (the view is read-only, so the
- *  file itself is never changed). Malformed input is returned unchanged — better a
- *  raw view than an error. */
-async function formatStructured(path: string, text: string): Promise<string> {
-  const e = (path.split(".").pop() ?? "").toLowerCase();
-  try {
-    if (e === "json" || e === "jsonc") return JSON.stringify(JSON.parse(text), null, 2);
-    if (e === "yaml" || e === "yml") {
-      const { loadAll, dump } = await import("js-yaml");
-      return (loadAll(text) as unknown[])
-        .map((d) => dump(d, { indent: 2, lineWidth: 100, noRefs: true }))
-        .join("---\n")
-        .trimEnd();
-    }
-    if (e === "xml" || e === "xsd" || e === "xsl" || e === "rss" || e === "plist") return formatXml(text);
-  } catch {
-    /* malformed → show as-is */
-  }
-  return text;
-}
-
-/** Indent an XML document for the read-only preview; unchanged on a parse error. */
-function formatXml(xml: string): string {
-  const doc = new DOMParser().parseFromString(xml, "application/xml");
-  if (doc.querySelector("parsererror") || !doc.documentElement) return xml;
-  const ser = (node: Element, depth: number): string => {
-    const pad = "  ".repeat(depth);
-    const attrs = Array.from(node.attributes)
-      .map((a) => ` ${a.name}="${a.value}"`)
-      .join("");
-    const els = Array.from(node.children);
-    const txt = Array.from(node.childNodes)
-      .filter((c) => c.nodeType === 3)
-      .map((c) => c.textContent?.trim())
-      .filter(Boolean)
-      .join(" ");
-    if (els.length === 0) {
-      return txt
-        ? `${pad}<${node.tagName}${attrs}>${txt}</${node.tagName}>`
-        : `${pad}<${node.tagName}${attrs} />`;
-    }
-    const inner = els.map((c) => ser(c, depth + 1)).join("\n");
-    return `${pad}<${node.tagName}${attrs}>\n${inner}\n${pad}</${node.tagName}>`;
-  };
-  return ser(doc.documentElement, 0);
-}
 
 /**
  * The run-function wired to the Mod-s keybinding.
@@ -351,7 +306,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       .file(path)
       .then(async (f) => {
         if (cancelled || !sourceHost.current) return;
-        const text = await formatStructured(path, f.content);
+        const text = await formatCode((path.split(".").pop() ?? "").toLowerCase(), f.content);
         const desc = LanguageDescription.matchFilename(languages, fileName);
         const lang = desc ? await desc.load() : [];
         if (cancelled || !sourceHost.current) return;
@@ -405,6 +360,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         if (readingHost.current) addMermaidZoomControls(readingHost.current);
       });
       void renderMathIn(readingHost.current);
+      // Syntax-highlight + line-number + pretty-print fenced code blocks.
+      void enhanceCodeBlocksIn(readingHost.current);
       // Resolve vault image refs to the authed raw endpoint (img can't send the
       // token header, so rawUrl carries it in the query).
       const hideImg = (img: HTMLImageElement) => {
