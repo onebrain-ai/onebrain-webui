@@ -76,7 +76,10 @@ function Search({ ctx }: { ctx: PanelContext }) {
   const [errMsg, setErrMsg] = useState("");
   // Once a search hits "qmd unavailable" (503 / network), drop to the client-side
   // fallback for the rest of the session instead of re-hammering the endpoint.
+  // The ref drives the effect's early-return so flipping it doesn't re-run the
+  // effect (which would double-search); the state only drives the empty-state label.
   const [qmdOff, setQmdOff] = useState(false);
+  const qmdOffRef = useRef(false);
 
   // Focus the search box the moment the panel opens, so you can type straight away.
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,7 +111,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
       return;
     }
     // qmd already known unavailable → client-side filename/path match, instantly.
-    if (qmdOff) {
+    if (qmdOffRef.current) {
       setHits(searchVault(q, allFiles()));
       setTier("offline");
       setLoading(false);
@@ -130,6 +133,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
         if (!live || ac.signal.aborted) return;
         // qmd is unavailable (not configured/installed, or it errored) → fall back
         // to the client-side filename/path search so search keeps working.
+        qmdOffRef.current = true;
         setQmdOff(true);
         setHits(searchVault(q, allFiles()));
         setTier("offline");
@@ -153,7 +157,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
       ac.abort();
       window.clearTimeout(timer);
     };
-  }, [q, qmdOff]);
+  }, [q]);
 
   // Status line above the results: live progress, then the final tier + count.
   let status: preact.JSX.Element | null = null;
@@ -201,7 +205,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
           const name = h.title || real.split("/").pop() || real;
           const dir = real.split("/").slice(0, -1).join("/") || "root";
           return (
-            <div key={real} class={`qs-hit${real === active ? " active" : ""}`} onClick={() => ctx.openFile(real)}>
+            <div key={h.path} class={`qs-hit${real === active ? " active" : ""}`} onClick={() => ctx.openFile(real)}>
               <div class="qh-top">
                 <span class="qh-name">{name}</span>
                 <span class="qh-score">{h.score.toFixed(2)}</span>
