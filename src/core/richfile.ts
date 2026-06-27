@@ -185,6 +185,12 @@ async function renderIpynb(path: string, host: HTMLElement, daemon: DaemonClient
   const cells = Array.isArray(nb.cells) ? nb.cells : [];
   const lang = escapeHtml(nb.metadata?.language_info?.name || nb.metadata?.kernelspec?.language || "python");
   const str = (s: string | string[] | undefined) => (Array.isArray(s) ? s.join("") : s ?? "");
+  // Strip anything outside the base64 alphabet so a crafted output value can't
+  // break out of the data: URL's src="" attribute (e.g. `x" onerror="…`). The
+  // body-level DOMPurify below would also catch it, but this keeps the image
+  // path safe by construction — the same defense-in-depth lesson as the markdown
+  // raw-HTML hardening, not a sole reliance on the sanitizer.
+  const b64 = (s: string | string[] | undefined) => str(s).replace(/[^A-Za-z0-9+/=]/g, "");
   const { renderMarkdown } = await import("./markdown");
 
   const renderOutputs = (outputs: NbOutput[] = []): string =>
@@ -195,8 +201,8 @@ async function renderIpynb(path: string, host: HTMLElement, daemon: DaemonClient
           return `<pre class="nb-err">${escapeHtml((o.traceback ?? []).join("\n").replace(/\[[0-9;]*m/g, ""))}</pre>`;
         if (o.output_type === "execute_result" || o.output_type === "display_data") {
           const d = o.data ?? {};
-          if (d["image/png"]) return `<img class="nb-img" alt="output" src="data:image/png;base64,${str(d["image/png"]).trim()}" />`;
-          if (d["image/jpeg"]) return `<img class="nb-img" alt="output" src="data:image/jpeg;base64,${str(d["image/jpeg"]).trim()}" />`;
+          if (d["image/png"]) return `<img class="nb-img" alt="output" src="data:image/png;base64,${b64(d["image/png"])}" />`;
+          if (d["image/jpeg"]) return `<img class="nb-img" alt="output" src="data:image/jpeg;base64,${b64(d["image/jpeg"])}" />`;
           if (d["text/html"]) return `<div class="nb-html">${str(d["text/html"])}</div>`;
           if (d["text/plain"]) return `<pre class="nb-out">${escapeHtml(str(d["text/plain"]))}</pre>`;
         }

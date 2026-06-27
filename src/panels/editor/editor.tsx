@@ -725,7 +725,15 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         // icon). Embedded PDF JavaScript isn't a practical token-theft vector here —
         // Chrome's PDFium disables PDF JS, and Firefox's pdf.js runs it in its own
         // isolated sandbox with no DOM access.
-        <iframe class="ed-pdf" data-testid="ed-pdf" src={ctx.daemon.rawUrl(path)} title="PDF preview" />
+        <iframe
+          class="ed-pdf"
+          data-testid="ed-pdf"
+          src={ctx.daemon.rawUrl(path)}
+          title="PDF preview"
+          // The token rides in rawUrl's query string; no-referrer stops it leaking
+          // via the Referer header if the PDF references any external resource.
+          referrerpolicy="no-referrer"
+        />
       ) : isHtml ? (
         <iframe
           // re-key on the toggle so flipping it reloads the frame — changing the
