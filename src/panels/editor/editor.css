@@ -447,7 +447,10 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.cm-code-body {
+/* `.cm-codeblock` prefix outranks the generic `.ed-reading pre` rule (which adds
+   margin/border/background/radius): the body pre must have NO margin or the whole
+   code column drops below the gutter by ~.9em, and no nested border/background. */
+.cm-codeblock .cm-code-body {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
@@ -457,7 +460,11 @@
   border: 0;
   border-radius: 0;
 }
-.cm-code-body code {
+/* Selector carries `.cm-codeblock` so it outranks `.ed-reading pre code` (which
+   sets .88em/1.55): the body code MUST share the gutter's font-size + line-height
+   (both inherit .85em/1.6 from .cm-codeblock) or the line numbers drift out of
+   alignment one row at a time. */
+.cm-codeblock .cm-code-body code {
   display: block;
   background: none;
   padding: 0;
