@@ -171,7 +171,7 @@ function calloutIconHtml(type: string): string {
  *  absolute 0-based body-line index of `src`'s first line — 0 at the top level,
  *  but a callout's recursive render passes the callout body's real offset so a
  *  task checkbox's `data-line` stays aligned with the source/CodeMirror doc. */
-function renderBody(src: string, lineBase = 0): string {
+function renderBody(src: string, lineBase = 0, allowHtmlBlock = true): string {
   // Pull footnote definitions ([^id]: text) out up front — they render as a list
   // at the bottom of the note, not inline. Blank the line (rather than removing
   // it) so every other line keeps its index → the reading view's task checkboxes
@@ -319,7 +319,10 @@ function renderBody(src: string, lineBase = 0): string {
     // handlers, javascript: URLs). The tag-name + boundary requirement avoids
     // catching prose like `<3` or an autolink `<https://…>`. Collected to the
     // next blank line (CommonMark type-6 HTML block: no markdown inside).
-    if (/^\s*<(!--|\/?[a-zA-Z][a-zA-Z0-9-]*(?:[\s/>]|$))/.test(line)) {
+    // DISABLED inside a blockquote/callout body (`allowHtmlBlock = false`): quoted
+    // content is escaped through the paragraph path instead of passed through, so a
+    // line like `> <img onerror=…>` can't smuggle raw HTML past the renderer.
+    if (allowHtmlBlock && /^\s*<(!--|\/?[a-zA-Z][a-zA-Z0-9-]*(?:[\s/>]|$))/.test(line)) {
       const buf: string[] = [];
       while (i < lines.length && !/^\s*$/.test(lines[i])) buf.push(lines[i++]);
       out.push(buf.join("\n"));
@@ -370,7 +373,7 @@ function renderBody(src: string, lineBase = 0): string {
         // header, i.e. absolute index lineBase + blockStart + 1 — pass it down so
         // a nested task's data-line stays aligned with the real document line.
         const bodyHtml = body.trim()
-          ? `<div class="callout-body">${renderBody(body, lineBase + blockStart + 1)}</div>`
+          ? `<div class="callout-body">${renderBody(body, lineBase + blockStart + 1, false)}</div>`
           : "";
         if (fold === "-" || fold === "+") {
           out.push(
@@ -390,7 +393,7 @@ function renderBody(src: string, lineBase = 0): string {
       } else {
         // Render the quote body recursively (like a callout) so lists, line breaks,
         // and paragraphs inside `>` survive instead of collapsing into one line.
-        out.push(`<blockquote>${renderBody(buf.join("\n"), lineBase + blockStart)}</blockquote>`);
+        out.push(`<blockquote>${renderBody(buf.join("\n"), lineBase + blockStart, false)}</blockquote>`);
       }
       continue;
     }
