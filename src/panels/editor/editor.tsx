@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { EditorView, keymap, drawSelection, highlightActiveLine, lineNumbers } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { syntaxHighlighting, defaultHighlightStyle, LanguageDescription } from "@codemirror/language";
@@ -341,6 +341,23 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   useEffect(() => {
     if (!isSourceText || !sourceHost.current) return;
     let cancelled = false;
+    const minimapCompartment = new Compartment();
+    const makeMinimap = () =>
+      showMinimap.of({
+        create: () => ({ dom: document.createElement("div") }),
+        displayText: "blocks",
+        showOverlay: "always",
+      });
+    // Safari/WebKit can leave the minimap canvas blank after the editor box resizes
+    // (e.g. a window maximise) — changing canvas dimensions doesn't always force a
+    // repaint. Re-init the minimap (fresh config) once the resize settles.
+    let resizeT: ReturnType<typeof setTimeout> | undefined;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(resizeT);
+      resizeT = setTimeout(() => {
+        sourceView.current?.dispatch({ effects: minimapCompartment.reconfigure(makeMinimap()) });
+      }, 200);
+    });
     void ctx.daemon
       .file(path)
       .then(async (f) => {
@@ -365,20 +382,19 @@ function Editor({ ctx }: { ctx: PanelContext }) {
                 previewTheme.peek() === "light" ? defaultHighlightStyle : oneDarkHighlightStyle,
               ),
               lang,
-              showMinimap.of({
-                create: () => ({ dom: document.createElement("div") }),
-                displayText: "blocks",
-                showOverlay: "always",
-              }),
+              minimapCompartment.of(makeMinimap()),
             ],
           }),
         });
+        if (sourceHost.current) ro.observe(sourceHost.current);
       })
       .catch(() => {
         if (!cancelled) unpreviewable.value = true;
       });
     return () => {
       cancelled = true;
+      clearTimeout(resizeT);
+      ro.disconnect();
       sourceView.current?.destroy();
       sourceView.current = null;
     };
