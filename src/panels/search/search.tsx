@@ -5,6 +5,7 @@
 // opens it in Preview. Ported from the prototype (template 1266–1270, buildSearch
 // 2889–2907, OB.search 2705–2719).
 
+import { useRef, useEffect } from "preact/hooks";
 import type { PanelDef, PanelContext } from "../contract";
 import { allFiles, vaultTree, vaultError, previewPath } from "../bus";
 import { searchQuery } from "../../core/stores";
@@ -64,6 +65,11 @@ function searchVault(q: string): Hit[] {
 function Search({ ctx }: { ctx: PanelContext }) {
   // Module-level signal so a #tag click in the reading view can pre-fill the box.
   const query = searchQuery;
+  // Focus the search box the moment the panel opens, so you can type straight away.
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
   const active = previewPath.value;
   // subscribe to the tree so the panel re-renders (and search works) once the
   // vault finishes loading
@@ -122,6 +128,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
           <path d="M21 21l-4.3-4.3" />
         </svg>
         <input
+          ref={inputRef}
           class="qs-in"
           type="text"
           placeholder="search the vault…"
