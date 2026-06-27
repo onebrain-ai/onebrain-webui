@@ -28,6 +28,28 @@
 .fx-filter::placeholder {
   color: var(--color-muted);
 }
+.fx-clear {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s;
+}
+.fx-clear:hover {
+  color: var(--section-accent);
+  background: var(--color-surface);
+}
+.fx-clear svg {
+  width: 13px;
+  height: 13px;
+}
 .fx-count {
   font-family: var(--font-mono);
   font-size: 9px;

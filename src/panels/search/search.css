@@ -35,6 +35,28 @@
 .qs-in::placeholder {
   color: var(--color-muted);
 }
+.qs-clear {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s;
+}
+.qs-clear:hover {
+  color: var(--section-accent);
+  background: var(--color-surface);
+}
+.qs-clear svg {
+  width: 13px;
+  height: 13px;
+}
 .qs-results {
   overflow: auto;
   display: flex;

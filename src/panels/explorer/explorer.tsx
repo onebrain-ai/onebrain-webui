@@ -214,6 +214,22 @@ export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
           value={filter.value}
           onInput={(e) => (filter.value = (e.target as HTMLInputElement).value)}
         />
+        {filter.value && (
+          <button
+            class="fx-clear"
+            type="button"
+            title="Clear"
+            aria-label="Clear filter"
+            onClick={(e) => {
+              filter.value = "";
+              (e.currentTarget.closest(".fx-tools")?.querySelector("input") as HTMLInputElement | null)?.focus();
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        )}
         <span class="fx-count">
           {tree ? (q ? `${fileCount} match` : `${fileCount} files`) : vaultError.value ? "load failed" : "loading…"}
         </span>
