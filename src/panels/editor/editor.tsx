@@ -720,6 +720,11 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           </div>
         </div>
       ) : isPdf ? (
+        // No sandbox: the browser's PDF viewer needs same-origin and won't render
+        // inside an opaque-origin sandboxed iframe (verified — it shows a broken-page
+        // icon). Embedded PDF JavaScript isn't a practical token-theft vector here —
+        // Chrome's PDFium disables PDF JS, and Firefox's pdf.js runs it in its own
+        // isolated sandbox with no DOM access.
         <iframe class="ed-pdf" data-testid="ed-pdf" src={ctx.daemon.rawUrl(path)} title="PDF preview" />
       ) : isHtml ? (
         <iframe
