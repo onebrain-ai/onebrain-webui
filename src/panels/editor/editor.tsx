@@ -10,7 +10,7 @@ import { showMinimap } from "@replit/codemirror-minimap";
 import { languages } from "@codemirror/language-data";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
-import { openSearch, htmlAutorun } from "../../core/stores";
+import { openSearch, htmlAutorun, mediaAutoplay } from "../../core/stores";
 import { loadTasks } from "../tasks-store";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
@@ -144,6 +144,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const sourceFontScale = useSignal(1);
   // HTML preview: false = sandboxed (scripts off), true = "Run" (allow-scripts).
   const htmlInteractive = useSignal(false);
+  // Source-preview copy button: brief "copied" tick.
+  const sourceCopied = useSignal(false);
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -530,6 +532,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     const next = sourceFontScale.value * (e.deltaY < 0 ? 1.1 : 0.9);
     sourceFontScale.value = Math.max(0.6, Math.min(3, next));
   };
+  const copySource = () => {
+    void navigator.clipboard?.writeText(sourceView.current?.state.doc.toString() ?? "").then(() => {
+      sourceCopied.value = true;
+      setTimeout(() => {
+        sourceCopied.value = false;
+      }, 1200);
+    });
+  };
 
   const segs = path.split("/");
   const fileName = segs[segs.length - 1];
@@ -631,6 +641,15 @@ function Editor({ ctx }: { ctx: PanelContext }) {
                   <Icon name="plus" />
                 </button>
               </div>
+              <button
+                class="ed-iconbtn"
+                type="button"
+                title={sourceCopied.value ? "Copied" : "Copy code"}
+                aria-label="Copy code"
+                onClick={copySource}
+              >
+                <Icon name={sourceCopied.value ? "check" : "copy"} />
+              </button>
               {downloadBtn}
             </>
           ) : (
@@ -691,12 +710,12 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       ) : isVideo ? (
         <div class="ed-mediafile">
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <video class="ed-video" controls src={ctx.daemon.rawUrl(path)} />
+          <video key={path} class="ed-video" controls autoplay={mediaAutoplay.value} src={ctx.daemon.rawUrl(path)} />
         </div>
       ) : isAudio ? (
         <div class="ed-mediafile">
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <audio class="ed-audio" controls src={ctx.daemon.rawUrl(path)} />
+          <audio key={path} class="ed-audio" controls autoplay={mediaAutoplay.value} src={ctx.daemon.rawUrl(path)} />
         </div>
       ) : isRich ? (
         <div class="ed-richwrap" data-testid="ed-rich">

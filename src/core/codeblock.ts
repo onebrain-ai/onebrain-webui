@@ -48,9 +48,14 @@ async function highlightToHtml(code: string, lang: string): Promise<string | nul
   return html;
 }
 
+const CB_ICON = (inner: string) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const COPY_ICON = CB_ICON('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>');
+const COPIED_ICON = CB_ICON('<path d="M5 12l4 4 10-11"/>');
+
 /** Enhance every fenced code block under `root` in place: structured langs are
- *  pretty-printed, the body is syntax-highlighted, and a line-number gutter is
- *  added. Idempotent — already-enhanced blocks are skipped. */
+ *  pretty-printed, the body is syntax-highlighted, a line-number gutter is added,
+ *  and a hover copy button is attached. Idempotent — enhanced blocks are skipped. */
 export async function enhanceCodeBlocksIn(root: HTMLElement): Promise<void> {
   const codes = Array.from(root.querySelectorAll<HTMLElement>("pre > code")).filter(
     (c) => !c.closest("pre.mermaid"),
@@ -87,8 +92,26 @@ export async function enhanceCodeBlocksIn(root: HTMLElement): Promise<void> {
     else codeEl.textContent = text;
     body.appendChild(codeEl);
 
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "cm-code-copy";
+    copyBtn.type = "button";
+    copyBtn.title = "Copy code";
+    copyBtn.setAttribute("aria-label", "Copy code");
+    copyBtn.innerHTML = COPY_ICON; // static markup
+    copyBtn.addEventListener("click", () => {
+      void navigator.clipboard?.writeText(text).then(() => {
+        copyBtn.innerHTML = COPIED_ICON;
+        copyBtn.classList.add("is-copied");
+        setTimeout(() => {
+          copyBtn.innerHTML = COPY_ICON;
+          copyBtn.classList.remove("is-copied");
+        }, 1200);
+      });
+    });
+
     block.appendChild(gutter);
     block.appendChild(body);
+    block.appendChild(copyBtn);
     pre.replaceWith(block);
   }
 }

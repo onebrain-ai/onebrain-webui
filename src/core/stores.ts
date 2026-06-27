@@ -171,6 +171,15 @@ export function setHtmlAutorun(on: boolean): void {
   saveString("onebrain.htmlAutorun", on ? "1" : "0");
 }
 
+// ── Media preview: auto-play audio / video on open (default OFF) ──────────────
+// Browsers may still gate UNMUTED autoplay until a user gesture (the explorer
+// click usually counts); either way the native controls work.
+export const mediaAutoplay = signal<boolean>(loadString("onebrain.mediaAutoplay", "0") === "1");
+export function setMediaAutoplay(on: boolean): void {
+  mediaAutoplay.value = on;
+  saveString("onebrain.mediaAutoplay", on ? "1" : "0");
+}
+
 /** Apply the persisted theme settings to the document. Call once at boot. */
 export function applyThemeSettings(): void {
   applyAccent(accent.value);

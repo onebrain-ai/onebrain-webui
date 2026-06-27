@@ -50,7 +50,8 @@ export type IconName =
   | "arrow-right"
   | "expand-h"
   | "shrink-h"
-  | "play";
+  | "play"
+  | "copy";
 
 const PATHS: Record<IconName, preact.JSX.Element> = {
   file: (
@@ -214,6 +215,12 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
   "expand-h": <path d="M21 12H3M7 8l-4 4 4 4M17 8l4 4-4 4" />,
   "shrink-h": <path d="M7 12h10M3 8l4 4-4 4M21 8l-4 4 4 4" />,
   play: <path d="M7 4l13 8-13 8z" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </>
+  ),
 };
 
 export function Icon({

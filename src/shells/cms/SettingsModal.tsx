@@ -16,6 +16,8 @@ import {
   setTheme,
   htmlAutorun,
   setHtmlAutorun,
+  mediaAutoplay,
+  setMediaAutoplay,
   type AccentName,
 } from "../../core/stores";
 import { vaultConfig } from "../../panels/bus";
@@ -195,6 +197,31 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <p class="st-hint">
           Off (recommended): .html previews are static — use the <b>Run</b> button per file. On:
           scripts auto-run in a sandbox that still can’t reach the app, vault, or token.
+        </p>
+        <div class="st-row">
+          <span class="st-label">Auto-play media</span>
+          <div class="st-seg" role="group" aria-label="Auto-play media">
+            <button
+              type="button"
+              class={!mediaAutoplay.value ? "on" : ""}
+              aria-pressed={!mediaAutoplay.value}
+              onClick={() => setMediaAutoplay(false)}
+            >
+              Off
+            </button>
+            <button
+              type="button"
+              class={mediaAutoplay.value ? "on" : ""}
+              aria-pressed={mediaAutoplay.value}
+              onClick={() => setMediaAutoplay(true)}
+            >
+              On
+            </button>
+          </div>
+        </div>
+        <p class="st-hint">
+          On: audio / video start playing when you open the file (a browser may still wait for a
+          click before it plays sound).
         </p>
 
         <div class="st-section">
