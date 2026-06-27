@@ -149,14 +149,8 @@
   top: 0;
   left: 0;
 }
-/* hide pptx-preview's own nav arrows + pagination — the viewport carries its own
-   (◀ ▶ + "n / N"); we drive slides via its renderNext/PreSlide methods. */
-.rich-slides .pptx-preview-wrapper-next,
-.rich-slides .pptx-preview-wrapper-pre,
-.rich-slides .pptx-preview-wrapper-prev,
-.rich-slides .pptx-preview-wrapper-pagination {
-  display: none;
-}
+/* the renderer draws a single slide (no built-in nav UI); the viewport carries
+   the ◀ ▶ + "n / N" controls and drives slides via the viewer's renderSlide(). */
 
 /* drawio — the diagram fills the whole pane by default; a floating toolbar
    (bottom-right) zooms in/out and re-fits. Drop the wrap's padding so the canvas

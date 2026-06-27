@@ -103,10 +103,10 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
     "</article>";
 }
 
-// ── pptx (pptx-preview) ─────────────────────────────────────────────────────
+// ── pptx (@aiden0z/pptx-renderer — high-fidelity OOXML → HTML/SVG) ────────────
 async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<() => void> {
   const buf = await arrayBuffer(path, daemon);
-  const { init } = await import("pptx-preview");
+  const { PptxViewer } = await import("@aiden0z/pptx-renderer");
   host.innerHTML = "";
   const frame = document.createElement("div");
   frame.className = "rich-slides-frame";
@@ -114,25 +114,28 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
   stage.className = "rich-slides";
   frame.appendChild(stage);
   host.appendChild(frame);
-  // One slide at a time (mode "slide") so the viewport fits/zooms a single slide;
-  // ◀ ▶ navigate. Width tracks the pane, height keeps a 16:9 slide.
-  const width = Math.min(host.clientWidth || 960, 1280);
-  const previewer = init(stage, { width, height: Math.round(width * 0.5625), mode: "slide" });
-  await previewer.preview(buf);
-  const p = previewer as unknown as {
-    slideCount: number;
-    currentIndex: number;
-    renderNextSlide(): void;
-    renderPreSlide(): void;
+  // One slide at a time so the viewport pans/zooms a single slide; ◀ ▶ navigate.
+  // fitMode "none" renders at the slide's intrinsic size — mountViewport scales it.
+  // This renderer sizes shape/picture-filled images correctly (pptx-preview
+  // collapsed them to 0×0) and resolves embedded media as blob: URLs.
+  const viewer = await PptxViewer.open(buf, stage, { renderMode: "slide", fitMode: "none" });
+  const count = viewer.slideCount;
+  let cur = 0;
+  const show = (i: number) => {
+    cur = Math.max(0, Math.min(count - 1, i));
+    void viewer.renderSlide(cur);
   };
   const handle = mountViewport(frame, stage, {
     nav: {
-      prev: () => p.renderPreSlide(),
-      next: () => p.renderNextSlide(),
-      label: () => `${(p.currentIndex ?? 0) + 1} / ${p.slideCount}`,
+      prev: () => show(cur - 1),
+      next: () => show(cur + 1),
+      label: () => `${cur + 1} / ${count}`,
     },
   });
-  return () => handle.destroy();
+  return () => {
+    handle.destroy();
+    viewer.destroy();
+  };
 }
 
 // ── drawio (@maxgraph/core) ─────────────────────────────────────────────────
