@@ -13,7 +13,7 @@ import { mountViewport } from "./richviewport";
 import "./richfile.css";
 
 /** Extensions the editor previews via renderRichFile() instead of as text. */
-const RICH_EXTENSIONS = new Set(["xlsx", "docx", "pptx", "drawio"]);
+const RICH_EXTENSIONS = new Set(["xlsx", "csv", "tsv", "docx", "pptx", "drawio", "ipynb"]);
 
 function ext(path: string): string {
   return (path.split(".").pop() ?? "").toLowerCase();
@@ -26,7 +26,17 @@ export function isRichFile(path: string): boolean {
 
 /** A short human label for the type badge in the editor toolbar. */
 export function richLabel(path: string): string {
-  return { xlsx: "Spreadsheet", docx: "Document", pptx: "Slides", drawio: "Diagram" }[ext(path)] ?? "File";
+  return (
+    {
+      xlsx: "Spreadsheet",
+      csv: "Table",
+      tsv: "Table",
+      docx: "Document",
+      pptx: "Slides",
+      drawio: "Diagram",
+      ipynb: "Notebook",
+    }[ext(path)] ?? "File"
+  );
 }
 
 /** Render a rich file into `host` (read-only). Rejects on a load/parse failure so
@@ -38,9 +48,14 @@ export async function renderRichFile(
 ): Promise<(() => void) | void> {
   switch (ext(path)) {
     case "xlsx":
+    case "csv":
+    case "tsv":
+      // SheetJS auto-detects CSV/TSV (delimiter sniffed) → one sheet, no tab bar.
       return renderXlsx(path, host, daemon);
     case "docx":
       return renderDocx(path, host, daemon);
+    case "ipynb":
+      return renderIpynb(path, host, daemon);
     case "pptx":
       return renderPptx(path, host, daemon);
     case "drawio":
@@ -101,6 +116,81 @@ async function renderDocx(path: string, host: HTMLElement, daemon: DaemonClient)
     '<article class="rich-doc">' +
     DOMPurify.sanitize(value || '<p class="rich-msg">This document is empty.</p>') +
     "</article>";
+}
+
+// ── Jupyter notebook (.ipynb) ───────────────────────────────────────────────
+interface NbOutput {
+  output_type?: string;
+  text?: string | string[];
+  traceback?: string[];
+  data?: Record<string, string | string[]>;
+}
+interface NbCell {
+  cell_type?: string;
+  source?: string | string[];
+  outputs?: NbOutput[];
+}
+interface Notebook {
+  cells?: NbCell[];
+  metadata?: { language_info?: { name?: string }; kernelspec?: { language?: string } };
+}
+
+/** Render an .ipynb: markdown cells via the markdown renderer, code cells through
+ *  the shared code-block highlighter, and outputs (stream / result / image / error)
+ *  inline. The whole tree is sanitised (notebook output HTML is untrusted). */
+async function renderIpynb(path: string, host: HTMLElement, daemon: DaemonClient): Promise<void> {
+  const { content } = await daemon.file(path);
+  let nb: Notebook;
+  try {
+    nb = JSON.parse(content) as Notebook;
+  } catch {
+    host.innerHTML = '<div class="rich-msg">Couldn’t parse this notebook (invalid JSON).</div>';
+    return;
+  }
+  const cells = Array.isArray(nb.cells) ? nb.cells : [];
+  const lang = escapeHtml(nb.metadata?.language_info?.name || nb.metadata?.kernelspec?.language || "python");
+  const str = (s: string | string[] | undefined) => (Array.isArray(s) ? s.join("") : s ?? "");
+  const { renderMarkdown } = await import("./markdown");
+
+  const renderOutputs = (outputs: NbOutput[] = []): string =>
+    outputs
+      .map((o) => {
+        if (o.output_type === "stream") return `<pre class="nb-out">${escapeHtml(str(o.text))}</pre>`;
+        if (o.output_type === "error")
+          return `<pre class="nb-err">${escapeHtml((o.traceback ?? []).join("\n").replace(/\[[0-9;]*m/g, ""))}</pre>`;
+        if (o.output_type === "execute_result" || o.output_type === "display_data") {
+          const d = o.data ?? {};
+          if (d["image/png"]) return `<img class="nb-img" alt="output" src="data:image/png;base64,${str(d["image/png"]).trim()}" />`;
+          if (d["image/jpeg"]) return `<img class="nb-img" alt="output" src="data:image/jpeg;base64,${str(d["image/jpeg"]).trim()}" />`;
+          if (d["text/html"]) return `<div class="nb-html">${str(d["text/html"])}</div>`;
+          if (d["text/plain"]) return `<pre class="nb-out">${escapeHtml(str(d["text/plain"]))}</pre>`;
+        }
+        return "";
+      })
+      .join("");
+
+  const body = cells
+    .map((c) => {
+      if (c.cell_type === "markdown") return `<div class="nb-md">${renderMarkdown(str(c.source)).html}</div>`;
+      if (c.cell_type === "code") {
+        const code = str(c.source);
+        const outs = renderOutputs(c.outputs);
+        if (!code.trim() && !outs) return "";
+        return (
+          '<div class="nb-cell">' +
+          (code.trim() ? `<pre><code class="language-${lang}">${escapeHtml(code)}</code></pre>` : "") +
+          outs +
+          "</div>"
+        );
+      }
+      return "";
+    })
+    .join("");
+
+  host.innerHTML = DOMPurify.sanitize(`<div class="nb-doc">${body || '<div class="rich-msg">This notebook is empty.</div>'}</div>`);
+  // highlight + line-number the code cells with the shared post-processor
+  const { enhanceCodeBlocksIn } = await import("./codeblock");
+  await enhanceCodeBlocksIn(host);
 }
 
 // ── pptx (@aiden0z/pptx-renderer — high-fidelity OOXML → HTML/SVG) ────────────

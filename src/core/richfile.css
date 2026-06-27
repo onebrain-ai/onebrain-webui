@@ -181,3 +181,57 @@
   max-width: none;
 }
 /* zoom / pan / fullscreen toolbar lives in richviewport.css (.rich-vbar) */
+
+/* Jupyter .ipynb — markdown cells, code cells (highlighted via .cm-codeblock), outputs */
+.nb-doc {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: var(--font-sans);
+}
+.nb-md {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-text);
+  margin: 0 0 1em;
+}
+.nb-md h1 { font-size: 1.6em; }
+.nb-md h2 { font-size: 1.3em; }
+.nb-md h3 { font-size: 1.1em; }
+.nb-md h1,
+.nb-md h2,
+.nb-md h3 { font-family: var(--font-display); margin: 1.2em 0 0.4em; line-height: 1.25; }
+.nb-md p { margin: 0 0 0.8em; }
+.nb-md ul,
+.nb-md ol { padding-left: 1.4em; margin: 0 0 0.8em; }
+.nb-md a { color: var(--section-accent); }
+.nb-md code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-surface);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+.nb-cell { margin: 0 0 1.3em; }
+.nb-out,
+.nb-err {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 8px 12px;
+  margin: 6px 0 0;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.nb-out { background: var(--color-bg-deep); color: var(--color-text); }
+.nb-err { background: color-mix(in oklab, var(--acc-magenta) 12%, transparent); color: var(--acc-magenta); }
+.nb-img {
+  display: block;
+  max-width: 100%;
+  margin: 8px 0 0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px;
+}
+.nb-html { margin: 6px 0 0; overflow-x: auto; font-size: 13px; }
