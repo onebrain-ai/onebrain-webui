@@ -186,7 +186,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
       <div class="qs-empty">
         {ready ? (
           <>
-            พิมพ์เพื่อค้นทั่ว vault
+            Type to search the vault
             <br />
             {qmdOff ? "filename match" : "keyword + semantic"} · {total.toLocaleString()} notes
           </>

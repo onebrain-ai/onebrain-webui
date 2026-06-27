@@ -15,28 +15,28 @@ import "./chat.css";
 
 /** OneBrain slash skills offered in the composer's `/` autocomplete. */
 const SKILLS: ReadonlyArray<{ cmd: string; desc: string }> = [
-  { cmd: "capture", desc: "จดโน้ตสั้นๆ + auto-link" },
-  { cmd: "braindump", desc: "เทความคิดยาวๆ หลายเรื่อง" },
-  { cmd: "bookmark", desc: "เซฟ URL + metadata" },
-  { cmd: "summarize", desc: "ดึง URL มาสรุปลึก" },
-  { cmd: "import", desc: "ไฟล์ในเครื่อง → โน้ต" },
-  { cmd: "reading-notes", desc: "หนังสือ/บทความ → โน้ต" },
-  { cmd: "research", desc: "ค้นเว็บ → เซฟ resources" },
-  { cmd: "consolidate", desc: "เคลียร์ inbox เข้าคลัง" },
-  { cmd: "connect", desc: "หา connection ระหว่างโน้ต" },
-  { cmd: "distill", desc: "สังเคราะห์หัวข้อ → digest" },
-  { cmd: "recap", desc: "ดึง insight จาก sessions" },
-  { cmd: "search", desc: "ค้นทั่ว vault" },
-  { cmd: "daily", desc: "บรีฟประจำวัน" },
-  { cmd: "weekly", desc: "รีวิวประจำสัปดาห์" },
-  { cmd: "tasks", desc: "อัปเดต task dashboard" },
-  { cmd: "moc", desc: "อัปเดตแผนที่ vault" },
-  { cmd: "learn", desc: "สอน agent ให้จำ" },
-  { cmd: "doctor", desc: "เช็คสุขภาพ vault" },
-  { cmd: "wrapup", desc: "สรุปจบ session" },
-  { cmd: "pause", desc: "พักงานไว้ทำต่อ" },
-  { cmd: "resume", desc: "กลับมาทำต่อ" },
-  { cmd: "help", desc: "ดูคำสั่งทั้งหมด" },
+  { cmd: "capture", desc: "Quick note + auto-link" },
+  { cmd: "braindump", desc: "Dump long, multi-topic thoughts" },
+  { cmd: "bookmark", desc: "Save a URL + metadata" },
+  { cmd: "summarize", desc: "Fetch a URL → deep summary" },
+  { cmd: "import", desc: "Local file → note" },
+  { cmd: "reading-notes", desc: "Book / article → notes" },
+  { cmd: "research", desc: "Web research → resources" },
+  { cmd: "consolidate", desc: "Clear the inbox into the vault" },
+  { cmd: "connect", desc: "Find links between notes" },
+  { cmd: "distill", desc: "Synthesize a topic → digest" },
+  { cmd: "recap", desc: "Pull insights from sessions" },
+  { cmd: "search", desc: "Search the vault" },
+  { cmd: "daily", desc: "Daily briefing" },
+  { cmd: "weekly", desc: "Weekly review" },
+  { cmd: "tasks", desc: "Update the task dashboard" },
+  { cmd: "moc", desc: "Update the vault map" },
+  { cmd: "learn", desc: "Teach the agent to remember" },
+  { cmd: "doctor", desc: "Check vault health" },
+  { cmd: "wrapup", desc: "Wrap up the session" },
+  { cmd: "pause", desc: "Pause work for later" },
+  { cmd: "resume", desc: "Resume paused work" },
+  { cmd: "help", desc: "List all commands" },
 ];
 
 const userHtml = (s: string) =>
@@ -103,7 +103,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
     let msg = text;
     if (att.length) {
       const refs = att.map((a) => `- ${a.path}`).join("\n");
-      msg = `${text ? text + "\n\n" : ""}(แนบไฟล์ไว้ใน vault — เปิดอ่านได้เลย:\n${refs})`;
+      msg = `${text ? text + "\n\n" : ""}(Attached to the vault — open to read:\n${refs})`;
     }
     draft.value = "";
     attachments.value = [];
@@ -218,7 +218,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
         {msgs.length === 0 && (
           <div class="chat-empty">
             <Icon name="sparkles" />
-            <p>คุยกับจิโอ้ได้เลย — ถามเรื่อง vault, พิมพ์ <b>/</b> เพื่อเรียก skill, หรือคุยทั่วไป</p>
+            <p>Chat with <span class="thai">จิโอ้</span> — ask about your vault, type <b>/</b> for a skill, or just chat</p>
           </div>
         )}
         {msgs.map((m, i) => (
@@ -284,7 +284,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
           <button
             class="chat-attach"
             type="button"
-            title={attachments.value.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} files` : "แนบไฟล์ / รูป (วางรูปได้)"}
+            title={attachments.value.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} files` : "Attach file / image (paste to add)"}
             aria-label="Attach file"
             disabled={busy || attachments.value.length >= MAX_ATTACHMENTS}
             onClick={() => fileRef.current?.click()}
@@ -294,8 +294,8 @@ function Chat({ ctx }: { ctx: PanelContext }) {
           <textarea
             ref={inputRef}
             rows={2}
-            placeholder="ถามจิโอ้…  วางรูป ≤5
-Enter ส่ง · Shift+Enter บรรทัดใหม่"
+            placeholder="Ask จิโอ้…  paste ≤5 images
+Enter to send · Shift+Enter for newline"
             autocomplete="off"
             spellcheck={false}
             value={draft.value}
