@@ -33,13 +33,18 @@ import "./editor.css";
 const UNPREVIEWABLE_EXT = new Set([
   "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz",
   "exe", "dmg", "app", "pkg", "deb", "rpm", "msi", "bin", "iso", "wasm",
-  "mp4", "mov", "avi", "mkv", "webm", "m4v",
-  "mp3", "wav", "flac", "ogg", "m4a", "aac",
+  "avi", "mkv", "wmv", "flv",
   "woff", "woff2", "ttf", "otf", "eot",
   "psd", "ai", "sketch", "fig", "xd", "eps",
   "blend", "obj", "stl", "fbx", "glb", "gltf",
   "db", "sqlite", "sqlite3", "dat", "pyc", "class", "so", "dll", "dylib", "parquet",
 ]);
+
+/** Audio / video previewed with a native <video>/<audio> player. The daemon serves
+ *  these with the right MIME + Range support (seeking / Safari). Non-web codecs
+ *  (avi/mkv/wmv/flv) stay in UNPREVIEWABLE_EXT — the browser can't play them. */
+const VIDEO_EXT = new Set(["mp4", "mov", "webm", "m4v", "ogv"]);
+const AUDIO_EXT = new Set(["mp3", "wav", "flac", "ogg", "oga", "m4a", "aac"]);
 
 /**
  * The run-function wired to the Mod-s keybinding.
@@ -145,6 +150,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isSvg = ext === "svg";
   const isImage = isSvg || ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico"].includes(ext);
   const isPdf = ext === "pdf";
+  const isVideo = VIDEO_EXT.has(ext);
+  const isAudio = AUDIO_EXT.has(ext);
   const isBinary = isImage || isPdf;
   // Rich (Office / drawio) files preview read-only via richfile.ts, like binaries.
   const isRich = isRichFile(path ?? "");
@@ -153,7 +160,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isMarkdown = ext === "md" || ext === "markdown";
   // Any other text file (source / config / data) → read-only syntax view with line
   // numbers + minimap. Binaries that slip through fall back via the load-time catch.
-  const isSourceText = !isMarkdown && !isBinary && !isHtml && !isRich && !isUnpreviewableExt;
+  const isSourceText =
+    !isMarkdown && !isBinary && !isHtml && !isRich && !isUnpreviewableExt && !isVideo && !isAudio;
 
   useEffect(() => {
     if (!path) return;
@@ -208,6 +216,18 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     if (isRich) {
       // Read-only rich preview — no CodeMirror / autosaver / text load. The
       // dedicated rich effect below fetches the bytes and renders into richHost.
+      editorBridge.value = null;
+      props.value = {};
+      docText.value = "";
+      return () => {
+        cancelled = true;
+        editorBridge.value = null;
+      };
+    }
+
+    if (isVideo || isAudio) {
+      // Played by a native <video>/<audio> element straight from the daemon URL —
+      // no text to load, no editor.
       editorBridge.value = null;
       props.value = {};
       docText.value = "";
@@ -565,6 +585,16 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               <span class="ed-badge"><Icon name="code" />HTML preview</span>
               {downloadBtn}
             </>
+          ) : isVideo ? (
+            <>
+              <span class="ed-badge"><Icon name="play" />Video</span>
+              {downloadBtn}
+            </>
+          ) : isAudio ? (
+            <>
+              <span class="ed-badge"><Icon name="activity" />Audio</span>
+              {downloadBtn}
+            </>
           ) : isRich ? (
             <>
               <span class="ed-badge"><Icon name="file" />{richLabel(path)}</span>
@@ -643,6 +673,16 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           srcdoc={docText.value}
           title="HTML preview"
         />
+      ) : isVideo ? (
+        <div class="ed-mediafile">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video class="ed-video" controls src={ctx.daemon.rawUrl(path)} />
+        </div>
+      ) : isAudio ? (
+        <div class="ed-mediafile">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio class="ed-audio" controls src={ctx.daemon.rawUrl(path)} />
+        </div>
       ) : isRich ? (
         <div class="ed-richwrap" data-testid="ed-rich">
           {richErr.value ? (

@@ -222,6 +222,27 @@
   overflow: hidden;
   /* checkerboard comes from the viewport's .rich-bg-dark / .rich-bg-light toggle */
 }
+
+/* Audio / video — native player centred in the pane */
+.ed-mediafile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+  overflow: auto;
+}
+.ed-video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  background: #000;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.4);
+}
+.ed-audio {
+  width: min(560px, 90%);
+}
 /* the viewport transforms this; the media is centred + capped to its box */
 .ed-media-content {
   position: absolute;

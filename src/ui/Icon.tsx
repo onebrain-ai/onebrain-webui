@@ -49,7 +49,8 @@ export type IconName =
   | "arrow-left"
   | "arrow-right"
   | "expand-h"
-  | "shrink-h";
+  | "shrink-h"
+  | "play";
 
 const PATHS: Record<IconName, preact.JSX.Element> = {
   file: (
@@ -212,6 +213,7 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
   // expand to full width (arrows out) / shrink back to a centred column (arrows in)
   "expand-h": <path d="M21 12H3M7 8l-4 4 4 4M17 8l4 4-4 4" />,
   "shrink-h": <path d="M7 12h10M3 8l4 4-4 4M21 8l-4 4 4 4" />,
+  play: <path d="M7 4l13 8-13 8z" />,
 };
 
 export function Icon({
