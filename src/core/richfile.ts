@@ -216,6 +216,52 @@ async function renderIpynb(path: string, host: HTMLElement, daemon: DaemonClient
 }
 
 // ── pptx (@aiden0z/pptx-renderer — high-fidelity OOXML → HTML/SVG) ────────────
+// ── Embedded fonts (docx / pptx) ─────────────────────────────────────────────
+// Office files can embed their typefaces; the renderers only set the font NAME,
+// so without these the preview falls back to a system font. We pull the embedded
+// font bytes out of the zip and inject @font-face rules (data: URIs — the CSP
+// already allows font-src 'self' data:) so the document shows its real fonts.
+
+/** One @font-face rule for an embedded font (base64 bytes). No format() hint —
+ *  the browser sniffs TTF/OTF from the data. */
+function fontFaceRule(family: string, b64: string, bold: boolean, italic: boolean): string {
+  return `@font-face{font-family:${JSON.stringify(family)};font-weight:${bold ? 700 : 400};font-style:${italic ? "italic" : "normal"};src:url("data:font/ttf;base64,${b64}");}`;
+}
+
+/** Build @font-face CSS from a pptx's embedded fonts (ppt/presentation.xml's
+ *  embeddedFontLst → relationship → ppt/fonts/*.fntdata). Returns "" if none. */
+async function pptxFontFaces(buf: ArrayBuffer): Promise<string> {
+  try {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(buf);
+    const pres = await zip.file("ppt/presentation.xml")?.async("string");
+    const rels = await zip.file("ppt/_rels/presentation.xml.rels")?.async("string");
+    if (!pres || !rels) return "";
+    const relMap = new Map<string, string>();
+    for (const m of rels.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]+)"/g)) {
+      relMap.set(m[1], m[2]);
+    }
+    const faces: string[] = [];
+    for (const ef of pres.matchAll(/<p:embeddedFont\b[^>]*>([\s\S]*?)<\/p:embeddedFont>/g)) {
+      const block = ef[1];
+      const family = /typeface="([^"]+)"/.exec(block)?.[1];
+      if (!family) continue;
+      for (const slot of block.matchAll(/<p:(regular|bold|italic|boldItalic)\b[^>]*\br:id="([^"]+)"/g)) {
+        const target = relMap.get(slot[2]);
+        if (!target) continue;
+        const p = target.startsWith("/") ? target.slice(1) : `ppt/${target}`;
+        const data = await zip.file(p)?.async("base64");
+        if (!data) continue;
+        const w = slot[1].toLowerCase();
+        faces.push(fontFaceRule(family, data, w.includes("bold"), w.includes("italic")));
+      }
+    }
+    return faces.join("");
+  } catch {
+    return "";
+  }
+}
+
 async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient): Promise<() => void> {
   const buf = await arrayBuffer(path, daemon);
   const { PptxViewer } = await import("@aiden0z/pptx-renderer");
@@ -226,6 +272,13 @@ async function renderPptx(path: string, host: HTMLElement, daemon: DaemonClient)
   stage.className = "rich-slides";
   frame.appendChild(stage);
   host.appendChild(frame);
+  // Inject the deck's embedded fonts so slide text renders in its real typeface.
+  const faces = await pptxFontFaces(buf);
+  if (faces) {
+    const style = document.createElement("style");
+    style.textContent = faces;
+    frame.appendChild(style);
+  }
   // One slide at a time so the viewport pans/zooms a single slide; ◀ ▶ navigate.
   // fitMode "none" renders at the slide's intrinsic size — mountViewport scales it.
   // This renderer sizes shape/picture-filled images correctly (pptx-preview
