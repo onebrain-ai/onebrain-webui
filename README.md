@@ -1,3 +1,33 @@
+<!-- Banner pinned to a commit SHA on onebrain-ai/onebrain (not the mutable
+     `main` branch) so a future asset restructure can't silently 404 this
+     image. Bump the SHA when refreshing the brand assets. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/onebrain-ai/onebrain/c391f40e1881e4a07586a564efd1db40d3920b26/assets/header-dark.png">
+    <img alt="OneBrain — Your AI Thinking Partner" src="https://raw.githubusercontent.com/onebrain-ai/onebrain/c391f40e1881e4a07586a564efd1db40d3920b26/assets/header-light.png" width="640">
+  </picture>
+</p>
+
+<p align="center"><em>Your AI Thinking Partner</em></p>
+
+<p align="center">
+  <strong>The universal web surface for OneBrain — 2D CMS shell + 3D command center.</strong><br>
+  <sub>Preact + Vite · talks to the <code>onebrain serve</code> daemon · one build, every platform.</sub>
+</p>
+
+<p align="center">
+  <a href="https://onebrain.run"><img alt="Website" src="https://img.shields.io/badge/onebrain.run-0a0a14?style=for-the-badge&labelColor=ff2d92"></a>
+  <a href="https://x.com/onebrain_run"><img alt="@onebrain_run on X" src="https://img.shields.io/badge/follow-@onebrain__run-000000?style=for-the-badge&logo=x&logoColor=white"></a>
+  <a href="https://github.com/onebrain-ai/onebrain-webui/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/onebrain-ai/onebrain-webui?style=for-the-badge&color=00f3ff&logo=github"></a>
+</p>
+<p align="center">
+  <a href="https://github.com/onebrain-ai/onebrain-cli/releases/latest"><img alt="onebrain daemon" src="https://img.shields.io/github/v/release/onebrain-ai/onebrain-cli?include_prereleases&style=for-the-badge&logo=rust&color=cb3837&label=onebrain%20daemon"></a>
+  <a href="https://preactjs.com"><img alt="Built with Preact + Vite" src="https://img.shields.io/badge/Preact%20%2B%20Vite-bc13fe?style=for-the-badge&logo=preact&logoColor=white"></a>
+  <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-7c3aed?style=for-the-badge"></a>
+</p>
+
+---
+
 # OneBrain WebUI
 
 The **universal surface** for OneBrain — a 2D CMS shell (and, later, a 3D command
