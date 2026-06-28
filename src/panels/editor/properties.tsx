@@ -46,19 +46,62 @@ export function Properties({ value, onChange }: { value: Obj; onChange: (next: O
           {keys.map((k) => {
             const v = value[k];
             const isList = Array.isArray(v);
-            const display = isList ? (v as unknown[]).join(", ") : String(v ?? "");
+            // A bare ISO date (YYYY-MM-DD, optionally with a time) → calendar input.
+            const isDate = !isList && typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v);
             return (
-              <label class="props-row" key={k}>
+              <div class="props-row" key={k}>
                 <span class="props-key">
                   <Icon name={keyIcon(k)} />
                   {k}
                 </span>
-                <input
-                  class="props-val"
-                  value={display}
-                  onInput={(e) => set(k, (e.target as HTMLInputElement).value, isList)}
-                />
-              </label>
+                {isList ? (
+                  <span class="props-tags">
+                    {(v as unknown[]).map((tag, i) => (
+                      <span class="props-tag" key={String(tag) + i}>
+                        {String(tag)}
+                        <button
+                          type="button"
+                          class="props-tag-x"
+                          aria-label={`Remove ${String(tag)}`}
+                          onClick={() =>
+                            onChange({ ...value, [k]: (v as unknown[]).filter((_, j) => j !== i) })
+                          }
+                        >
+                          <Icon name="x" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      class="props-tag-add"
+                      type="text"
+                      placeholder="+ tag"
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const el = e.target as HTMLInputElement;
+                        const t = el.value.trim();
+                        if (t) {
+                          onChange({ ...value, [k]: [...(v as unknown[]), t] });
+                          el.value = "";
+                        }
+                      }}
+                    />
+                  </span>
+                ) : isDate ? (
+                  <input
+                    class="props-val props-date"
+                    type="date"
+                    value={String(v).slice(0, 10)}
+                    onInput={(e) => set(k, (e.target as HTMLInputElement).value, false)}
+                  />
+                ) : (
+                  <input
+                    class="props-val"
+                    value={String(v ?? "")}
+                    onInput={(e) => set(k, (e.target as HTMLInputElement).value, false)}
+                  />
+                )}
+              </div>
             );
           })}
         </div>

@@ -47,7 +47,12 @@ export type IconName =
   | "maximize"
   | "paperclip"
   | "arrow-left"
-  | "arrow-right";
+  | "arrow-right"
+  | "expand-h"
+  | "shrink-h"
+  | "play"
+  | "copy"
+  | "contrast";
 
 const PATHS: Record<IconName, preact.JSX.Element> = {
   file: (
@@ -86,8 +91,8 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
   chat: <path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4 19.5l1.4-4.2A7.5 7.5 0 1 1 20 11.5z" />,
   settings: (
     <>
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
       <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
     </>
   ),
   book: (
@@ -207,6 +212,22 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
   paperclip: <path d="M21.4 11.6l-8.5 8.5a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />,
   "arrow-left": <path d="M19 12H5M11 18l-6-6 6-6" />,
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
+  // expand to full width (arrows out) / shrink back to a centred column (arrows in)
+  "expand-h": <path d="M21 12H3M7 8l-4 4 4 4M17 8l4 4-4 4" />,
+  "shrink-h": <path d="M7 12h10M3 8l4 4-4 4M21 8l-4 4 4 4" />,
+  play: <path d="M7 4l13 8-13 8z" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </>
+  ),
+  contrast: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />
+    </>
+  ),
 };
 
 export function Icon({

@@ -1,23 +1,51 @@
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
-import { EditorView, keymap, drawSelection, highlightActiveLine } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { EditorView, keymap, drawSelection, highlightActiveLine, lineNumbers } from "@codemirror/view";
+import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { syntaxHighlighting, defaultHighlightStyle, LanguageDescription } from "@codemirror/language";
+import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { showMinimap } from "@replit/codemirror-minimap";
+import { languages } from "@codemirror/language-data";
+import DOMPurify from "dompurify";
 import type { PanelDef, PanelContext } from "../contract";
 import { previewPath, resolveWikilink, resolveAsset, navBack, navForward, canNavBack, canNavForward } from "../bus";
-import { openSearch } from "../../core/stores";
+import { openSearch, htmlAutorun, mediaAutoplay, theme, accent } from "../../core/stores";
 import { loadTasks } from "../tasks-store";
 import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
 import { splitNote, parseFrontmatter, compose } from "../../core/frontmatter";
 import { Properties } from "./properties";
 import { livePreview } from "./live-preview/plugin";
-import { renderMarkdown } from "../../core/markdown";
-import { renderMermaidIn } from "../../core/mermaid";
+import { renderFile } from "../../core/markdown";
+import { isRichFile, renderRichFile, richLabel } from "../../core/richfile";
+import { mountViewport } from "../../core/richviewport";
+import { renderMermaidIn, addMermaidZoomControls } from "../../core/mermaid";
 import { renderMathIn } from "../../core/katex";
+import { enhanceCodeBlocksIn } from "../../core/codeblock";
+import { formatCode } from "../../core/codeformat";
 import { Icon } from "../../ui/Icon";
 import "./editor.css";
+
+/** Binary file types with no in-app preview — shown as an icon + Download button
+ *  instead of being force-loaded as text (which would fail / show garbage). Any
+ *  other non-UTF-8 file is caught at load time and falls back the same way. */
+const UNPREVIEWABLE_EXT = new Set([
+  "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz",
+  "exe", "dmg", "app", "pkg", "deb", "rpm", "msi", "bin", "iso", "wasm",
+  "avi", "mkv", "wmv", "flv",
+  "woff", "woff2", "ttf", "otf", "eot",
+  "psd", "ai", "sketch", "fig", "xd", "eps",
+  "blend", "obj", "stl", "fbx", "glb", "gltf",
+  "db", "sqlite", "sqlite3", "dat", "pyc", "class", "so", "dll", "dylib", "parquet",
+]);
+
+/** Audio / video previewed with a native <video>/<audio> player. The daemon serves
+ *  these with the right MIME + Range support (seeking / Safari). Non-web codecs
+ *  (avi/mkv/wmv/flv) stay in UNPREVIEWABLE_EXT — the browser can't play them. */
+const VIDEO_EXT = new Set(["mp4", "mov", "webm", "m4v", "ogv"]);
+const AUDIO_EXT = new Set(["mp3", "wav", "flac", "ogg", "oga", "m4a", "aac"]);
 
 /**
  * The run-function wired to the Mod-s keybinding.
@@ -27,57 +55,15 @@ import "./editor.css";
  */
 export let _cmdSaveRun: (() => boolean) | null = null;
 
-const ZOOM_MIN = 0.1;
-const ZOOM_MAX = 8;
-const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
-
-/** Clean an inline SVG before it's injected into the *page* DOM (it renders
- *  inline, not in a sandboxed iframe, so page fonts apply — which means it MUST
- *  be sanitized properly, not by regex). Vault files are treated as untrusted
- *  (imported / AI-generated / synced), so we parse the SVG and drop:
- *   - active/foreign elements (<script>, <foreignObject>, <animate*>, <set>, <handler>)
- *   - every on* event-handler attribute (quoted OR unquoted)
- *   - any href / xlink:href whose scheme isn't a safe `#`, http(s), or data:image
- *   - inline style with url()/expression()/javascript:
- *  Returns "" on a parse error so a malformed/hostile file renders nothing. */
-const SVG_BAD_EL = new Set(["script", "foreignobject", "animate", "animatetransform", "animatemotion", "set", "handler"]);
+/** Sanitize an untrusted vault SVG before it's injected inline into the *page*
+ *  DOM (it renders inline, not via `<img>`, so the page's web fonts apply). Vault
+ *  files are untrusted (imported / AI-generated / synced), so we run them through
+ *  DOMPurify's SVG profile — a maintained allowlist hardened against mutation-XSS,
+ *  far safer than a hand-rolled denylist (which can miss namespaced elements,
+ *  `<style>` beacons, and the XML→HTML reparse mismatch). Returns "" for empty or
+ *  unparseable input. */
 function sanitizeSvg(s: string): string {
-  let doc: Document;
-  try {
-    doc = new DOMParser().parseFromString(s, "image/svg+xml");
-  } catch {
-    return "";
-  }
-  if (doc.querySelector("parsererror")) return "";
-  const svg = doc.querySelector("svg");
-  if (!svg) return "";
-  const clean = (el: Element): void => {
-    for (const child of Array.from(el.children)) {
-      if (SVG_BAD_EL.has(child.tagName.toLowerCase())) child.remove();
-      else clean(child);
-    }
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      if (name.startsWith("on")) el.removeAttribute(attr.name);
-      else if (name === "href" || name === "xlink:href") {
-        if (!/^(#|https?:|data:image\/)/i.test(attr.value.trim())) el.removeAttribute(attr.name);
-      } else if (name === "style" && /url\s*\(|expression|javascript:/i.test(attr.value)) {
-        el.removeAttribute(attr.name);
-      }
-    }
-  };
-  clean(svg);
-  return new XMLSerializer().serializeToString(svg);
-}
-
-/** The SVG's intrinsic width (viewBox width, else the width attribute) — the base
- *  for pixel-zoom. Defaults to 800 when neither is present. */
-function svgIntrinsicWidth(s: string): number {
-  const vb = s.match(/viewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)/i);
-  if (vb) return parseFloat(vb[1]) || 800;
-  const w = s.match(/\bwidth\s*=\s*["']?\s*([\d.]+)/i);
-  if (w) return parseFloat(w[1]) || 800;
-  return 800;
+  return DOMPurify.sanitize(s, { USE_PROFILES: { svg: true, svgFilters: true } });
 }
 
 /** Inline save indicator for the editor header (markdown notes only). */
@@ -100,10 +86,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // A heading anchor to scroll to once the next reading render lands (set when a
   // [[note#heading]] link is clicked, consumed by the reading-render effect).
   const pendingHeading = useRef<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const svgRef = useRef<HTMLDivElement>(null);
-  const mediaW = useRef<number>(0); // intrinsic width of the current image/svg
+  const mediaFrameRef = useRef<HTMLDivElement>(null);
+  const mediaContentRef = useRef<HTMLDivElement>(null);
+  const richHost = useRef<HTMLDivElement>(null);
+  const richErr = useSignal("");
   const view = useRef<EditorView | null>(null);
+  const sourceHost = useRef<HTMLDivElement>(null);
+  const sourceView = useRef<EditorView | null>(null);
   const saver = useRef<Autosaver | null>(null);
   const fm = useRef<{ raw: string | null; obj: Record<string, unknown>; edited: boolean }>({
     raw: null,
@@ -116,14 +105,31 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // Current doc text, mirrored into a signal so the reading view (markdown) or
   // the iframe srcdoc (html) re-renders when the note loads or is edited.
   const docText = useSignal("");
-  // Object URL for a raster-image / PDF preview (created from the raw-bytes blob).
-  const blobUrl = useSignal("");
   // Sanitized markup for an inline SVG preview (rendered into the DOM, NOT via an
   // <img>, so it can use the page's web fonts — an <img>-embedded SVG cannot).
   const svgHtml = useSignal("");
   // Image zoom: `fit` = scale to the pane; otherwise a numeric factor of intrinsic.
-  const imgFit = useSignal(true);
-  const imgZoom = useSignal(1);
+  // Set when a file can't be shown as text (binary) — render an icon + Download.
+  const unpreviewable = useSignal(false);
+  // .md reading view: false = centred column, true = full-width (wide-screen tables).
+  const wideView = useSignal(false);
+  // Source-preview font zoom (1 = base) — +/− and Cmd-wheel resize the code.
+  const sourceFontScale = useSignal(1);
+  // HTML preview: false = sandboxed (scripts off), true = "Run" (allow-scripts).
+  const htmlInteractive = useSignal(false);
+  // Source-preview copy button: brief "copied" tick.
+  const sourceCopied = useSignal(false);
+  // Per-preview background theme (source / text / csv / tsv / docx / xlsx / ipynb).
+  // Defaults to the app theme; the ◐ toolbar button flips it. Persists across files.
+  const previewTheme = useSignal<"light" | "dark">(theme.peek());
+  // --section-accent is resolved once at :root (to the dark accent), so a
+  // data-pv-theme subtree inherits the bright value even after it re-tints --acc-*.
+  // Re-declare the accent vars on the preview wrapper so they re-resolve against
+  // the subtree's (theme-correct) --acc-* — keeps the accent legible on a light bg.
+  const pvAccentStyle =
+    `--section-accent:var(--acc-${accent.value});` +
+    `--accent-weak:color-mix(in oklab,var(--acc-${accent.value}) 14%,transparent);` +
+    `--accent-line:color-mix(in oklab,var(--acc-${accent.value}) 32%,transparent)`;
 
   const path = previewPath.value;
   const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
@@ -132,7 +138,21 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   const isSvg = ext === "svg";
   const isImage = isSvg || ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico"].includes(ext);
   const isPdf = ext === "pdf";
+  const isVideo = VIDEO_EXT.has(ext);
+  const isAudio = AUDIO_EXT.has(ext);
   const isBinary = isImage || isPdf;
+  // Rich (Office / drawio) files preview read-only via richfile.ts, like binaries.
+  const isRich = isRichFile(path ?? "");
+  // Rich files that get the ◐ background toggle (docs/tables/notebooks). pptx +
+  // drawio are excluded — they have their own bg toggle in the viewport.
+  const isDocPreview = ["xlsx", "csv", "tsv", "docx", "ipynb"].includes(ext);
+  // Known-binary extension → never attempt a text preview (icon + Download instead).
+  const isUnpreviewableExt = UNPREVIEWABLE_EXT.has(ext);
+  const isMarkdown = ext === "md" || ext === "markdown";
+  // Any other text file (source / config / data) → read-only syntax view with line
+  // numbers + minimap. Binaries that slip through fall back via the load-time catch.
+  const isSourceText =
+    !isMarkdown && !isBinary && !isHtml && !isRich && !isUnpreviewableExt && !isVideo && !isAudio;
 
   useEffect(() => {
     if (!path) return;
@@ -141,6 +161,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     saveStatus.value = "idle";
     dirty.value = false;
     conflictRev.value = null;
+    unpreviewable.value = false;
+    htmlInteractive.value = htmlAutorun.peek(); // follow the Settings "Run HTML scripts" toggle; "Run" overrides per-file
     let cancelled = false;
 
     if (isHtml) {
@@ -161,9 +183,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       // Read-only preview — no editor/autosaver (a preview must never write back).
       editorBridge.value = null;
       props.value = {};
-      imgFit.value = true; // every new image opens fit-to-pane
-      imgZoom.value = 1;
-      mediaW.current = 0;
 
       if (isSvg) {
         // Inline the SVG so it renders with the page's fonts (Chakra Petch / etc).
@@ -171,7 +190,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         void ctx.daemon.file(path).then((f) => {
           if (cancelled) return;
           svgHtml.value = sanitizeSvg(f.content);
-          mediaW.current = svgIntrinsicWidth(f.content);
         });
         return () => {
           cancelled = true;
@@ -179,18 +197,35 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         };
       }
 
-      // Raster image / PDF → object URL from the raw bytes (revoked on cleanup).
-      blobUrl.value = "";
-      let url: string | null = null;
-      void ctx.daemon.fileBlob(path).then((b) => {
-        if (cancelled) return;
-        url = URL.createObjectURL(b);
-        blobUrl.value = url;
-      });
+      // Raster image / PDF render straight from the daemon URL — the CSP allows
+      // `'self'` but not `blob:` on img-src, so a blob: object URL won't load.
       return () => {
         cancelled = true;
         editorBridge.value = null;
-        if (url) URL.revokeObjectURL(url);
+      };
+    }
+
+    if (isRich) {
+      // Read-only rich preview — no CodeMirror / autosaver / text load. The
+      // dedicated rich effect below fetches the bytes and renders into richHost.
+      editorBridge.value = null;
+      props.value = {};
+      docText.value = "";
+      return () => {
+        cancelled = true;
+        editorBridge.value = null;
+      };
+    }
+
+    if (isVideo || isAudio) {
+      // Played by a native <video>/<audio> element straight from the daemon URL —
+      // no text to load, no editor.
+      editorBridge.value = null;
+      props.value = {};
+      docText.value = "";
+      return () => {
+        cancelled = true;
+        editorBridge.value = null;
       };
     }
 
@@ -254,6 +289,9 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         saveStatus.value = "saved";
       };
       editorBridge.value = { overwrite: () => sv.overwrite(), reload };
+    }).catch(() => {
+      // Not UTF-8 text (binary) or unreadable → show an icon + Download instead.
+      if (!cancelled) unpreviewable.value = true;
     });
     return () => {
       cancelled = true;
@@ -264,24 +302,127 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     };
   }, [path]);
 
+  // Image / SVG preview: mount the shared pan-zoom-fullscreen viewport on the frame.
+  useEffect(() => {
+    if (!(isSvg || isImage) || !mediaFrameRef.current || !mediaContentRef.current) return;
+    const handle = mountViewport(mediaFrameRef.current, mediaContentRef.current, { bgToggle: true });
+    return () => handle.destroy();
+  }, [path]);
+
+  // Source / code / config text: read-only CodeMirror with syntax highlighting,
+  // line numbers, and a minimap. json/yaml/xml are pretty-printed first.
+  useEffect(() => {
+    if (!isSourceText || !sourceHost.current) return;
+    let cancelled = false;
+    const minimapCompartment = new Compartment();
+    const makeMinimap = () =>
+      showMinimap.of({
+        create: () => ({ dom: document.createElement("div") }),
+        displayText: "blocks",
+        showOverlay: "always",
+      });
+    // Safari/WebKit can leave the minimap canvas blank after the editor box resizes
+    // (e.g. a window maximise) — changing canvas dimensions doesn't always force a
+    // repaint. Re-init the minimap (fresh config) once the resize settles.
+    let resizeT: ReturnType<typeof setTimeout> | undefined;
+    let lastW = -1;
+    let lastH = -1;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[entries.length - 1]?.contentRect;
+      if (!r) return;
+      const first = lastW < 0;
+      // Only a REAL box resize should re-init. Skip the initial observe + sub-pixel
+      // / scrollbar jitter so scrolling never re-inits (which would flash the
+      // minimap on Safari). The minimap is already created at the opening size.
+      if (!first && Math.abs(r.width - lastW) < 3 && Math.abs(r.height - lastH) < 3) return;
+      lastW = r.width;
+      lastH = r.height;
+      if (first) return;
+      clearTimeout(resizeT);
+      resizeT = setTimeout(() => {
+        sourceView.current?.dispatch({ effects: minimapCompartment.reconfigure(makeMinimap()) });
+      }, 200);
+    });
+    void ctx.daemon
+      .file(path)
+      .then(async (f) => {
+        if (cancelled || !sourceHost.current) return;
+        const text = await formatCode((path.split(".").pop() ?? "").toLowerCase(), f.content);
+        const desc = LanguageDescription.matchFilename(languages, fileName);
+        const lang = desc ? await desc.load() : [];
+        if (cancelled || !sourceHost.current) return;
+        sourceView.current?.destroy();
+        sourceView.current = new EditorView({
+          parent: sourceHost.current,
+          state: EditorState.create({
+            doc: text,
+            extensions: [
+              lineNumbers(),
+              highlightActiveLine(),
+              drawSelection(),
+              EditorState.readOnly.of(true),
+              EditorView.editable.of(false),
+              // syntax colours follow the per-preview theme (the ◐ toggle)
+              syntaxHighlighting(
+                previewTheme.peek() === "light" ? defaultHighlightStyle : oneDarkHighlightStyle,
+              ),
+              lang,
+              minimapCompartment.of(makeMinimap()),
+            ],
+          }),
+        });
+        if (sourceHost.current) ro.observe(sourceHost.current);
+      })
+      .catch(() => {
+        if (!cancelled) unpreviewable.value = true;
+      });
+    return () => {
+      cancelled = true;
+      clearTimeout(resizeT);
+      ro.disconnect();
+      sourceView.current?.destroy();
+      sourceView.current = null;
+    };
+  }, [path, previewTheme.value]);
+
   // Rendered reading-view HTML + a mermaid pass after it mounts. Computed here
   // (before the early return) so the effect's hook order stays stable.
-  const readingHtml = reading.value && path && !isHtml && !isBinary ? renderMarkdown(docText.value).html : "";
+  // renderFile picks markdown vs code-block by extension, so a .yml / .json /
+  // .toml note renders verbatim (preserving its newlines) instead of being
+  // mangled by the markdown parser.
+  const readingHtml =
+    reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : "";
   useEffect(() => {
     if (readingHost.current) {
-      void renderMermaidIn(readingHost.current);
+      void renderMermaidIn(readingHost.current).then(() => {
+        if (readingHost.current) addMermaidZoomControls(readingHost.current);
+      });
       void renderMathIn(readingHost.current);
+      // Syntax-highlight + line-number + pretty-print fenced code blocks.
+      void enhanceCodeBlocksIn(readingHost.current);
       // Resolve vault image refs to the authed raw endpoint (img can't send the
       // token header, so rawUrl carries it in the query).
+      const hideImg = (img: HTMLImageElement) => {
+        img.style.display = "none";
+      };
       readingHost.current
         .querySelectorAll<HTMLImageElement>("img[data-vault-src],img[data-vault-embed]")
         .forEach((img) => {
           const ref = img.getAttribute("data-vault-src") ?? img.getAttribute("data-vault-embed") ?? "";
           const path = resolveAsset(ref);
-          if (path) img.src = ctx.daemon.rawUrl(path);
           img.removeAttribute("data-vault-src");
           img.removeAttribute("data-vault-embed");
+          if (path) img.src = ctx.daemon.rawUrl(path);
+          else hideImg(img); // unresolvable vault ref → hide, don't show a broken icon
         });
+      // Hide ANY image that fails to load (a missing vault embed, a broken
+      // README asset like `assets/header.png`, a dead external URL) so the
+      // reading view shows nothing rather than a broken-image "?" placeholder.
+      readingHost.current.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+        img.addEventListener("error", () => hideImg(img));
+        // Already failed before the listener attached (e.g. cached 404).
+        if (img.getAttribute("src") && img.complete && img.naturalWidth === 0) hideImg(img);
+      });
       // Scroll to a pending [[note#heading]] anchor once the new content is laid out.
       if (pendingHeading.current) {
         const slug = pendingHeading.current;
@@ -293,6 +434,32 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       }
     }
   }, [readingHtml]);
+
+  // Rich file (xlsx/docx/pptx/drawio) → lazy-load the parser and render read-only
+  // HTML into its host (the load effect skipped the text path for these).
+  useEffect(() => {
+    const el = richHost.current;
+    if (!isRich || !path || !el) return;
+    let cancelled = false;
+    let teardown: (() => void) | void;
+    richErr.value = "";
+    el.innerHTML = '<div class="rich-msg">Loading preview…</div>';
+    void renderRichFile(path, el, ctx.daemon)
+      .then((t) => {
+        if (cancelled) t?.(); // switched away mid-load — tear it straight back down
+        else teardown = t;
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        richErr.value = e instanceof Error ? e.message : String(e);
+        el.innerHTML = "";
+      });
+    return () => {
+      cancelled = true;
+      teardown?.(); // destroy the viewport (window listeners + fullscreen handler)
+      el.innerHTML = ""; // drop the rendered content so it can't bleed into the next file
+    };
+  }, [path, isRich]);
 
   if (!path) return <div class="ed-empty">Select a note from the Explorer.</div>;
 
@@ -359,71 +526,57 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     }
   };
 
-  // ── Image zoom + download ──────────────────────────────────────────────────
-  const zoomBy = (mult: number) => {
-    if (imgFit.value) {
-      // Continue smoothly from the current fitted scale.
-      const el = isSvg ? svgRef.current?.querySelector("svg") : imgRef.current;
-      const base = mediaW.current || 1;
-      const cur = el ? (el as Element).getBoundingClientRect().width / base : 1;
-      imgFit.value = false;
-      imgZoom.value = clampZoom(cur * mult);
-    } else {
-      imgZoom.value = clampZoom(imgZoom.value * mult);
-    }
-  };
-  const onWheel = (e: WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      zoomBy(e.deltaY < 0 ? 1.15 : 0.87);
-    }
-  };
-  const downloadFile = async () => {
-    let url = blobUrl.value;
-    let revoke = false;
-    if (!url) {
-      const b = await ctx.daemon.fileBlob(path);
-      url = URL.createObjectURL(b);
-      revoke = true;
-    }
+  // ── Download ────────────────────────────────────────────────────────────────
+  const downloadFile = () => {
+    // Stream from the daemon with &download=1 so it sends a
+    // `Content-Disposition: attachment` carrying the real name — that keeps the
+    // original filename + extension even in webviews that ignore the `download`
+    // attribute on a blob: URL.
     const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
+    a.href = `${ctx.daemon.rawUrl(path)}&download=1`;
+    a.download = fileName; // honoured where the attribute already works
     document.body.appendChild(a);
     a.click();
     a.remove();
-    if (revoke) URL.revokeObjectURL(url);
+  };
+  const onSourceWheel = (e: WheelEvent) => {
+    if (!(e.ctrlKey || e.metaKey)) return; // Cmd/Ctrl-wheel zooms the code font
+    e.preventDefault();
+    const next = sourceFontScale.value * (e.deltaY < 0 ? 1.1 : 0.9);
+    sourceFontScale.value = Math.max(0.6, Math.min(3, next));
+  };
+  const copySource = () => {
+    void navigator.clipboard?.writeText(sourceView.current?.state.doc.toString() ?? "").then(() => {
+      sourceCopied.value = true;
+      setTimeout(() => {
+        sourceCopied.value = false;
+      }, 1200);
+    });
   };
 
   const segs = path.split("/");
   const fileName = segs[segs.length - 1];
   const dirSegs = segs.slice(0, -1);
-  const zoomedStyle = imgFit.value
-    ? ""
-    : `width:${Math.round((mediaW.current || 800) * imgZoom.value)}px;max-width:none;max-height:none;height:auto`;
 
   const downloadBtn = (
     <button class="ed-iconbtn" type="button" title="Download file" aria-label="Download" onClick={() => void downloadFile()}>
       <Icon name="download" />
     </button>
   );
-  const zoomControls = (
-    <div class="ed-zoom">
-      <button class="ed-iconbtn" type="button" title="Zoom out" aria-label="Zoom out" onClick={() => zoomBy(0.8)}>
-        <Icon name="minus" />
-      </button>
-      <button class="ed-zoom-pct" type="button" title="Fit to pane" onClick={() => { imgFit.value = true; }}>
-        {imgFit.value ? "Fit" : `${Math.round(imgZoom.value * 100)}%`}
-      </button>
-      <button class="ed-iconbtn" type="button" title="Zoom in" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
-        <Icon name="plus" />
-      </button>
-      <button class="ed-iconbtn" type="button" title="Fit to pane" aria-label="Fit" onClick={() => { imgFit.value = true; }}>
-        <Icon name="maximize" />
-      </button>
-    </div>
+  // ◐ background light/dark toggle for the doc/table/code previews.
+  const pvThemeBtn = (
+    <button
+      class="ed-iconbtn"
+      type="button"
+      title={`Background: ${previewTheme.value} — click to flip`}
+      aria-label="Toggle preview background light / dark"
+      onClick={() => {
+        previewTheme.value = previewTheme.value === "light" ? "dark" : "light";
+      }}
+    >
+      <Icon name="contrast" />
+    </button>
   );
-
   return (
     <div class="ed-wrap">
       <div class="ed-toolbar">
@@ -460,7 +613,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           {isImage ? (
             <>
               <span class="ed-badge"><Icon name="image" />{isSvg ? "SVG" : "Image"}</span>
-              {zoomControls}
               {downloadBtn}
             </>
           ) : isPdf ? (
@@ -470,13 +622,80 @@ function Editor({ ctx }: { ctx: PanelContext }) {
             </>
           ) : isHtml ? (
             <>
-              <span class="ed-badge"><Icon name="code" />HTML preview</span>
+              <span class="ed-badge"><Icon name="code" />HTML</span>
+              <button
+                class={htmlInteractive.value ? "ed-run is-on" : "ed-run"}
+                type="button"
+                title={htmlInteractive.value ? "Scripts enabled — click to sandbox again" : "Run interactively (enable scripts in a sandboxed frame)"}
+                onClick={() => { htmlInteractive.value = !htmlInteractive.value; }}
+              >
+                <Icon name="play" />
+                <span>{htmlInteractive.value ? "Scripts on" : "Run"}</span>
+              </button>
+              {downloadBtn}
+            </>
+          ) : isVideo ? (
+            <>
+              <span class="ed-badge"><Icon name="play" />Video</span>
+              {downloadBtn}
+            </>
+          ) : isAudio ? (
+            <>
+              <span class="ed-badge"><Icon name="activity" />Audio</span>
+              {downloadBtn}
+            </>
+          ) : isRich ? (
+            <>
+              <span class="ed-badge"><Icon name="file" />{richLabel(path)}</span>
+              {isDocPreview ? pvThemeBtn : null}
+              {downloadBtn}
+            </>
+          ) : isUnpreviewableExt || unpreviewable.value ? (
+            <>
+              <span class="ed-badge"><Icon name="file" />{ext ? ext.toUpperCase() : "File"}</span>
+              {downloadBtn}
+            </>
+          ) : isSourceText ? (
+            <>
+              <span class="ed-badge"><Icon name="code" />{ext ? ext.toUpperCase() : "Text"}</span>
+              <div class="ed-zoom">
+                <button class="ed-iconbtn" type="button" title="Smaller" aria-label="Smaller" onClick={() => { sourceFontScale.value = Math.max(0.6, sourceFontScale.value - 0.1); }}>
+                  <Icon name="minus" />
+                </button>
+                <button class="ed-zoom-pct" type="button" title="Reset zoom" onClick={() => { sourceFontScale.value = 1; }}>
+                  {Math.round(sourceFontScale.value * 100)}%
+                </button>
+                <button class="ed-iconbtn" type="button" title="Larger" aria-label="Larger" onClick={() => { sourceFontScale.value = Math.min(3, sourceFontScale.value + 0.1); }}>
+                  <Icon name="plus" />
+                </button>
+              </div>
+              <button
+                class="ed-iconbtn"
+                type="button"
+                title={sourceCopied.value ? "Copied" : "Copy code"}
+                aria-label="Copy code"
+                onClick={copySource}
+              >
+                <Icon name={sourceCopied.value ? "check" : "copy"} />
+              </button>
+              {pvThemeBtn}
               {downloadBtn}
             </>
           ) : (
             <>
               <SaveBadge />
               {downloadBtn}
+              {reading.value && (
+                <button
+                  class="ed-toggle"
+                  title={wideView.value ? "Centred column" : "Full width"}
+                  aria-label={wideView.value ? "Centred column" : "Full width"}
+                  onClick={() => { wideView.value = !wideView.value; }}
+                >
+                  <Icon name={wideView.value ? "shrink-h" : "expand-h"} />
+                  <span>{wideView.value ? "Center" : "Wide"}</span>
+                </button>
+              )}
               <button
                 class="ed-toggle"
                 data-testid="ed-reading-toggle"
@@ -490,52 +709,92 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         </div>
       </div>
 
-      {isSvg ? (
-        <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
-          <div
-            class={imgFit.value ? "ed-media ed-svg" : "ed-media ed-svg zoomed"}
-            ref={svgRef}
-            style={zoomedStyle}
-            dangerouslySetInnerHTML={{ __html: svgHtml.value }}
-          />
-        </div>
-      ) : isImage ? (
-        <div class="ed-binwrap" data-testid="ed-image" onWheel={onWheel}>
-          {blobUrl.value && (
-            <img
-              class="ed-media ed-img"
-              ref={imgRef}
-              src={blobUrl.value}
-              alt={fileName}
-              style={zoomedStyle}
-              onLoad={(e) => { mediaW.current = (e.target as HTMLImageElement).naturalWidth || 0; }}
-            />
-          )}
+      {isSvg || isImage ? (
+        <div class="ed-mediawrap" ref={mediaFrameRef} data-testid="ed-image">
+          <div class="ed-media-content" ref={mediaContentRef}>
+            {isSvg ? (
+              <div class="ed-media-svg" dangerouslySetInnerHTML={{ __html: svgHtml.value }} />
+            ) : (
+              <img class="ed-media-img" src={ctx.daemon.rawUrl(path)} alt={fileName} />
+            )}
+          </div>
         </div>
       ) : isPdf ? (
-        blobUrl.value ? (
-          <iframe class="ed-pdf" data-testid="ed-pdf" src={blobUrl.value} title="PDF preview" />
-        ) : (
-          <div class="ed-binwrap" />
-        )
+        // No sandbox: the browser's PDF viewer needs same-origin and won't render
+        // inside an opaque-origin sandboxed iframe (verified — it shows a broken-page
+        // icon). Embedded PDF JavaScript isn't a practical token-theft vector here —
+        // Chrome's PDFium disables PDF JS, and Firefox's pdf.js runs it in its own
+        // isolated sandbox with no DOM access.
+        <iframe
+          class="ed-pdf"
+          data-testid="ed-pdf"
+          src={ctx.daemon.rawUrl(path)}
+          title="PDF preview"
+          // The token rides in rawUrl's query string; no-referrer stops it leaking
+          // via the Referer header if the PDF references any external resource.
+          referrerpolicy="no-referrer"
+        />
       ) : isHtml ? (
         <iframe
+          // re-key on the toggle so flipping it reloads the frame — changing the
+          // sandbox attribute alone doesn't re-run the document's scripts.
+          key={`html-${path}-${htmlInteractive.value ? "run" : "static"}`}
           class="ed-frame"
           data-testid="ed-html-frame"
-          // sandbox="" — fully isolated, scripts DISABLED. Vault .html files are
-          // untrusted (imported / AI-generated / synced), so the preview renders
-          // them as static documents. (Interactive HTML would be a deliberate
-          // `allow-scripts` opt-in, never with allow-same-origin.)
-          sandbox=""
+          // sandbox="" disables scripts (vault .html is untrusted — imported /
+          // AI-generated / synced). The "Run" toggle opts INTO allow-scripts, still
+          // WITHOUT allow-same-origin: the frame stays an opaque origin that can't
+          // reach the parent, cookies, or the vault.
+          sandbox={htmlInteractive.value ? "allow-scripts" : ""}
           srcdoc={docText.value}
           title="HTML preview"
+        />
+      ) : isVideo ? (
+        <div class="ed-mediafile">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video key={path} class="ed-video" controls autoplay={mediaAutoplay.value} src={ctx.daemon.rawUrl(path)} />
+        </div>
+      ) : isAudio ? (
+        <div class="ed-mediafile">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio key={path} class="ed-audio" controls autoplay={mediaAutoplay.value} src={ctx.daemon.rawUrl(path)} />
+        </div>
+      ) : isRich ? (
+        <div
+          class="ed-richwrap"
+          data-testid="ed-rich"
+          data-pv-theme={isDocPreview ? previewTheme.value : undefined}
+          style={isDocPreview ? pvAccentStyle : undefined}
+        >
+          {richErr.value ? (
+            <div class="rich-msg rich-err">Couldn’t render this file: {richErr.value}</div>
+          ) : null}
+          <div class="ed-rich" ref={richHost} />
+        </div>
+      ) : isUnpreviewableExt || unpreviewable.value ? (
+        <div class="ed-unpreview" data-testid="ed-unpreview">
+          <Icon name="file" />
+          <div class="ed-unpreview-name">{fileName}</div>
+          <button class="ed-unpreview-btn" type="button" onClick={() => downloadFile()}>
+            <Icon name="download" />
+            <span>Download</span>
+          </button>
+        </div>
+      ) : isSourceText ? (
+        <div
+          class="ed ed-source"
+          ref={sourceHost}
+          data-testid="ed-source"
+          data-pv-theme={previewTheme.value}
+          style={`--src-fs:${(13 * sourceFontScale.value).toFixed(1)}px;${pvAccentStyle}`}
+          onWheel={onSourceWheel}
         />
       ) : (
         <>
           <Properties value={props.value} onChange={onProps} />
           {reading.value && (
             <div
-              class="ed-reading"
+              class={wideView.value ? "ed-reading is-wide" : "ed-reading"}
               data-testid="ed-reading"
               ref={readingHost}
               onClick={onReadingClick}

@@ -13,6 +13,9 @@
   --color-border-2: rgba(255, 255, 255, 0.06);
   --color-text: #f0f0f2;
   --color-muted: #a1a1aa;
+  /* alias — some components reference `--color-text-muted`; keep it pointed at the
+     real (theme-adaptive) muted token so they never fall back to a hard-coded white. */
+  --color-text-muted: var(--color-muted);
   --color-faint: rgba(255, 255, 255, 0.62);
   --color-ghost: rgba(255, 255, 255, 0.2);
   --color-white: #fff;
@@ -45,4 +48,76 @@
   --clip-tech: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   /* button-scale chamfer (6px) for chrome controls — --clip-tech is panel-scale (12px) */
   --clip-chip: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+/* ── Light theme ─────────────────────────────────────────────────────────────
+ * Flips the grayscale scale (bg/surface/text/border) to a light palette. The
+ * neon accents stay vivid — they're used as strokes, tints, and glows (never
+ * solid fills), so the operator-console identity carries over to light. Driven
+ * by `data-theme="light"` on <html> (core/stores applyTheme). */
+:root[data-theme="light"] {
+  --color-bg: #f4f5f8;
+  --color-bg-deep: #e6e8ee;
+  --color-surface: #ffffff;
+  --color-surface-2: rgba(255, 255, 255, 0.86);
+  --color-border: rgba(12, 14, 22, 0.14);
+  --color-border-2: rgba(12, 14, 22, 0.09);
+  --color-text: #14151a;
+  --color-muted: #585c66;
+  --color-faint: rgba(12, 14, 22, 0.62);
+  --color-ghost: rgba(12, 14, 22, 0.22);
+  /* `--color-white` is the BRIGHTEST foreground on dark → the darkest on light. */
+  --color-white: #0a0b10;
+
+  /* The neon accents don't translate to a light surface — cyan #00f3ff on the
+     light bg is ~1.3:1, unreadable as link/label/icon text. Darken each to a
+     contrast-safe variant (≥4.5:1 on --color-bg) that keeps its hue, so the
+     operator-console identity carries over while accent text stays legible.
+     --section-accent + --accent-weak/-line recompute from these (var()-based). */
+  --acc-cyan: #0e7490;
+  --acc-violet: #7c3aed;
+  --acc-magenta: #be185d;
+  --acc-amber: #b45309;
+  --c-success: #4d7c0f;
+}
+
+/* ── Per-preview theme override ───────────────────────────────────────────────
+ * The doc/table/code preview "background light/dark" toggle. Mirrors the :root
+ * light + dark token sets onto a subtree marker so one preview can be themed
+ * independently of the app (`[data-theme]` is :root-scoped and won't cascade). */
+[data-pv-theme="light"] {
+  --color-bg: #f4f5f8;
+  --color-bg-deep: #e6e8ee;
+  --color-surface: #ffffff;
+  --color-surface-2: rgba(255, 255, 255, 0.86);
+  --color-border: rgba(12, 14, 22, 0.14);
+  --color-border-2: rgba(12, 14, 22, 0.09);
+  --color-text: #14151a;
+  --color-muted: #585c66;
+  --color-faint: rgba(12, 14, 22, 0.62);
+  --color-ghost: rgba(12, 14, 22, 0.22);
+  --color-white: #0a0b10;
+  --acc-cyan: #0e7490;
+  --acc-violet: #7c3aed;
+  --acc-magenta: #be185d;
+  --acc-amber: #b45309;
+  --c-success: #4d7c0f;
+}
+[data-pv-theme="dark"] {
+  --color-bg: #050507;
+  --color-bg-deep: #020204;
+  --color-surface: #0a0a12;
+  --color-surface-2: rgba(8, 8, 14, 0.82);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-2: rgba(255, 255, 255, 0.06);
+  --color-text: #f0f0f2;
+  --color-muted: #a1a1aa;
+  --color-faint: rgba(255, 255, 255, 0.62);
+  --color-ghost: rgba(255, 255, 255, 0.2);
+  --color-white: #fff;
+  --acc-cyan: #00f3ff;
+  --acc-violet: #bc13fe;
+  --acc-magenta: #ff2d92;
+  --acc-amber: #ffb000;
+  --c-success: #a8d000;
 }

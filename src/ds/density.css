@@ -1,0 +1,58 @@
+/* ── Compact density ─────────────────────────────────────────────────────────
+ * The default ("comfortable") spacing lives in each component's own CSS; these
+ * rules only fire under `data-density="compact"` (set on <html> by core/stores
+ * applyDensity) and tighten the highest-traffic surfaces so toggling density is
+ * a clearly visible change — the file tree packs more rows, the reading view
+ * gets a denser rhythm, and the chrome loses a little air. */
+
+/* File explorer — the densest, most-repeated list (biggest visible win). */
+[data-density="compact"] .fx-tree {
+  max-height: 70vh;
+}
+[data-density="compact"] .fx-row {
+  padding: 1px 7px;
+  gap: 5px;
+}
+[data-density="compact"] .fx-hit {
+  padding: 2px 7px;
+}
+[data-density="compact"] .fx-hit-body {
+  line-height: 1.2;
+}
+
+/* Reading view — tighter frame + text rhythm. */
+[data-density="compact"] .ed-reading {
+  padding: 10px 18px;
+}
+[data-density="compact"] .ed-reading p {
+  margin: 0.5em 0;
+}
+[data-density="compact"] .ed-reading li {
+  margin: 0.12em 0;
+}
+[data-density="compact"] .ed-reading h1,
+[data-density="compact"] .ed-reading h2,
+[data-density="compact"] .ed-reading h3,
+[data-density="compact"] .ed-reading h4,
+[data-density="compact"] .ed-reading h5,
+[data-density="compact"] .ed-reading h6 {
+  margin: 0.9em 0 0.35em;
+}
+[data-density="compact"] .ed-reading pre {
+  padding: 9px 11px;
+  margin: 0.6em auto;
+}
+
+/* Settings modal rows — match the tighter rhythm. */
+[data-density="compact"] .st-row {
+  min-height: 26px;
+  padding: 2px 0;
+}
+[data-density="compact"] .st-section {
+  margin: 12px 0 7px;
+}
+
+/* Chat messages — pack the conversation a touch tighter. */
+[data-density="compact"] .ch-msg {
+  margin: 6px 0;
+}

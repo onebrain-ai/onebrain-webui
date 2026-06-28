@@ -87,7 +87,7 @@ export function toggleSidebar(): void {
 // ── Which panel fills the sidebar + the live search query ─────────────────────
 // Module-level (not CmsShell-local) so any surface can switch tabs — e.g. clicking
 // a #tag in the reading view opens the Search panel pre-filled.
-export type SidebarTab = "explorer" | "search" | "tasks" | "status";
+export type SidebarTab = "explorer" | "search" | "tasks" | "status" | "memory";
 export const sidebarTab = signal<SidebarTab>("explorer");
 export const searchQuery = signal<string>("");
 
@@ -134,6 +134,11 @@ export const accent = signal<AccentName>(loadAccent());
 export const density = signal<"comfortable" | "compact">(
   loadString("onebrain.density", "comfortable") === "compact" ? "compact" : "comfortable",
 );
+/** Light / dark colour scheme. Dark is the DS default; `[data-theme="light"]`
+ *  overrides the grayscale tokens (tokens.css). */
+export const theme = signal<"dark" | "light">(
+  loadString("onebrain.theme", "dark") === "light" ? "light" : "dark",
+);
 
 /** Re-tint the surface by overriding `--section-accent` on :root (DS pattern). */
 export function setAccent(name: AccentName): void {
@@ -148,10 +153,38 @@ export function setDensity(d: "comfortable" | "compact"): void {
   saveString("onebrain.density", d);
 }
 
+export function setTheme(t: "dark" | "light"): void {
+  theme.value = t;
+  applyTheme(t);
+  saveString("onebrain.theme", t);
+}
+
+// ── HTML preview: auto-run scripts (default OFF — safe-by-default) ────────────
+// When ON, .html previews open with scripts enabled (still sandboxed:
+// allow-scripts WITHOUT allow-same-origin, so the frame can't reach the app,
+// vault, token, or cookies). When OFF, previews are static and the editor's
+// "Run" button is a per-file opt-in. Untrusted .html (import / sync / AI) is why
+// this defaults off.
+export const htmlAutorun = signal<boolean>(loadString("onebrain.htmlAutorun", "0") === "1");
+export function setHtmlAutorun(on: boolean): void {
+  htmlAutorun.value = on;
+  saveString("onebrain.htmlAutorun", on ? "1" : "0");
+}
+
+// ── Media preview: auto-play audio / video on open (default OFF) ──────────────
+// Browsers may still gate UNMUTED autoplay until a user gesture (the explorer
+// click usually counts); either way the native controls work.
+export const mediaAutoplay = signal<boolean>(loadString("onebrain.mediaAutoplay", "0") === "1");
+export function setMediaAutoplay(on: boolean): void {
+  mediaAutoplay.value = on;
+  saveString("onebrain.mediaAutoplay", on ? "1" : "0");
+}
+
 /** Apply the persisted theme settings to the document. Call once at boot. */
 export function applyThemeSettings(): void {
   applyAccent(accent.value);
   applyDensity(density.value);
+  applyTheme(theme.value);
 }
 
 function applyAccent(name: AccentName): void {
@@ -159,15 +192,26 @@ function applyAccent(name: AccentName): void {
   // the DS component layer (.cyber-*, .accent-dot, switches) reads
   // `--action-primary` (+ its weak tint). `--focus-ring` is `var(--action-primary)`
   // in the DS, so it follows automatically.
-  const hex = ACCENTS[name];
+  // Bind to the theme TOKEN (`var(--acc-*)`), not the fixed hex from ACCENTS, so
+  // the accent adapts to light/dark: tokens.css darkens the neon `--acc-*` on a
+  // light surface (cyan #00f3ff is ~1.3:1 / unreadable on the light bg). The named
+  // accent only picks the HUE; the token supplies the theme-correct shade. (ACCENTS
+  // hexes are still used for the settings-modal swatches.)
+  const v = `var(--acc-${name})`;
   const root = document.documentElement.style;
-  root.setProperty("--section-accent", hex);
-  root.setProperty("--action-primary", hex);
-  root.setProperty("--action-primary-weak", `color-mix(in srgb, ${hex} 12%, transparent)`);
+  root.setProperty("--section-accent", v);
+  root.setProperty("--action-primary", v);
+  root.setProperty("--action-primary-weak", `color-mix(in srgb, ${v} 12%, transparent)`);
 }
 function applyDensity(d: "comfortable" | "compact"): void {
   if (d === "compact") document.documentElement.setAttribute("data-density", "compact");
   else document.documentElement.removeAttribute("data-density");
+}
+function applyTheme(t: "dark" | "light"): void {
+  // Dark is the default token set; the attribute drives the `[data-theme="light"]`
+  // overrides. `color-scheme` lets the browser theme native controls/scrollbars.
+  document.documentElement.setAttribute("data-theme", t);
+  document.documentElement.style.colorScheme = t;
 }
 
 function loadAccent(): AccentName {

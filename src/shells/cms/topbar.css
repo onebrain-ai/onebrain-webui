@@ -7,7 +7,10 @@
   align-items: center;
   gap: 13px;
   padding: 0 14px;
-  background: linear-gradient(180deg, rgba(8, 8, 15, 0.92), rgba(5, 5, 11, 0.62));
+  /* Translucent surface token (adapts light/dark) behind the backdrop-blur, so
+     the bar frosts dark on dark and light on light instead of staying hard-coded
+     near-black on the light theme. */
+  background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   -webkit-backdrop-filter: blur(18px) saturate(1.35);
   backdrop-filter: blur(18px) saturate(1.35);
@@ -110,7 +113,7 @@
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--color-border);
-  background: rgba(7, 7, 13, 0.6);
+  background: var(--color-bg-deep);
   clip-path: var(--clip-tech);
   color: var(--color-muted);
   cursor: pointer;
@@ -135,7 +138,7 @@
   padding: 0 5px;
   font-size: 9.5px;
   color: var(--color-ghost);
-  background: rgba(255, 255, 255, 0.055);
+  background: var(--color-bg-deep);
   border: 1px solid var(--color-border);
   border-radius: 4px;
 }
@@ -145,7 +148,7 @@
   display: inline-grid;
   place-items: center;
   border: 1px solid var(--color-border);
-  background: rgba(7, 7, 13, 0.7);
+  background: var(--color-bg-deep);
   clip-path: var(--clip-tech);
   color: var(--color-muted);
   cursor: pointer;
@@ -169,7 +172,7 @@
   right: 0;
   width: 196px;
   padding: 12px;
-  background: linear-gradient(180deg, rgba(12, 12, 20, 0.96), rgba(6, 6, 12, 0.96));
+  background: var(--color-surface);
   border: 1px solid var(--accent-line);
   clip-path: var(--clip-tech);
   -webkit-backdrop-filter: blur(17px) saturate(1.3);

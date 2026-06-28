@@ -1,0 +1,237 @@
+/* Rich-file preview (xlsx/docx/pptx/drawio) — read-only rendered content in the
+   editor pane. Token-based so it adapts to light / dark. */
+.ed-richwrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px;
+  /* The app sets `user-select: none` for the operator-console chrome; the rendered
+     content is meant to be read AND copied, so opt it back in. */
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* …but the sheet-tab bar is UI, not data — keep it unselectable. */
+.rich-tabs {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.rich-msg {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 24px 4px;
+}
+.rich-err {
+  color: var(--acc-magenta);
+}
+
+/* xlsx — sheet tabs (mirrors Excel's sheet bar); one panel per sheet, switched by class */
+.rich-tabs {
+  display: flex;
+  gap: 2px;
+  /* single line — scroll horizontally when the sheet tabs overflow the viewport
+     instead of wrapping onto a second row. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.rich-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+.rich-tabs::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.rich-tab {
+  flex: 0 0 auto; /* keep their width, don't shrink — the bar scrolls instead */
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 6px 13px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  border-radius: 5px 5px 0 0;
+  transition: color 0.14s, background 0.14s, border-color 0.14s;
+}
+.rich-tab:hover {
+  color: var(--color-text);
+}
+.rich-tab.is-active {
+  color: var(--section-accent);
+  background: var(--color-bg-deep);
+  border-color: var(--color-border);
+}
+.rich-hidden {
+  display: none;
+}
+.ed-rich table {
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.ed-rich td,
+.ed-rich th {
+  border: 1px solid var(--color-border);
+  padding: 5px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+/* SheetJS emits all-<td>; treat the first row as the header band. */
+.ed-rich tr:first-child td {
+  background: var(--color-bg-deep);
+  font-weight: 600;
+}
+
+/* docx — clean document body (mammoth HTML) */
+.rich-doc {
+  max-width: 780px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+.rich-doc h1,
+.rich-doc h2,
+.rich-doc h3 {
+  font-family: var(--font-display);
+  color: var(--color-text);
+  margin: 1.4em 0 0.5em;
+  line-height: 1.25;
+}
+.rich-doc h1 {
+  font-size: 1.7em;
+}
+.rich-doc h2 {
+  font-size: 1.35em;
+}
+.rich-doc h3 {
+  font-size: 1.12em;
+}
+.rich-doc p {
+  margin: 0 0 0.9em;
+}
+.rich-doc ul,
+.rich-doc ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.5em;
+}
+.rich-doc li {
+  margin: 0.2em 0;
+}
+.rich-doc a {
+  color: var(--section-accent);
+}
+.rich-doc strong {
+  font-weight: 600;
+}
+
+/* pptx — one slide in a pan/zoom/fullscreen viewport (richviewport); ◀ ▶ to nav.
+   The stage sits at the frame origin; the viewport transform fits + centres it. */
+.rich-slides-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.rich-slides {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* the renderer draws a single slide (no built-in nav UI); the viewport carries
+   the ◀ ▶ + "n / N" controls and drives slides via the viewer's renderSlide(). */
+
+/* drawio — the diagram fills the whole pane by default; a floating toolbar
+   (bottom-right) zooms in/out and re-fits. Drop the wrap's padding so the canvas
+   goes edge-to-edge, and let the host stretch to full height. */
+.ed-richwrap:has(.rich-diagram-frame),
+.ed-richwrap:has(.rich-slides-frame) {
+  padding: 0;
+  overflow: hidden;
+}
+.ed-richwrap:has(.rich-diagram-frame) > .ed-rich,
+.ed-richwrap:has(.rich-slides-frame) > .ed-rich {
+  height: 100%;
+}
+.rich-diagram-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: var(--color-surface);
+}
+.rich-diagram {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+/* maxGraph draws an inline SVG; let its own viewport manage the canvas. */
+.rich-diagram svg {
+  max-width: none;
+}
+/* zoom / pan / fullscreen toolbar lives in richviewport.css (.rich-vbar) */
+
+/* Jupyter .ipynb — markdown cells, code cells (highlighted via .cm-codeblock), outputs */
+.nb-doc {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: var(--font-sans);
+}
+.nb-md {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-text);
+  margin: 0 0 1em;
+}
+.nb-md h1 { font-size: 1.6em; }
+.nb-md h2 { font-size: 1.3em; }
+.nb-md h3 { font-size: 1.1em; }
+.nb-md h1,
+.nb-md h2,
+.nb-md h3 { font-family: var(--font-display); margin: 1.2em 0 0.4em; line-height: 1.25; }
+.nb-md p { margin: 0 0 0.8em; }
+.nb-md ul,
+.nb-md ol { padding-left: 1.4em; margin: 0 0 0.8em; }
+.nb-md a { color: var(--section-accent); }
+.nb-md code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-surface);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+.nb-cell { margin: 0 0 1.3em; }
+.nb-out,
+.nb-err {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 8px 12px;
+  margin: 6px 0 0;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.nb-out { background: var(--color-bg-deep); color: var(--color-text); }
+.nb-err { background: color-mix(in oklab, var(--acc-magenta) 12%, transparent); color: var(--acc-magenta); }
+.nb-img {
+  display: block;
+  max-width: 100%;
+  margin: 8px 0 0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px;
+}
+.nb-html { margin: 6px 0 0; overflow-x: auto; font-size: 13px; }

@@ -95,3 +95,54 @@
   color: var(--color-muted);
   margin-top: 5px;
 }
+
+/* Notes-by-area distribution chart */
+.st-chart {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-2);
+}
+.st-chart-head {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--section-accent);
+  margin-bottom: 11px;
+}
+.st-bar-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 30px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.st-bar-lab {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.st-bar-track {
+  height: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.st-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--section-accent);
+  box-shadow: 0 0 10px -3px var(--section-accent);
+  transition: width 0.4s ease;
+}
+.st-bar-n {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text);
+  text-align: right;
+}

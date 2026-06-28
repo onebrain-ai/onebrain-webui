@@ -28,6 +28,10 @@ export function resolveToken(): string | null {
   const injected = window.__ONEBRAIN_TOKEN__;
   if (injected && injected !== PLACEHOLDER) {
     persist(injected);
+    // The daemon already seeded the auth cookie on this `?token=` load and we
+    // hold the token via the injected global — so drop the secret from the
+    // address bar / history / any bookmark made of this page.
+    stripTokenFromUrl();
     return injected;
   }
 

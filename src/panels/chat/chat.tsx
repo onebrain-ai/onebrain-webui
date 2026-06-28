@@ -15,28 +15,28 @@ import "./chat.css";
 
 /** OneBrain slash skills offered in the composer's `/` autocomplete. */
 const SKILLS: ReadonlyArray<{ cmd: string; desc: string }> = [
-  { cmd: "capture", desc: "จดโน้ตสั้นๆ + auto-link" },
-  { cmd: "braindump", desc: "เทความคิดยาวๆ หลายเรื่อง" },
-  { cmd: "bookmark", desc: "เซฟ URL + metadata" },
-  { cmd: "summarize", desc: "ดึง URL มาสรุปลึก" },
-  { cmd: "import", desc: "ไฟล์ในเครื่อง → โน้ต" },
-  { cmd: "reading-notes", desc: "หนังสือ/บทความ → โน้ต" },
-  { cmd: "research", desc: "ค้นเว็บ → เซฟ resources" },
-  { cmd: "consolidate", desc: "เคลียร์ inbox เข้าคลัง" },
-  { cmd: "connect", desc: "หา connection ระหว่างโน้ต" },
-  { cmd: "distill", desc: "สังเคราะห์หัวข้อ → digest" },
-  { cmd: "recap", desc: "ดึง insight จาก sessions" },
-  { cmd: "search", desc: "ค้นทั่ว vault" },
-  { cmd: "daily", desc: "บรีฟประจำวัน" },
-  { cmd: "weekly", desc: "รีวิวประจำสัปดาห์" },
-  { cmd: "tasks", desc: "อัปเดต task dashboard" },
-  { cmd: "moc", desc: "อัปเดตแผนที่ vault" },
-  { cmd: "learn", desc: "สอน agent ให้จำ" },
-  { cmd: "doctor", desc: "เช็คสุขภาพ vault" },
-  { cmd: "wrapup", desc: "สรุปจบ session" },
-  { cmd: "pause", desc: "พักงานไว้ทำต่อ" },
-  { cmd: "resume", desc: "กลับมาทำต่อ" },
-  { cmd: "help", desc: "ดูคำสั่งทั้งหมด" },
+  { cmd: "capture", desc: "Quick note + auto-link" },
+  { cmd: "braindump", desc: "Dump long, multi-topic thoughts" },
+  { cmd: "bookmark", desc: "Save a URL + metadata" },
+  { cmd: "summarize", desc: "Fetch a URL → deep summary" },
+  { cmd: "import", desc: "Local file → note" },
+  { cmd: "reading-notes", desc: "Book / article → notes" },
+  { cmd: "research", desc: "Web research → resources" },
+  { cmd: "consolidate", desc: "Clear the inbox into the vault" },
+  { cmd: "connect", desc: "Find links between notes" },
+  { cmd: "distill", desc: "Synthesize a topic → digest" },
+  { cmd: "recap", desc: "Pull insights from sessions" },
+  { cmd: "search", desc: "Search the vault" },
+  { cmd: "daily", desc: "Daily briefing" },
+  { cmd: "weekly", desc: "Weekly review" },
+  { cmd: "tasks", desc: "Update the task dashboard" },
+  { cmd: "moc", desc: "Update the vault map" },
+  { cmd: "learn", desc: "Teach the agent to remember" },
+  { cmd: "doctor", desc: "Check vault health" },
+  { cmd: "wrapup", desc: "Wrap up the session" },
+  { cmd: "pause", desc: "Pause work for later" },
+  { cmd: "resume", desc: "Resume paused work" },
+  { cmd: "help", desc: "List all commands" },
 ];
 
 const userHtml = (s: string) =>
@@ -62,6 +62,9 @@ function Chat({ ctx }: { ctx: PanelContext }) {
   const slashOpen = slashMatches.length > 0;
 
   // Keep the feed pinned to the latest message + render any mermaid as it streams.
+  // Re-runs only when a message is added (length) or the last one grows (streaming
+  // content) — not on every render (e.g. typing in the draft), which would scroll
+  // + re-scan for mermaid needlessly.
   useEffect(() => {
     requestAnimationFrame(() => {
       const el = feedRef.current;
@@ -70,7 +73,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
         void renderMermaidIn(el);
       }
     });
-  });
+  }, [msgs.length, msgs.at(-1)?.text]);
 
   // Auto-grow the composer up to a max height.
   const grow = () => {
@@ -100,7 +103,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
     let msg = text;
     if (att.length) {
       const refs = att.map((a) => `- ${a.path}`).join("\n");
-      msg = `${text ? text + "\n\n" : ""}(แนบไฟล์ไว้ใน vault — เปิดอ่านได้เลย:\n${refs})`;
+      msg = `${text ? text + "\n\n" : ""}(Attached to the vault — open to read:\n${refs})`;
     }
     draft.value = "";
     attachments.value = [];
@@ -108,14 +111,20 @@ function Chat({ ctx }: { ctx: PanelContext }) {
     void send(ctx.daemon, msg);
   };
 
-  const onFiles = async (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const files = input.files ? Array.from(input.files) : [];
-    input.value = ""; // allow re-selecting the same file
-    for (const file of files) {
-      const safe = file.name.replace(/[^\w.\-ก-๙]+/g, "_");
+  // Max attachments per message — shared by the file picker and clipboard paste.
+  const MAX_ATTACHMENTS = 5;
+
+  const addFiles = async (incoming: File[]) => {
+    const room = MAX_ATTACHMENTS - attachments.value.length;
+    if (room <= 0) return; // already at the cap — silently ignore the rest
+    for (const file of incoming.slice(0, room)) {
+      // Pasted images often have no name → synthesise one from the MIME type so
+      // the daemon stores it with a real image extension.
+      const ext = (file.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "");
+      const rawName = file.name || `pasted-image.${ext}`;
+      const safe = rawName.replace(/[^\w.\-ก-๙]+/g, "_");
       const path = `00-inbox/imports/chat-${Math.random().toString(36).slice(2, 8)}-${safe}`;
-      attachments.value = [...attachments.value, { name: file.name, path, uploading: true }];
+      attachments.value = [...attachments.value, { name: rawName, path, uploading: true }];
       try {
         const buf = await file.arrayBuffer();
         await ctx.daemon.uploadFile(path, buf);
@@ -124,6 +133,24 @@ function Chat({ ctx }: { ctx: PanelContext }) {
         attachments.value = attachments.value.filter((a) => a.path !== path);
       }
     }
+  };
+
+  const onFiles = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const files = input.files ? Array.from(input.files) : [];
+    input.value = ""; // allow re-selecting the same file
+    void addFiles(files);
+  };
+
+  // Paste images straight into the composer (≤ MAX_ATTACHMENTS total).
+  const onPaste = (e: ClipboardEvent) => {
+    const imgs = Array.from(e.clipboardData?.items ?? [])
+      .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (imgs.length === 0) return; // let normal text paste through
+    e.preventDefault();
+    void addFiles(imgs);
   };
 
   const pickSkill = (cmd: string) => {
@@ -165,7 +192,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
             <Icon name="history" />
           </button>
           <button class="ch-iconbtn" type="button" title="New chat" aria-label="New chat" onClick={() => { newThread(); showThreads.value = false; }}>
-            <Icon name="edit" />
+            <Icon name="plus" />
           </button>
         </span>
       </div>
@@ -191,7 +218,7 @@ function Chat({ ctx }: { ctx: PanelContext }) {
         {msgs.length === 0 && (
           <div class="chat-empty">
             <Icon name="sparkles" />
-            <p>คุยกับจิโอ้ได้เลย — ถามเรื่อง vault, พิมพ์ <b>/</b> เพื่อเรียก skill, หรือคุยทั่วไป</p>
+            <p>Chat with <span class="thai">จิโอ้</span> — ask about your vault, type <b>/</b> for a skill, or just chat</p>
           </div>
         )}
         {msgs.map((m, i) => (
@@ -231,13 +258,18 @@ function Chat({ ctx }: { ctx: PanelContext }) {
           <div class="ch-attachments" data-testid="chat-attachments">
             {attachments.value.map((a) => (
               <span key={a.path} class={a.uploading ? "ch-att uploading" : "ch-att"}>
-                <Icon name="paperclip" />
+                {/\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i.test(a.path) && !a.uploading ? (
+                  <img class="ch-att-thumb" src={ctx.daemon.rawUrl(a.path)} alt={a.name} />
+                ) : (
+                  <Icon name="paperclip" />
+                )}
                 <span class="ch-att-name">{a.name}</span>
                 {!a.uploading && (
                   <button
                     type="button"
                     class="ch-att-x"
                     aria-label="Remove attachment"
+                    title="Remove attachment"
                     onClick={() => { attachments.value = attachments.value.filter((x) => x.path !== a.path); }}
                   >
                     <Icon name="x" />
@@ -252,30 +284,32 @@ function Chat({ ctx }: { ctx: PanelContext }) {
           <button
             class="chat-attach"
             type="button"
-            title="แนบไฟล์ / รูป"
+            title={attachments.value.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} files` : "Attach file / image (paste to add)"}
             aria-label="Attach file"
-            disabled={busy}
+            disabled={busy || attachments.value.length >= MAX_ATTACHMENTS}
             onClick={() => fileRef.current?.click()}
           >
             <Icon name="paperclip" />
           </button>
           <textarea
             ref={inputRef}
-            rows={1}
-            placeholder="ถามจิโอ้…  Enter ส่ง · Shift+Enter ขึ้นบรรทัด · / เรียก skill"
+            rows={2}
+            placeholder="Ask จิโอ้…  paste ≤5 images
+Enter to send · Shift+Enter for newline"
             autocomplete="off"
             spellcheck={false}
             value={draft.value}
             disabled={busy}
             onInput={(e) => { draft.value = (e.target as HTMLTextAreaElement).value; slashIdx.value = 0; grow(); }}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
           />
           {busy && thread ? (
-            <button class="chat-send stop" type="button" onClick={() => stop(thread.id)} aria-label="Stop">
+            <button class="chat-send stop" type="button" onClick={() => stop(thread.id)} aria-label="Stop" title="Stop">
               <Icon name="x" />
             </button>
           ) : (
-            <button class="chat-send" type="button" onClick={onSend} aria-label="Send">
+            <button class="chat-send" type="button" onClick={onSend} aria-label="Send" title="Send">
               <Icon name="send" />
             </button>
           )}

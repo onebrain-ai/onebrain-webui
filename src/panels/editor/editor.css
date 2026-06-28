@@ -17,6 +17,67 @@
 .ed .cm-selectionBackground,
 .ed .cm-content ::selection { background: color-mix(in oklab, var(--section-accent) 22%, transparent); }
 .ed .cm-focused .cm-selectionBackground { background: color-mix(in oklab, var(--section-accent) 30%, transparent); }
+
+/* Source / code preview — zoomable font (--src-fs) + gutter & minimap themed to the DS. */
+.ed-source .cm-scroller { font-size: var(--src-fs, 13px); }
+/* preview surface + text re-tint with [data-pv-theme] (the ◐ background toggle) */
+.ed-source,
+.ed-richwrap { background: var(--color-bg); }
+.ed-source .cm-content { color: var(--color-text); }
+.ed-source .cm-gutters {
+  background: var(--color-bg-deep);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-faint);
+}
+.ed-source .cm-lineNumbers .cm-gutterElement { color: var(--color-faint); }
+.ed-source .cm-activeLineGutter { background: var(--accent-weak); color: var(--section-accent); }
+/* @replit minimap — deep panel, separating border, accent viewport overlay */
+.ed-source .cm-minimap-gutter,
+.ed-source .cm-minimap {
+  background: var(--color-bg-deep);
+  border-left: 1px solid var(--color-border);
+}
+.ed-source .cm-minimap-overlay { background: var(--accent-weak); }
+
+/* zoom control (source preview): − [%] + */
+.ed-zoom { display: inline-flex; align-items: center; gap: 1px; }
+.ed-zoom-pct {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  transition: color 0.15s;
+}
+.ed-zoom-pct:hover { color: var(--section-accent); }
+
+/* HTML preview "Run" toggle (sandbox ↔ allow-scripts) */
+.ed-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ed-run:hover { color: var(--section-accent); border-color: var(--section-accent); }
+.ed-run.is-on { color: var(--section-accent); border-color: var(--section-accent); background: var(--accent-weak); }
+.ed-run .ic { width: 13px; height: 13px; }
+
 .ed-empty { padding: 32px; color: var(--color-muted); }
 /* ── Editor header bar — breadcrumb + save state + read/edit toggle ───────── */
 .ed-toolbar {
@@ -116,7 +177,57 @@
 .ed-toggle .ic { font-size: 14px; }
 .ed-toggle:hover { background: var(--accent-line); }
 .ed-hidden { display: none; }
-.ed-reading { flex: 1; overflow: auto; padding: 16px 24px; }
+/* Centre a readable-width column on wide screens (side padding grows to keep the
+   text ~780px and centred, instead of a thin column jammed against the left with
+   a huge empty right). Every block then fills the same column → consistent. */
+.ed-reading { flex: 1; overflow: auto; padding: 16px max(24px, calc((100% - 780px) / 2)); -webkit-user-select: text; user-select: text; }
+/* Wide-screen reading: drop the centred-column cap so tables can use the full pane. */
+.ed-reading.is-wide { padding: 16px 24px; }
+
+/* Unpreviewable (binary) file — a centred icon + filename + Download button. */
+.ed-unpreview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+.ed-unpreview > svg {
+  width: 56px;
+  height: 56px;
+  color: var(--color-faint);
+}
+.ed-unpreview-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text);
+  word-break: break-all;
+  text-align: center;
+}
+.ed-unpreview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--section-accent);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.ed-unpreview-btn > svg {
+  width: 16px;
+  height: 16px;
+}
+.ed-unpreview-btn:hover {
+  background: var(--color-bg-deep);
+}
 
 /* Sandboxed HTML-file preview — fills the pane below the header. */
 .ed-frame {
@@ -127,49 +238,62 @@
   background: #fff;
 }
 
-/* Image preview — centered on a faint checkerboard so transparent PNGs/SVGs read.
-   The wrap scrolls so a zoomed-in image can be panned. */
-.ed-binwrap {
+/* Image / SVG preview — a pan-zoom-fullscreen viewport (richviewport mounts onto
+   .ed-mediawrap) over a faint checkerboard so transparent PNGs/SVGs read. */
+.ed-mediawrap {
+  position: relative;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+  /* checkerboard comes from the viewport's .rich-bg-dark / .rich-bg-light toggle */
+}
+
+/* Audio / video — native player centred in the pane */
+.ed-mediafile {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 1;
+  min-height: 0;
   padding: 24px;
-  background:
-    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 0 0 / 22px 22px,
-    linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.03) 75%) 11px 11px / 22px 22px;
+  overflow: auto;
 }
-.ed-media {
-  display: block;
-  flex: 0 0 auto;
+.ed-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* fill the pane (letterboxed), not the file's native size */
+  border-radius: 8px;
+  background: #000;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.4);
 }
-.ed-img {
+.ed-audio {
+  width: min(560px, 90%);
+}
+/* the viewport transforms this; the media is centred + capped to its box */
+.ed-media-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.ed-media-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+}
+/* SVG is inlined (not <img>) so it uses the page's web fonts. */
+.ed-media-svg {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.ed-media-svg > svg {
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
-  object-fit: contain;
-  border: 1px solid var(--color-border);
-}
-/* SVG is inlined (not <img>) so it uses the page's web fonts. Fit: cap to the pane
-   keeping aspect; zoomed: fill the wrapper's explicit pixel width. */
-.ed-svg {
-  max-width: 100%;
-}
-.ed-svg svg {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: calc(100vh - 150px);
-}
-.ed-svg.zoomed svg {
-  width: 100%;
-  height: auto;
-  max-width: none;
-  max-height: none;
 }
 
 /* Header icon buttons (download / zoom) + zoom readout. */
@@ -198,28 +322,6 @@
   display: flex;
   gap: 1px;
   flex: 0 0 auto;
-}
-.ed-zoom {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-}
-.ed-zoom-pct {
-  min-width: 44px;
-  height: 28px;
-  padding: 0 6px;
-  background: none;
-  border: 1px solid transparent;
-  color: var(--color-faint);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-align: center;
-  transition: color 0.15s;
-}
-.ed-zoom-pct:hover {
-  color: var(--section-accent);
 }
 
 /* PDF preview — the browser's built-in viewer fills the pane. */
@@ -254,7 +356,11 @@
   font: 15px/1.7 var(--font-sans);
   color: var(--color-text);
 }
-.ed-reading > * { max-width: 820px; margin-left: auto; margin-right: auto; }
+/* Fill the centred column (the container padding above sets its width). Blocks
+   that still carry `margin: … auto` (blockquote/table/pre/hr/callout) now have no
+   free space inside the column, so the auto margins resolve to 0 → they sit at
+   the same left edge as the headings/text instead of drifting to centre/right. */
+.ed-reading > * { max-width: 100%; }
 .ed-reading h1, .ed-reading h2, .ed-reading h3,
 .ed-reading h4, .ed-reading h5, .ed-reading h6 { line-height: 1.25; font-weight: 700; margin: 1.4em 0 .5em; }
 .ed-reading h1 { font-size: 1.9em; }
@@ -270,11 +376,150 @@
 .ed-reading ul, .ed-reading ol { margin: .6em 0; padding-left: 1.5em; }
 .ed-reading li { margin: .25em 0; }
 .ed-reading ul.task-list { list-style: none; padding-left: .25em; }
-.ed-reading .task-list-item { display: flex; align-items: flex-start; gap: .5em; }
-.ed-reading .task-list-item input { margin-top: .35em; accent-color: var(--section-accent); }
+.ed-reading .task-list-item { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .55em; }
+/* A nested list under a TASK item must drop to its own full-width line — without
+   this it becomes a flex sibling of the checkbox+text and gets shoved into a
+   column on the right. */
+.ed-reading .task-list-item > ul,
+.ed-reading .task-list-item > ol { flex-basis: 100%; margin: .2em 0 0; }
+.ed-reading .task-list-item input {
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0;
+  /* The native checkbox renders a hair smaller than its 1.05em box, and Thai tone
+     marks lift the first line's optical centre — so centre the control on the full
+     line box (line-height 1.7) and nudge it down to sit with the base text rather
+     than floating above it. */
+  margin-top: .42em;
+  flex: 0 0 auto;
+  accent-color: var(--section-accent);
+  cursor: pointer;
+}
 .ed-reading code { font-family: var(--font-mono); font-size: .9em; background: var(--color-surface); padding: .12em .4em; border-radius: 4px; }
 .ed-reading pre { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 14px; overflow: auto; margin: .9em auto; }
 .ed-reading pre code { background: none; padding: 0; font-size: .88em; line-height: 1.55; }
+
+/* Fenced code blocks (post-processed by core/codeblock.ts): line-number gutter +
+   syntax highlight, sharing the source-file view's oneDark-aligned palette. */
+.cm-codeblock {
+  position: relative;
+  display: flex;
+  margin: .9em auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: .85em;
+  line-height: 1.6;
+}
+/* hover copy button on code blocks */
+.cm-code-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-muted);
+  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s, color 0.14s, background 0.14s;
+}
+.cm-codeblock:hover .cm-code-copy,
+.cm-code-copy:focus-visible { opacity: 1; }
+.cm-code-copy:hover { color: var(--section-accent); background: var(--color-bg-deep); }
+.cm-code-copy.is-copied { color: var(--section-accent); opacity: 1; }
+.cm-code-copy svg { width: 15px; height: 15px; }
+.cm-code-gutter {
+  flex: 0 0 auto;
+  padding: 12px 10px 12px 14px;
+  text-align: right;
+  white-space: pre;
+  color: var(--color-faint);
+  background: var(--color-bg-deep);
+  border-right: 1px solid var(--color-border);
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* `.cm-codeblock` prefix outranks the generic `.ed-reading pre` rule (which adds
+   margin/border/background/radius): the body pre must have NO margin or the whole
+   code column drops below the gutter by ~.9em, and no nested border/background. */
+.cm-codeblock .cm-code-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+/* Selector carries `.cm-codeblock` so it outranks `.ed-reading pre code` (which
+   sets .88em/1.55): the body code MUST share the gutter's font-size + line-height
+   (both inherit .85em/1.6 from .cm-codeblock) or the line numbers drift out of
+   alignment one row at a time. */
+.cm-codeblock .cm-code-body code {
+  display: block;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+  color: var(--color-text);
+}
+/* @lezer/highlight classHighlighter tokens (oneDark-aligned) */
+.cm-codeblock .tok-keyword { color: #c678dd; }
+.cm-codeblock .tok-comment { color: #7d8799; font-style: italic; }
+.cm-codeblock .tok-string,
+.cm-codeblock .tok-string2,
+.cm-codeblock .tok-link,
+.cm-codeblock .tok-inserted,
+.cm-codeblock .tok-literal { color: #98c379; }
+.cm-codeblock .tok-number,
+.cm-codeblock .tok-bool,
+.cm-codeblock .tok-atom { color: #d19a66; }
+.cm-codeblock .tok-variableName,
+.cm-codeblock .tok-deleted { color: #e06c75; }
+.cm-codeblock .tok-propertyName,
+.cm-codeblock .tok-labelName,
+.cm-codeblock .tok-macroName { color: #61afef; }
+.cm-codeblock .tok-typeName,
+.cm-codeblock .tok-className,
+.cm-codeblock .tok-namespace { color: #e5c07b; }
+.cm-codeblock .tok-operator { color: #56b6c2; }
+.cm-codeblock .tok-punctuation,
+.cm-codeblock .tok-meta { color: var(--color-muted); }
+.cm-codeblock .tok-heading { color: #e06c75; font-weight: 600; }
+.cm-codeblock .tok-emphasis { font-style: italic; }
+.cm-codeblock .tok-strong { font-weight: 600; }
+.cm-codeblock .tok-invalid { color: #ff5555; }
+/* light-preview ([data-pv-theme="light"]) syntax palette — one-light, readable on white */
+[data-pv-theme="light"] .cm-codeblock .tok-keyword { color: #a626a4; }
+[data-pv-theme="light"] .cm-codeblock .tok-comment { color: #9598a0; }
+[data-pv-theme="light"] .cm-codeblock .tok-string,
+[data-pv-theme="light"] .cm-codeblock .tok-string2,
+[data-pv-theme="light"] .cm-codeblock .tok-link,
+[data-pv-theme="light"] .cm-codeblock .tok-inserted,
+[data-pv-theme="light"] .cm-codeblock .tok-literal { color: #50a14f; }
+[data-pv-theme="light"] .cm-codeblock .tok-number,
+[data-pv-theme="light"] .cm-codeblock .tok-bool,
+[data-pv-theme="light"] .cm-codeblock .tok-atom { color: #986801; }
+[data-pv-theme="light"] .cm-codeblock .tok-variableName,
+[data-pv-theme="light"] .cm-codeblock .tok-deleted { color: #e45649; }
+[data-pv-theme="light"] .cm-codeblock .tok-propertyName,
+[data-pv-theme="light"] .cm-codeblock .tok-labelName,
+[data-pv-theme="light"] .cm-codeblock .tok-macroName { color: #4078f2; }
+[data-pv-theme="light"] .cm-codeblock .tok-typeName,
+[data-pv-theme="light"] .cm-codeblock .tok-className,
+[data-pv-theme="light"] .cm-codeblock .tok-namespace { color: #c18401; }
+[data-pv-theme="light"] .cm-codeblock .tok-operator { color: #0184bc; }
+[data-pv-theme="light"] .cm-codeblock .tok-heading { color: #e45649; }
 .ed-reading blockquote { margin: .9em auto; padding: .2em 0 .2em 14px; border-left: 3px solid var(--color-border); opacity: .85; }
 .ed-reading hr { border: 0; border-top: 1px solid var(--color-border); margin: 1.6em auto; }
 .ed-reading table { border-collapse: collapse; margin: 1em auto; width: 100%; }

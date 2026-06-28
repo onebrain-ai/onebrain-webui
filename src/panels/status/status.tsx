@@ -26,6 +26,26 @@ function Status() {
   const memory = files.filter((p) => lc(p).startsWith(agentDir + "/memory/") && lc(p).endsWith(".md")).length;
   const sessions = files.filter((p) => lc(p).startsWith(logsDir + "/session/") && lc(p).endsWith(".md")).length;
 
+  // Notes per PARA area — a "where does the vault live" distribution chart.
+  const AREAS: [string, string][] = [
+    ["inbox", "00-inbox"],
+    ["projects", "01-projects"],
+    ["areas", "02-areas"],
+    ["knowledge", "03-knowledge"],
+    ["resources", "04-resources"],
+    ["archive", "06-archive"],
+  ];
+  const areaCounts = AREAS.map(([key, dflt]) => {
+    const d = dir(key, dflt);
+    return {
+      label: d.replace(/^\d+-/, ""),
+      n: files.filter((p) => lc(p).startsWith(d + "/") && lc(p).endsWith(".md")).length,
+    };
+  })
+    .filter((c) => c.n > 0)
+    .sort((a, b) => b.n - a.n);
+  const areaMax = Math.max(1, ...areaCounts.map((c) => c.n));
+
   return (
     <>
       <div class="w-head">
@@ -34,14 +54,6 @@ function Status() {
           System · {ready ? "Online" : "Connecting"}
         </span>
         <span class="w-meta">HUD_01</span>
-      </div>
-      <div class="st-brand">
-        <svg class="ob-mark" aria-hidden="true">
-          <use href="#ob-brain-mark" />
-        </svg>
-        <span>
-          <b>One</b>Brain
-        </span>
       </div>
       <ul class="stat-lines">
         <li>
@@ -77,6 +89,21 @@ function Status() {
           <div class="m-lab">inbox</div>
         </div>
       </div>
+
+      {areaCounts.length > 0 && (
+        <div class="st-chart">
+          <div class="st-chart-head">Notes by area</div>
+          {areaCounts.map((c) => (
+            <div class="st-bar-row" key={c.label}>
+              <span class="st-bar-lab">{c.label}</span>
+              <span class="st-bar-track">
+                <span class="st-bar-fill" style={`width:${Math.round((c.n / areaMax) * 100)}%`} />
+              </span>
+              <span class="st-bar-n">{c.n}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

@@ -9,7 +9,7 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--color-border);
-  background: rgba(2, 2, 6, 0.7);
+  background: var(--color-bg-deep);
   padding: 7px 11px;
   margin-bottom: 10px;
 }
@@ -35,11 +35,79 @@
 .qs-in::placeholder {
   color: var(--color-muted);
 }
+.qs-clear {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s;
+}
+.qs-clear:hover {
+  color: var(--section-accent);
+  background: var(--color-surface);
+}
+.qs-clear svg {
+  width: 13px;
+  height: 13px;
+}
 .qs-results {
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 7px;
+}
+/* Live progress / final-tier line above the hits. */
+.qs-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 1px 1px 3px;
+}
+.qs-status.qs-err {
+  color: var(--acc-magenta);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.qs-spin {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--accent-line);
+  border-top-color: var(--section-accent);
+  border-radius: 50%;
+  animation: qs-spin 0.7s linear infinite;
+}
+@keyframes qs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Reduced motion: swap the rotation for a gentle opacity pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .qs-spin {
+    animation: qs-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes qs-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 .qs-hit {
   padding: 8px 10px;
@@ -88,6 +156,10 @@
   color: var(--color-faint);
   line-height: 1.45;
   word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .qs-hit .qh-snip mark {
   background: var(--accent-weak);

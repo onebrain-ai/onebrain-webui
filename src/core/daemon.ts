@@ -42,6 +42,23 @@ export interface VaultTask {
   due: string | null;
 }
 
+/** One qmd-backed search result (`GET /api/vault/search`). */
+export interface SearchHit {
+  /** Vault-relative path, openable via `file()` / Preview. */
+  path: string;
+  /** qmd relevance score, roughly 0..1 (higher = better). */
+  score: number;
+  /** Note title (qmd's — usually the H1 or filename). */
+  title: string;
+  /** Short one-line excerpt around the match (may be empty). */
+  snippet: string;
+}
+
+/** Which qmd search the daemon runs. `lex` = BM25 keyword (no LLM, fast enough
+ *  to run as-you-type); `hybrid` = keyword + semantic vector (one query
+ *  embedding ≈1-2s, local rerank). */
+export type SearchMode = "lex" | "hybrid";
+
 export interface DaemonClient {
   /** `GET /api/config` — parsed onebrain.yml. */
   config(): Promise<OnebrainConfig>;
@@ -66,6 +83,10 @@ export interface DaemonClient {
   chat(req: ChatRequest, onEvent: (e: ChatEvent) => void, signal?: AbortSignal): Promise<void>;
   /** `GET /api/vault/tasks` — every dated Obsidian-Tasks line in the vault. */
   tasks(): Promise<VaultTask[]>;
+  /** `GET /api/vault/search?q=&mode=` — qmd-backed vault search. Pass `signal`
+   *  to cancel a stale in-flight query (the panel aborts the previous request
+   *  on each keystroke). */
+  search(q: string, mode: SearchMode, signal?: AbortSignal): Promise<SearchHit[]>;
   /** `GET /api/vault/raw?path=` — a file's raw bytes (images, PDFs) for preview. */
   fileBlob(path: string): Promise<Blob>;
   /** Authenticated `/api/vault/raw` URL (token in the query) for direct use in an
@@ -138,6 +159,25 @@ export class HttpDaemonClient implements DaemonClient {
 
   tasks(): Promise<VaultTask[]> {
     return this.getJson<{ tasks: VaultTask[] }>("/api/vault/tasks").then((r) => r.tasks);
+  }
+
+  async search(q: string, mode: SearchMode, signal?: AbortSignal): Promise<SearchHit[]> {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (this.token) headers["X-OneBrain-Token"] = this.token;
+    const url = `${this.baseUrl}/api/vault/search?q=${encodeURIComponent(q)}&mode=${mode}`;
+    let res: Response;
+    try {
+      res = await fetch(url, { headers, signal });
+    } catch (cause) {
+      // A caller-triggered abort (stale query superseded) throws an AbortError —
+      // let it propagate untouched so the panel can ignore it; anything else is a
+      // real network failure.
+      if (signal?.aborted) throw cause;
+      throw new DaemonError(0, `cannot reach the daemon (${String(cause)})`);
+    }
+    if (!res.ok) throw new DaemonError(res.status, await readError(res));
+    const body = (await res.json()) as { hits: SearchHit[] };
+    return body.hits;
   }
 
   async chat(req: ChatRequest, onEvent: (e: ChatEvent) => void, signal?: AbortSignal): Promise<void> {

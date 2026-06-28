@@ -1,0 +1,177 @@
+/* Shared viewport controls (drawio + pptx): a floating icon toolbar plus the
+   cursor / fullscreen affordances for the pan-zoom frame. */
+.rich-vbar {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.3);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.rich-vbtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.rich-vbtn svg {
+  width: 18px;
+  height: 18px;
+}
+.rich-vbtn:hover {
+  background: var(--color-bg-deep);
+  color: var(--section-accent);
+}
+.rich-vbtn:active {
+  transform: translateY(0.5px);
+}
+.rich-vsep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--color-border);
+}
+.rich-vlabel {
+  min-width: 46px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--color-text);
+}
+
+/* the pan-zoom frame — cursor affordances + fullscreen surface */
+.rich-vframe {
+  cursor: default;
+  /* clip the transformed content (and its checkerboard) to the frame so zooming
+     / panning never spills past the background into the surrounding pane */
+  overflow: hidden;
+}
+.rich-vframe:focus,
+.rich-vframe:focus-visible {
+  outline: none; /* it's a canvas, not a control — no focus ring */
+}
+.rich-vframe.is-pannable {
+  cursor: grab;
+}
+.rich-vframe.is-grabbing {
+  cursor: grabbing;
+}
+.rich-vframe:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+/* checkerboard background toggle (transparent images / drawio) */
+.rich-vframe.rich-bg-dark {
+  background-color: var(--color-bg-deep);
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.045) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.045) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.045) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.045) 75%);
+  background-position: 0 0, 11px 11px;
+  background-size: 22px 22px;
+}
+.rich-vframe.rich-bg-light {
+  background-color: #f4f4f5;
+  background-image:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.06) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.06) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.06) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.06) 75%);
+  background-position: 0 0, 11px 11px;
+  background-size: 22px 22px;
+}
+
+/* mermaid diagram in the reading view: hover reveals an "open full screen" button */
+.mermaid-zoomable {
+  position: relative;
+}
+.mermaid-expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s, background 0.14s, color 0.14s;
+}
+.mermaid-zoomable:hover .mermaid-expand,
+.mermaid-expand:focus-visible {
+  opacity: 1;
+}
+.mermaid-expand:hover {
+  color: var(--section-accent);
+  background: var(--color-bg-deep);
+}
+.mermaid-expand > svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* full-viewport overlay diagram viewer (pan/zoom/fit via mountViewport) */
+.mermaid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: color-mix(in srgb, var(--color-bg) 92%, #000);
+}
+.mermaid-overlay-frame {
+  position: absolute;
+  inset: 0;
+}
+.mermaid-overlay-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.mermaid-overlay-content > svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+.mermaid-overlay-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s;
+}
+.mermaid-overlay-close:hover {
+  color: var(--acc-magenta);
+  background: var(--color-bg-deep);
+}
+.mermaid-overlay-close > svg {
+  width: 18px;
+  height: 18px;
+}
