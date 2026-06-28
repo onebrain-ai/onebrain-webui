@@ -25,8 +25,8 @@
 .w-head .w-meta {
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
-/* The blinking dot is redundant now that the header underline sweeps — drop it
-   and pull the label back to the left so the pill reads cleanly. */
+/* The blinking dot is redundant — drop it and pull the label back to the left so
+   the pill reads cleanly. */
 .w-head .pill .dot {
   display: none;
 }
