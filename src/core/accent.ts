@@ -32,12 +32,6 @@ function initialAccent(): string {
 /** the active accent NAME (e.g. "cyan"). Settings swatches subscribe to this. */
 export const accentName = signal<string>(initialAccent());
 
-/** the active accent as a literal hex string — the engine reads this each frame
- *  (cheap; `.peek()` so it never opens a subscription in the render loop). */
-export function accentHex(): string {
-  return ACCENT_HEX[accentName.peek()] ?? ACCENT_HEX.cyan;
-}
-
 /** apply an accent: update the signal, write the CSS var, persist. */
 export function setAccent(name: string): void {
   if (!ACCENT_HEX[name]) return;
