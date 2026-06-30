@@ -1,8 +1,11 @@
 /* ============================================================== *
- * Shared panel billboard chrome (3D command center)
- * The glass pane + targeting-frame brackets + header every panel
- * plugin renders inside. Ported from the prototype (lines 91–222).
- * Per-panel CONTENT styles live in each panel's own .css.
+ * Shared panel chrome. Originally the 3D command center's billboard
+ * frame (glass pane + targeting brackets + header); the command center
+ * is gone, but the 2D CMS panels still use the shared bits here
+ * (.pill, .w-head, .btn-tech, .acc-sw). The billboard-only rules
+ * (.widget/.w-handle/body.*mode) are now dormant — a full prune is
+ * tracked as a follow-up cleanup. Per-panel CONTENT styles live in
+ * each panel's own .css.
  * ============================================================== */
 
 .widget {

@@ -70,7 +70,7 @@ export const ALL_SKILLS: [string, string][] = SKILLS.flatMap(([, items]) => item
 
 /** drop `/name ` into the Composer input (compose, don't run). */
 function compose(name: string): void {
-  const ci = document.querySelector<HTMLInputElement>("#css3d .w-composer .cmd-input");
+  const ci = document.querySelector<HTMLInputElement>(".w-composer .cmd-input");
   if (ci) {
     ci.value = `/${name} `;
     ci.focus();
