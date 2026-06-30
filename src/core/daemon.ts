@@ -6,8 +6,8 @@
 // token details — so swapping local↔remote, or mock↔live, is a boot-time concern.
 //
 // This file ships the live `HttpDaemonClient`. A `MockDaemonClient` (the
-// prototype's in-memory fixtures) implements the same interface for offline
-// demo/command-center work; it lands when the command-center port does.
+// prototype's in-memory fixtures) could implement the same interface for an
+// offline demo if one is ever needed.
 
 import { DaemonError, ConflictError } from "./types";
 import type { OnebrainConfig, VaultFile, VaultTree, WriteResult, TrashResult, MoveResult, FolderResult } from "./types";

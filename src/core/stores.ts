@@ -5,51 +5,6 @@
 
 import { signal } from "@preact/signals";
 
-/** Active shell: the 2D CMS, or the 3D command center (spec D1, ModeRouter).
- *  The 2D CMS shell is the product surface — opening the app ALWAYS lands here.
- *  The 3D command center is kept but opt-in only: reachable solely via an explicit
- *  `?mode=command-center` URL param, never from a persisted/stale stored value.
- *  This guarantees "open → 2D, no boot intro" regardless of any prior setMode(). */
-export const mode = signal<"cms" | "command-center">(initialMode());
-
-function initialMode(): "cms" | "command-center" {
-  try {
-    if (new URLSearchParams(window.location.search).get("mode") === "command-center") {
-      return "command-center";
-    }
-  } catch {
-    /* no window/location (unit tests) — fall through to CMS */
-  }
-  return "cms";
-}
-
-export function setMode(m: "cms" | "command-center"): void {
-  mode.value = m;
-  saveString("onebrain.mode", m);
-}
-
-/** Whether the host can run the WebGL2 command center (DESIGN: 3D is
- *  desktop-favoured; low-end / no-WebGL2 stays on the CMS shell).
- *
- *  Probed ONCE and cached: this is called from render bodies (CmsShell,
- *  ModeRouter), and a fresh `getContext("webgl2")` each call would leak a real
- *  GL context toward the browser's ~16-context limit (R1 H1). The probe context
- *  is also explicitly released. */
-let _webgl2: boolean | undefined;
-export function hasWebGL2(): boolean {
-  if (_webgl2 !== undefined) return _webgl2;
-  try {
-    const c = document.createElement("canvas");
-    const gl = c.getContext("webgl2");
-    _webgl2 = !!gl;
-    // Relinquish the throwaway probe context immediately.
-    gl?.getExtension("WEBGL_lose_context")?.loseContext();
-  } catch {
-    _webgl2 = false;
-  }
-  return _webgl2;
-}
-
 /** Whether the right-hand chat dock is expanded. Persisted to localStorage so
  *  the choice survives reloads (matches the 05-29 chat-dock behaviour). Defaults
  *  CLOSED until the agent runtime lands — the dock is a stub, so first-run

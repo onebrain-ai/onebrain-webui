@@ -1,7 +1,6 @@
-// CMS top app bar — the operator-console identity strip. Ported idioms from the
-// 3D HUD topbar (command-center/hud/topbar.css) but self-contained for the 2D
-// shell: brand lockup, live vault stats, clock, a search affordance, and a
-// settings popover (accent + density) driven by the DS re-keyable accent system.
+// CMS top app bar — the operator-console identity strip: brand lockup, live
+// vault stats, clock, a search affordance, and a settings popover (accent +
+// density) driven by the DS re-keyable accent system.
 
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";

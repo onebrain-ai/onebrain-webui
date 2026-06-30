@@ -11,7 +11,7 @@
 <p align="center"><em>Your AI Thinking Partner</em></p>
 
 <p align="center">
-  <strong>The universal web surface for OneBrain — 2D CMS shell + 3D command center.</strong><br>
+  <strong>The universal web surface for OneBrain — a 2D CMS shell for the <code>onebrain</code> daemon.</strong><br>
   <sub>Preact + Vite · talks to the <code>onebrain serve</code> daemon · one build, every platform.</sub>
 </p>
 
@@ -30,8 +30,8 @@
 
 # OneBrain WebUI
 
-The **universal surface** for OneBrain — a 2D CMS shell (and, later, a 3D command
-center) that runs the OneBrain agent on any platform. The web is the universal
+The **universal surface** for OneBrain — a 2D CMS shell that runs the OneBrain
+agent on any platform. The web is the universal
 surface; [OneBrain Studio](https://github.com/onebrain-ai) (Tauri) is the
 performance enhancement. Goal: an Obsidian replacement, one build everywhere.
 
@@ -49,10 +49,10 @@ daemon.
 - **Editor** — CodeMirror 6 live-preview editor + the `PUT` write path
 - **qmd search panel** — two-tier: keyword (BM25) live, then keyword + semantic (vector) once the qmd index is available; falls back to filename/path search otherwise
 - `HttpDaemonClient` over the vault JSON API (`/api/config`, `/api/vault/tree|file|raw|search`, `/api/chat`, …)
-- One **Panel contract** (`PanelDef.build(container, ctx)`) — panels authored once, ready to also mount in the 3D shell
+- One **Panel contract** (`PanelDef.build(container, ctx)`) — panels authored once against a single surface-agnostic contract
 - Per-session **token** auth (daemon-injected `window.__ONEBRAIN_TOKEN__`, or `?token=` in dev)
 
-Next: the ported Three.js **command center** as a lazy WebGL chunk · [OneBrain Studio](https://github.com/onebrain-ai) (Tauri) for native performance.
+Next: [OneBrain Studio](https://github.com/onebrain-ai) (Tauri) for native performance.
 
 ## Develop
 

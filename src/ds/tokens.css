@@ -1,8 +1,8 @@
 /* ============================================================== *
  * OneBrain Design System — Operator Console tokens
- * Ported verbatim from the Spatial Command Center prototype
+ * Ported verbatim from the original design prototype
  * (Open Design project 9d613bc0…). The single source of palette
- * truth for every shell and every panel plugin.
+ * truth for the shell and every panel plugin.
  * ============================================================== */
 :root {
   --color-bg: #050507;
