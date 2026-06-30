@@ -812,7 +812,6 @@ export const editorPanel: PanelDef = {
   type: "editor",
   name: "Editor",
   width: 640,
-  placement: { t: 0.0, y: 0.24, r: 5.7, s: 0.005 },
   seed: false,
   Component: Editor,
 };

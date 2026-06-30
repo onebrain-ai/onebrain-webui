@@ -112,7 +112,6 @@ export const statusPanel: PanelDef = {
   type: "status",
   name: "Status",
   width: 362,
-  placement: { t: -1.3, y: 0.7, r: 7.0, s: 0.005 },
-  seed: false, // not in the prototype's SEED arc; spawn via add-panel / ⌘K
+  seed: false, // not seeded on first load; opened on demand
   Component: Status,
 };

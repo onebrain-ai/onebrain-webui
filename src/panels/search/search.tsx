@@ -282,7 +282,6 @@ export const searchPanel: PanelDef = {
   type: "search",
   name: "qmd Search",
   width: 360,
-  placement: { t: -0.64, y: 1.55, r: 7.0, s: 0.005 },
-  seed: false, // not in the SEED arc; spawn via add-panel / ⌘K
+  seed: false, // not seeded on first load; opened on demand
   Component: Search,
 };

@@ -9,32 +9,24 @@ import { explorerPanel } from "./explorer/explorer";
 import { previewPanel } from "./preview/preview";
 import { editorPanel } from "./editor/editor";
 import { chatPanel } from "./chat/chat";
-import { cliPanel } from "./cli/cli";
 import { searchPanel } from "./search/search";
 import { statusPanel } from "./status/status";
 import { memoryPanel } from "./memory/memory";
-import { composerPanel } from "./composer/composer";
-import { skillsPanel } from "./skills/skills";
-import { logPanel } from "./log/log";
 import { tasksPanel } from "./tasks/tasks";
 
-// Display order for the add-menu / ⌘K. The combined File Browser leads; the
-// standalone Explorer + Preview remain available (spawnable) but are no longer
-// seeded. The 4 SEED panels (files / chat / composer / log) form the default
-// cockpit arc; the rest spawn via add-panel / ⌘K.
+// Registration order = display order. The CmsShell mounts panels by type
+// (editor as the main pane, chat as the dock, explorer/search/tasks/memory/
+// status in the activity rail); files + preview remain registered for the
+// open-file flow.
 const PANELS = [
   filesPanel,
   explorerPanel,
   previewPanel,
   editorPanel,
   chatPanel,
-  cliPanel,
   searchPanel,
   statusPanel,
   memoryPanel,
-  composerPanel,
-  skillsPanel,
-  logPanel,
   tasksPanel,
 ];
 

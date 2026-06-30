@@ -173,7 +173,6 @@ export const previewPanel: PanelDef = {
   type: "preview",
   name: "File Preview",
   width: 446,
-  placement: { t: 0.0, y: 0.24, r: 5.7, s: 0.005 },
   seed: false, // folded into the combined File Browser; still spawnable standalone
   Component: Preview,
 };
