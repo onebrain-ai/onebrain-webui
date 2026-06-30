@@ -70,7 +70,13 @@ export default defineConfig({
     // The daemon serves this dist as an SPA (`serve --dir dist`); long-cache the
     // hashed assets, the entry HTML stays no-cache (daemon-side).
     target: "es2022",
-    sourcemap: true,
+    // No sourcemaps. This dist is embedded verbatim into the onebrain CLI binary
+    // (rust_embed) and served to end users; maps are debug-only (never executed),
+    // so emitting them only bloats the bundle and leaves dangling
+    // `sourceMappingURL` 404s in the shipped .js. Release CI already deletes
+    // *.map before embedding, but disabling here is cleaner (no maps emitted, no
+    // trailing comment). Flip to true only for local debugging.
+    sourcemap: false,
   },
   test: {
     environment: "jsdom",

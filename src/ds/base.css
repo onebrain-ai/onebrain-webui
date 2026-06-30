@@ -1,11 +1,5 @@
 /* ============================================================== *
- * OneBrain — global base + Command Center layer stack
- * Ported from the prototype (lines 40–88). The z-layer order is:
- *   0  #bg-base (sky gradient)  +  #stars (canvas)
- *   1  #gl      (WebGL field)
- *   2  #look    (drag-look surface, owns pointer)
- *   3  #css3d   (HTML billboard stage, click-through except panels)
- *   4  #fx      (CRT scanlines + vignette)
+ * OneBrain — global base styles
  * ============================================================== */
 
 * {
@@ -25,11 +19,11 @@ body {
   -webkit-font-smoothing: antialiased;
   touch-action: none;
   cursor: default;
-  /* a camera look-drag must never sweep-select panel text */
+  /* chrome shouldn't sweep-select; text inputs opt back in below */
   -webkit-user-select: none;
   user-select: none;
 }
-/* the command composer is the one place typing/selection is expected */
+/* inputs/textareas are where typing/selection is expected */
 input,
 textarea {
   -webkit-user-select: text;
@@ -50,103 +44,6 @@ button {
 .thai {
   letter-spacing: normal;
   text-transform: none;
-}
-
-/* ---------- backdrop (z0) — fixed near-black operator void ----------
-   Oversized vertically (80vh slack above & below the viewport) and shifted by
-   --sky-y every frame so the sky + horizon track the camera PITCH in lockstep
-   with the 3D grid/mountains — looking up drops the horizon (more sky), looking
-   down raises it (more floor). The opaque WebGL floor covers the lower slack
-   when looking far down. */
-#bg-base {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: -80vh;
-  height: 260vh;
-  z-index: 0;
-  display: block;
-  transform: translateY(var(--sky-y, 0px));
-  will-change: transform;
-}
-#bg-base.mode-void {
-  /* deep navy night sky only — no glowing orb. A single quiet brightening reads
-     as the horizon line; the drifting stars carry the rest. Stops are remapped
-     into the 260vh overscan so the horizon band lands at ~52% on-screen at rest. */
-  background: linear-gradient(
-    180deg,
-    #03061a 0%,
-    #03061a 30.77%,
-    #060f30 41.54%,
-    #0a2147 48.85%,
-    #133865 50.96%,
-    #0a1c3e 53.08%,
-    #03081c 69.23%,
-    #03081c 100%
-  );
-}
-/* live star field — twinkle + slow drift + rare shooting stars, drawn by the JS
-   engine onto this canvas (above the sky wash, below the WebGL field). */
-#stars {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: -80vh;
-  height: 260vh; /* 80vh slack above + 100vh + 80vh below — the star JS (M2) sizes the canvas buffer to match */
-  z-index: 0;
-  pointer-events: none;
-  transform: translateY(var(--sky-y, 0px));
-  will-change: transform;
-}
-
-/* ---------- renderers ---------- */
-#gl {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-#look {
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  pointer-events: auto;
-  cursor: grab;
-  outline: none;
-}
-#look.drag {
-  cursor: grabbing;
-}
-/* 2D billboard stage: the container passes clicks through to #look; each
-   .widget re-enables them. */
-#css3d {
-  position: fixed;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
-/* ---------- screen fx ---------- */
-#fx {
-  position: fixed;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background:
-    /* faint CRT scanlines — the operator-console screen texture */
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.04) 3px, rgba(0, 0, 0, 0) 4px),
-    /* cinematic cool vignette framing the field */ radial-gradient(128% 118% at 50% 45%, transparent 56%, rgba(2, 6, 20, 0.66) 100%);
-}
-
-/* ── Mode gate ──────────────────────────────────────────────────────────────
- * The layer stack above (#bg-base…#fx) belongs to the 3D command center, but it
- * lives in index.html so the imperative engine can grab the nodes by id. In CMS
- * mode the engine never starts, so these fixed, full-viewport layers would sit
- * inert *on top of* the 2D shell and paint over it (z 0–4). Hide them unless the
- * active surface is the command center. Default-hidden (attribute absent ⇒
- * hidden) avoids any first-paint flash; main.tsx sets `data-mode` on <html>. */
-html:not([data-mode="command-center"]) :is(#bg-base, #stars, #gl, #look, #css3d, #fx) {
-  display: none !important;
 }
 
 /* ── Markdown inline marks (Obsidian ==highlight== / ~~strikethrough~~) ────── */

@@ -2,7 +2,7 @@
   "name": "@onebrain-ai/webui",
   "version": "0.1.0",
   "private": false,
-  "description": "OneBrain WebUI — the universal surface (2D CMS shell + 3D command center) for the OneBrain daemon. Obsidian replacement, runs the agent on any platform.",
+  "description": "OneBrain WebUI — the universal surface (2D CMS shell) for the OneBrain daemon. Obsidian replacement, runs the agent on any platform.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "homepage": "https://github.com/onebrain-ai/onebrain-webui",
@@ -42,7 +42,6 @@
     "mermaid": "^11.15.0",
     "pako": "^3.0.0",
     "preact": "^10.27.2",
-    "three": "^0.160.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -50,7 +49,6 @@
     "@testing-library/preact": "^3.2.4",
     "@types/dompurify": "^3.0.5",
     "@types/js-yaml": "^4.0.9",
-    "@types/three": "^0.160.0",
     "jsdom": "^28.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
