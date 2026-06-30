@@ -267,7 +267,6 @@ export const memoryPanel: PanelDef = {
   type: "memory",
   name: "Memory",
   width: 340,
-  placement: { t: -1.0, y: 0.6, r: 7.0, s: 0.005 },
   seed: false,
   Component: Memory,
 };

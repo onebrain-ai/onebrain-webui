@@ -323,7 +323,6 @@ export const chatPanel: PanelDef = {
   type: "chat",
   name: "Chat · จิโอ้",
   width: 360,
-  placement: { t: 0.64, y: 0.26, r: 6.9, s: 0.005 },
   seed: true,
   Component: Chat,
 };

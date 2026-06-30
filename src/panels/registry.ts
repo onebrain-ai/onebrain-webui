@@ -7,7 +7,7 @@
 import type { PanelDef } from "./contract";
 
 const _registry = new Map<string, PanelDef>();
-/** registration order = display order (add-menu, ⌘K, exposé tiling). */
+/** registration order = display order (rail / add-menu). */
 const _order: string[] = [];
 
 /** Register a panel plugin. Idempotent per type (last registration wins, with a

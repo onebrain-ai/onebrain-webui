@@ -1,10 +1,8 @@
-// Accent store — the re-keyable UI accent (Settings picker + ⌘K). Writes the
-// `--section-accent` CSS custom property on :root (every panel + HUD rule keys
-// off it via --accent-weak / --accent-line), mirrors the choice into a signal
-// the Settings swatches subscribe to, and persists it. The 3D engine reads
-// accentHex() each frame to re-key the canvas chrome (radar / heading / shadows
-// / mountains). Ported from the prototype (ACCENTS/ACCENT_HEX 1294–1297,
-// setAccent 1934–1945).
+// Accent store — the re-keyable UI accent (Settings picker). Writes the
+// `--section-accent` CSS custom property on :root (every panel rule keys off it
+// via --accent-weak / --accent-line), mirrors the choice into a signal the
+// Settings swatches subscribe to, and persists it. Ported from the prototype
+// (ACCENTS/ACCENT_HEX 1294–1297, setAccent 1934–1945).
 
 import { signal } from "@preact/signals";
 

@@ -82,7 +82,7 @@ export async function initVault(daemon: DaemonClient): Promise<void> {
     }
     vaultError.value = null;
     vaultTree.value = tree;
-    // open a sensible default so the cockpit isn't empty on first paint (via
+    // open a sensible default so the shell isn't empty on first paint (via
     // openFile so it seeds the nav history at index 0)
     if (!previewPath.value && _files.length) {
       openFile(_files.find((p) => p.toLowerCase().endsWith(".md")) ?? _files[0]);

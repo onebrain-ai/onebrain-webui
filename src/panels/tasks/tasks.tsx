@@ -226,7 +226,6 @@ export const tasksPanel: PanelDef = {
   type: "tasks",
   name: "Tasks · Calendar",
   width: 312,
-  placement: { t: 2.55, y: 0.35, r: 6.7, s: 0.005 },
-  seed: false, // not in the SEED arc; spawn via add-panel / ⌘K
+  seed: false, // not seeded on first load; opened on demand
   Component: Tasks,
 };

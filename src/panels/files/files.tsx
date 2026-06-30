@@ -48,7 +48,6 @@ export const filesPanel: PanelDef = {
   type: "files",
   name: "File Browser",
   width: 720,
-  placement: { t: 0.0, y: 0.24, r: 6.3, s: 0.005 },
   seed: true,
   Component: Files,
 };

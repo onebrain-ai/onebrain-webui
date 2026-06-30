@@ -260,7 +260,6 @@ export const explorerPanel: PanelDef = {
   type: "explorer",
   name: "File Explorer",
   width: 286,
-  placement: { t: -0.64, y: 0.26, r: 6.9, s: 0.005 },
   seed: false, // folded into the combined File Browser; still spawnable standalone
   Component: Explorer,
 };
