@@ -177,6 +177,9 @@
 .ed-toggle .ic { font-size: 14px; }
 .ed-toggle:hover { background: var(--accent-line); }
 .ed-hidden { display: none; }
+/* Positioned ancestor for the in-app webview overlay/split (.ed-webview is
+   absolutely positioned and needs to anchor here, not to the whole panel). */
+.ed-reading-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 /* Centre a readable-width column on wide screens (side padding grows to keep the
    text ~780px and centred, instead of a thin column jammed against the left with
    a huge empty right). Every block then fills the same column → consistent. */
@@ -572,3 +575,56 @@
 /* Reading-view task checkboxes are clickable (write back to the source note). */
 .ed-reading .task-check { cursor: pointer; }
 .ed-reading .task-list-item { list-style: none; }
+
+/* In-app webview (external links opened inside the editor pane, instead of
+   navigating the shell away). Anchors to .ed-reading-wrap's position: relative. */
+.ed-webview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  z-index: 5;
+}
+.ed-webview-side {
+  /* split: sit on the right half, leaving the document visible on the left */
+  left: 50%;
+  border-left: 1px solid var(--accent-line);
+}
+.ed-webview-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(6px);
+}
+.ed-webview-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.ed-webview-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+.ed-webview-notice {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
+  color: var(--color-text);
+  font-size: 13px;
+}

@@ -26,6 +26,8 @@ import { renderMathIn } from "../../core/katex";
 import { enhanceCodeBlocksIn } from "../../core/codeblock";
 import { formatCode } from "../../core/codeformat";
 import { Icon } from "../../ui/Icon";
+import { WebviewPanel } from "./WebviewPanel";
+import { openExternalLink, webviewOpen, webviewNotice } from "./webview-store";
 import "./editor.css";
 
 /** Binary file types with no in-app preview — shown as an icon + Download button
@@ -515,6 +517,19 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       }
       return;
     }
+    // External http(s) links open in-app (preflighted, iframe-or-new-tab) instead
+    // of navigating the shell away. Wikilinks are spans with no href, and in-note
+    // "#anchor" / "mailto:" / relative links fall through to their own handling
+    // below (or the browser default), so only http(s) anchors are intercepted here.
+    const a = el.closest("a[href]") as HTMLAnchorElement | null;
+    if (a) {
+      const href = a.getAttribute("href") ?? "";
+      if (/^https?:\/\//i.test(href)) {
+        e.preventDefault();
+        void openExternalLink(href, ctx.daemon);
+        return;
+      }
+    }
     const wl = el.closest("[data-wikilink]");
     if (wl) {
       e.preventDefault();
@@ -808,13 +823,20 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         <>
           <Properties value={props.value} onChange={onProps} />
           {reading.value && (
-            <div
-              class={wideView.value ? "ed-reading is-wide" : "ed-reading"}
-              data-testid="ed-reading"
-              ref={readingHost}
-              onClick={onReadingClick}
-              dangerouslySetInnerHTML={{ __html: readingHtml }}
-            />
+            <div class="ed-reading-wrap">
+              <div
+                class={wideView.value ? "ed-reading is-wide" : "ed-reading"}
+                data-testid="ed-reading"
+                ref={readingHost}
+                onClick={onReadingClick}
+                dangerouslySetInnerHTML={{ __html: readingHtml }}
+              />
+              {/* reading host stays mounted (preserves scroll); webview overlays/splits
+                  over it. Conditional mount (not hidden) so the panel's hang-timer
+                  cleanup fires when the webview closes. */}
+              {webviewOpen.value && <WebviewPanel />}
+              {webviewNotice.value && <div class="ed-webview-notice">{webviewNotice.value}</div>}
+            </div>
           )}
           <div class={reading.value ? "ed ed-hidden" : "ed"} ref={host} />
         </>

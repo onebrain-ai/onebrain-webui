@@ -6,6 +6,7 @@ import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
 import { searchQuery, sidebarTab } from "../../core/stores";
 import * as richfileModule from "../../core/richfile";
+import { webviewOpen, webviewUrl, webviewNotice } from "./webview-store";
 
 // jsdom does not implement ResizeObserver. Stub it AND fire a synthetic resize
 // so the ResizeObserver callback body (lines 331-343) gets covered:
@@ -41,6 +42,7 @@ const daemon = {
   saveFile: vi.fn(async () => ({ path: "a.md", rev: "222" })),
   createFile: vi.fn(),
   rawUrl: vi.fn((p: string) => `/api/vault/raw?path=${encodeURIComponent(p)}`),
+  webviewPreflight: vi.fn(async () => true),
 } as any;
 const ctx = { daemon, openFile: vi.fn(), addPanel: vi.fn() };
 
@@ -55,6 +57,11 @@ beforeEach(() => {
   daemon.file.mockResolvedValue({ path: "a.md", content: "---\ntags: [x]\n---\n# Hello", rev: "111" });
   daemon.saveFile.mockResolvedValue({ path: "a.md", rev: "222" });
   ctx.openFile.mockReset();
+  daemon.webviewPreflight.mockReset();
+  daemon.webviewPreflight.mockResolvedValue(true);
+  webviewOpen.value = false;
+  webviewUrl.value = null;
+  webviewNotice.value = null;
 });
 
 describe("editorPanel — empty state", () => {
@@ -412,6 +419,34 @@ describe("editorPanel — markdown reading view interactions", () => {
     // click somewhere that has no .task-check / [data-wikilink] / [data-tag]
     fireEvent.click(reading.querySelector("p")!);
     expect(ctx.openFile).not.toHaveBeenCalled();
+  });
+
+  it("intercepts an external http link into the webview, not a new tab", async () => {
+    previewPath.value = "a.md";
+    daemon.webviewPreflight.mockResolvedValue(true);
+    render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    reading.innerHTML = '<a href="https://example.com">external</a>';
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    fireEvent.click(reading.querySelector('a[href="https://example.com"]')!);
+    await waitFor(() => expect(daemon.webviewPreflight).toHaveBeenCalledWith("https://example.com"));
+    await waitFor(() => expect(webviewOpen.value).toBe(true));
+    expect(openSpy).not.toHaveBeenCalled(); // frameable → no new tab
+    openSpy.mockRestore();
+  });
+
+  it("does NOT intercept a wikilink or a mailto link", async () => {
+    previewPath.value = "a.md";
+    render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    reading.innerHTML =
+      '<a data-wikilink="a" data-heading="">linked note</a>' +
+      '<a href="mailto:someone@example.com">email</a>';
+    fireEvent.click(reading.querySelector("[data-wikilink]")!);
+    fireEvent.click(reading.querySelector('a[href^="mailto:"]')!);
+    expect(daemon.webviewPreflight).not.toHaveBeenCalled();
   });
 });
 
