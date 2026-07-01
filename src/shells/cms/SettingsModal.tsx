@@ -436,7 +436,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             <input
               class="st-search-in"
               type="search"
-              placeholder="Search appearance & preview"
+              placeholder="Search settings"
               aria-label="Search settings"
               value={query.value}
               onInput={(e) => (query.value = (e.target as HTMLInputElement).value)}
