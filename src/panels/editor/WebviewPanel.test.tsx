@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/preact";
 import { WebviewPanel } from "./WebviewPanel";
-import { webviewUrl, webviewOpen, webviewMode } from "./webview-store";
+import { webviewUrl, webviewOpen, webviewMode, webviewWidth, setWebviewWidth } from "./webview-store";
 
 beforeEach(() => {
   webviewOpen.value = true;
@@ -71,5 +71,87 @@ describe("WebviewPanel", () => {
     expect(open).not.toHaveBeenCalled();
     open.mockRestore();
     vi.useRealTimers();
+  });
+
+  it("reload button remounts the iframe (new key) forcing a fresh load", () => {
+    const { container, getByLabelText } = render(<WebviewPanel />);
+    const before = container.querySelector("iframe")!;
+    fireEvent.click(getByLabelText("Reload"));
+    const after = container.querySelector("iframe")!;
+    expect(after).not.toBe(before);
+    expect(after.getAttribute("src")).toBe("https://example.com");
+  });
+
+  it("reload re-arms the hang timer so a fresh load still gets fallback protection", () => {
+    vi.useFakeTimers();
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const { getByLabelText, container } = render(<WebviewPanel />);
+    // Load the first mount so its timer is cleared, then reload — the remounted
+    // iframe must arm its OWN hang timer rather than relying on the cleared one.
+    fireEvent.load(container.querySelector("iframe")!);
+    fireEvent.click(getByLabelText("Reload"));
+    vi.advanceTimersByTime(8000);
+    expect(open).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer");
+    open.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("does not apply --webview-w style in 'pane' mode", () => {
+    webviewMode.value = "pane";
+    const { container } = render(<WebviewPanel />);
+    const root = container.querySelector(".ed-webview") as HTMLElement;
+    expect(root.getAttribute("style")).toBeNull();
+  });
+
+  it("applies --webview-w style with the current width in 'side' mode", () => {
+    webviewMode.value = "side";
+    setWebviewWidth(640);
+    const { container } = render(<WebviewPanel />);
+    const root = container.querySelector(".ed-webview") as HTMLElement;
+    expect(root.style.getPropertyValue("--webview-w")).toBe("640px");
+  });
+
+  it("renders the resize handle only in 'side' mode", () => {
+    webviewMode.value = "pane";
+    const { container, rerender } = render(<WebviewPanel />);
+    expect(container.querySelector(".ed-webview-resize")).toBeNull();
+    webviewMode.value = "side";
+    rerender(<WebviewPanel />);
+    expect(container.querySelector(".ed-webview-resize")).toBeTruthy();
+  });
+
+  it("resize handle mousedown → mousemove updates webviewWidth from the parent's right edge, mouseup cleans up", () => {
+    webviewMode.value = "side";
+    const { container } = render(<WebviewPanel />);
+    const root = container.querySelector(".ed-webview") as HTMLElement;
+    const parent = root.parentElement!;
+    vi.spyOn(parent, "getBoundingClientRect").mockReturnValue({
+      right: 1000,
+    } as DOMRect);
+    const handle = container.querySelector(".ed-webview-resize") as HTMLElement;
+    fireEvent.mouseDown(handle, { clientX: 0 });
+    expect(document.body.classList.contains("ed-webview-resizing")).toBe(true);
+    // Cursor at x=600 → width = 1000 (right edge) - 600 = 400.
+    fireEvent.mouseMove(document, { clientX: 600 });
+    expect(webviewWidth.value).toBe(400);
+    fireEvent.mouseUp(document);
+    expect(document.body.classList.contains("ed-webview-resizing")).toBe(false);
+    // Further mousemove after mouseup must have no effect (listener removed).
+    fireEvent.mouseMove(document, { clientX: 900 });
+    expect(webviewWidth.value).toBe(400);
+  });
+
+  it("resize falls back to window.innerWidth when the panel has no parent element", () => {
+    webviewMode.value = "side";
+    const { container } = render(<WebviewPanel />);
+    const root = container.querySelector(".ed-webview") as HTMLElement;
+    // Detach from its parent so rootRef.current.parentElement is null, exercising
+    // the `?? window.innerWidth` fallback branch.
+    root.remove();
+    const handle = root.querySelector(".ed-webview-resize") as HTMLElement;
+    fireEvent.mouseDown(handle, { clientX: 0 });
+    fireEvent.mouseMove(document, { clientX: 100 });
+    expect(webviewWidth.value).toBe(window.innerWidth - 100);
+    fireEvent.mouseUp(document);
   });
 });

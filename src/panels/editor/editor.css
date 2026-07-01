@@ -587,9 +587,30 @@
   z-index: 5;
 }
 .ed-webview-side {
-  /* split: sit on the right half, leaving the document visible on the left */
-  left: 50%;
+  /* split: pinned to the right edge, drag-resizable width (default half),
+     leaving the document visible on the left */
+  left: auto;
+  right: 0;
+  width: var(--webview-w, 50%);
   border-left: 1px solid var(--accent-line);
+}
+/* Drag handle on the side panel's left edge (mirrors .cms-resize). */
+.ed-webview-resize {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  z-index: 7;
+  cursor: col-resize;
+}
+.ed-webview-resize:hover {
+  background: var(--accent-line);
+}
+/* While dragging, let the document keep receiving mousemove even over the
+   iframe (frames otherwise swallow the event stream and stall the drag). */
+body.ed-webview-resizing .ed-webview-frame {
+  pointer-events: none;
 }
 .ed-webview-bar {
   display: flex;

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import {
-  webviewOpen, webviewUrl, webviewMode, webviewNotice,
-  openExternalLink, closeWebview, toggleWebviewMode,
+  webviewOpen, webviewUrl, webviewMode, webviewNotice, webviewWidth,
+  openExternalLink, closeWebview, toggleWebviewMode, setWebviewWidth,
+  WEBVIEW_MIN, WEBVIEW_MAX,
 } from "./webview-store";
 
 // jsdom runs on an opaque origin here, so the real localStorage is absent (prod
@@ -149,6 +150,54 @@ describe("mode", () => {
     vi.resetModules();
     const { webviewMode: freshMode } = await import("./webview-store");
     expect(freshMode.value).toBe("pane");
+    vi.resetModules();
+  });
+});
+
+describe("setWebviewWidth", () => {
+  it("clamps a value below WEBVIEW_MIN up to the minimum", () => {
+    setWebviewWidth(100);
+    expect(webviewWidth.value).toBe(WEBVIEW_MIN);
+  });
+
+  it("clamps a value above WEBVIEW_MAX down to the maximum", () => {
+    setWebviewWidth(2000);
+    expect(webviewWidth.value).toBe(WEBVIEW_MAX);
+  });
+
+  it("passes through and rounds a mid-range value", () => {
+    setWebviewWidth(800.6);
+    expect(webviewWidth.value).toBe(801);
+  });
+
+  it("persists the clamped/rounded value to localStorage", () => {
+    setWebviewWidth(900);
+    expect(localStorage.getItem("onebrain.webviewWidth")).toBe("900");
+  });
+
+  it("loadWidth() reads a stored value when the module is freshly imported", async () => {
+    localStorage.setItem("onebrain.webviewWidth", "500");
+    vi.resetModules();
+    const { webviewWidth: freshWidth } = await import("./webview-store");
+    expect(freshWidth.value).toBe(500);
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it("loadWidth() defaults to 720 on a fresh import when nothing is stored", async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const { webviewWidth: freshWidth } = await import("./webview-store");
+    expect(freshWidth.value).toBe(720);
+    vi.resetModules();
+  });
+
+  it("loadWidth() defaults to 720 when the stored value is not a positive number", async () => {
+    localStorage.setItem("onebrain.webviewWidth", "not-a-number");
+    vi.resetModules();
+    const { webviewWidth: freshWidth } = await import("./webview-store");
+    expect(freshWidth.value).toBe(720);
+    localStorage.clear();
     vi.resetModules();
   });
 });

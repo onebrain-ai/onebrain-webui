@@ -21,6 +21,33 @@ export const webviewUrl = signal<string | null>(null);
 export const webviewMode = signal<WebviewMode>(loadMode());
 export const webviewNotice = signal<string | null>(null);
 
+// Side-panel width in px (drag-resizable), clamped + persisted — mirrors the
+// shell's sidebar/chat-dock resize. Only applies in `side` mode; `pane` is full.
+export const WEBVIEW_MIN = 360;
+export const WEBVIEW_MAX = 1400;
+const WIDTH_KEY = "onebrain.webviewWidth";
+function clampWidth(px: number): number {
+  return Math.max(WEBVIEW_MIN, Math.min(WEBVIEW_MAX, Math.round(px)));
+}
+function loadWidth(): number {
+  try {
+    const n = Number(localStorage.getItem(WIDTH_KEY));
+    return n > 0 ? clampWidth(n) : 720; // absent/NaN/0 → default
+  } catch {
+    return 720; // private mode / localStorage unavailable
+  }
+}
+export const webviewWidth = signal<number>(loadWidth());
+export function setWebviewWidth(px: number): void {
+  const w = clampWidth(px);
+  webviewWidth.value = w;
+  try {
+    localStorage.setItem(WIDTH_KEY, String(w));
+  } catch {
+    /* private mode — width still updates in-session */
+  }
+}
+
 // Monotonic request sequence. Guards against two overlapping openExternalLink
 // calls resolving out of order (a slow first click landing after a fast
 // second click), and against a preflight resolving after closeWebview() was
