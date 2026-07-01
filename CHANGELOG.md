@@ -1,5 +1,5 @@
 ---
-latest_version: 0.1.5
+latest_version: 0.1.6
 released: 2026-07-01
 ---
 
@@ -12,6 +12,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > For CLI binary changes, see [`onebrain-ai/onebrain-cli`](https://github.com/onebrain-ai/onebrain-cli/blob/main/CHANGELOG.md); for the vault-deployed plugin, see [`onebrain-ai/onebrain`](https://github.com/onebrain-ai/onebrain/blob/main/CHANGELOG.md).
 
 ## [Unreleased]
+
+## [0.1.6] — 2026-07-01
+
+### Added
+
+- **Internal webview.** Clicking an external web link in the markdown reading view now opens the site in an in-app iframe with a back-to-document button, instead of leaving for a new tab. Two layouts — pane takeover, and a side split that keeps the document visible alongside — toggle from the webview header (the choice persists). Sites that refuse framing (`X-Frame-Options` / CSP `frame-ancestors`) fall back to a new tab with a notice, as does an 8-second load-hang timer. Wikilinks, `#anchors`, and `mailto:` links are unaffected. Framability is decided by a daemon preflight (`GET /api/webview/preflight`); the iframe is sandboxed (`allow-scripts allow-forms allow-popups allow-same-origin`, `referrerpolicy=no-referrer`).
 
 ## [0.1.5] — 2026-07-01
 
