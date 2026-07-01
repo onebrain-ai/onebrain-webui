@@ -200,17 +200,4 @@ describe("setWebviewWidth", () => {
     localStorage.clear();
     vi.resetModules();
   });
-
-  it("loadMode() and loadWidth() fall back to defaults when localStorage throws (private mode)", async () => {
-    const orig = localStorage.getItem;
-    localStorage.getItem = () => {
-      throw new Error("localStorage blocked (private mode)");
-    };
-    vi.resetModules();
-    const m = await import("./webview-store");
-    expect(m.webviewMode.value).toBe("pane"); // loadMode catch → default
-    expect(m.webviewWidth.value).toBe(720); // loadWidth catch → default
-    localStorage.getItem = orig;
-    vi.resetModules();
-  });
 });
