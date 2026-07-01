@@ -534,7 +534,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     // below (or the browser default), so only http(s) anchors are intercepted here.
     const a = el.closest("a[href]") as HTMLAnchorElement | null;
     if (a) {
-      const href = a.getAttribute("href") ?? "";
+      const href = (/* v8 ignore next -- getAttribute always returns a string (we reached here via closest("a[href]")) */ a.getAttribute("href") ?? "");
       if (/^https?:\/\//i.test(href)) {
         e.preventDefault();
         void openExternalLink(href, ctx.daemon);

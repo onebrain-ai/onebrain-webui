@@ -85,11 +85,70 @@ describe("openExternalLink", () => {
   });
 });
 
+describe("flashNotice (via openExternalLink fallback)", () => {
+  it("auto-clears the notice after its timeout", async () => {
+    vi.useFakeTimers();
+    const daemon = { webviewPreflight: vi.fn().mockResolvedValue(false) };
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    await openExternalLink("https://github.com", daemon);
+    expect(webviewNotice.value).toBeTruthy();
+    vi.advanceTimersByTime(4000);
+    expect(webviewNotice.value).toBeNull();
+    open.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("clears a still-pending notice timer when a second fallback fires first", async () => {
+    vi.useFakeTimers();
+    const daemon = { webviewPreflight: vi.fn().mockResolvedValue(false) };
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    await openExternalLink("https://a.example", daemon);
+    expect(webviewNotice.value).toBeTruthy();
+    // second fallback before the first notice timer elapses: exercises the
+    // `if (noticeTimer) clearTimeout(noticeTimer)` branch in flashNotice
+    vi.advanceTimersByTime(1000);
+    await openExternalLink("https://b.example", daemon);
+    expect(webviewNotice.value).toBeTruthy();
+    // only 4s from the SECOND call should be needed to clear it (old timer was cleared)
+    vi.advanceTimersByTime(4000);
+    expect(webviewNotice.value).toBeNull();
+    open.mockRestore();
+    vi.useRealTimers();
+  });
+});
+
 describe("mode", () => {
   it("toggles and persists to localStorage", () => {
     expect(webviewMode.value).toBe("pane");
     toggleWebviewMode();
     expect(webviewMode.value).toBe("side");
     expect(localStorage.getItem("onebrain.webviewMode")).toBe("side");
+  });
+
+  it("toggles back from 'side' to 'pane'", () => {
+    toggleWebviewMode();
+    expect(webviewMode.value).toBe("side");
+    toggleWebviewMode();
+    expect(webviewMode.value).toBe("pane");
+    expect(localStorage.getItem("onebrain.webviewMode")).toBe("pane");
+  });
+
+  it("loadMode() reads a stored 'side' value when the module is freshly imported (covers line 13)", async () => {
+    // Pre-seed storage BEFORE the module runs loadMode() at import time.
+    localStorage.setItem("onebrain.webviewMode", "side");
+    vi.resetModules();
+    const { webviewMode: freshMode } = await import("./webview-store");
+    expect(freshMode.value).toBe("side");
+    // Restore for subsequent tests.
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it("loadMode() defaults to 'pane' on a fresh import when nothing is stored", async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const { webviewMode: freshMode } = await import("./webview-store");
+    expect(freshMode.value).toBe("pane");
+    vi.resetModules();
   });
 });

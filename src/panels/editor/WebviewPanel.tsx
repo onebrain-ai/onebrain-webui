@@ -14,13 +14,22 @@ export function WebviewPanel() {
       closeWebview();
     }, 8000);
     return () => {
+      // timer.current is always set by the time cleanup runs (it's assigned
+      // synchronously above, before React/preact can invoke this) — the
+      // falsy branch is unreachable defensive code.
+      /* v8 ignore start */
       if (timer.current) clearTimeout(timer.current);
+      /* v8 ignore stop */
     };
     // Re-arm when the framed url changes.
   }, [url]);
 
   const onLoad = () => {
+    // Same reasoning as the cleanup above: timer.current is always set once
+    // the effect has run, which is always true by the time onLoad can fire.
+    /* v8 ignore start */
     if (timer.current) clearTimeout(timer.current);
+    /* v8 ignore stop */
   };
 
   return (

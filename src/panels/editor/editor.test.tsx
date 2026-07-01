@@ -449,6 +449,16 @@ describe("editorPanel — markdown reading view interactions", () => {
     expect(daemon.webviewPreflight).not.toHaveBeenCalled();
   });
 
+  it("renders the webview fallback notice when set", async () => {
+    previewPath.value = "a.md";
+    render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    webviewNotice.value = "This site can't be embedded — opened it in a new tab.";
+    await waitFor(() =>
+      expect(screen.getByText("This site can't be embedded — opened it in a new tab.")).toBeTruthy(),
+    );
+  });
+
   it("closes a stale webview when the open note switches", async () => {
     previewPath.value = "a.md";
     daemon.file.mockImplementation(async (p: string) => ({

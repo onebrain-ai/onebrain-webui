@@ -48,4 +48,28 @@ describe("WebviewPanel", () => {
     const { container } = render(<WebviewPanel />);
     expect(container.querySelector(".ed-webview-side")).toBeTruthy();
   });
+
+  it("onLoad clears the hang timer so a slow-but-successful load never opens a new tab", () => {
+    vi.useFakeTimers();
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const { container } = render(<WebviewPanel />);
+    const iframe = container.querySelector("iframe")!;
+    fireEvent.load(iframe);
+    vi.advanceTimersByTime(8000);
+    expect(open).not.toHaveBeenCalled();
+    expect(webviewOpen.value).toBe(true);
+    open.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("unmounting before the hang timer fires clears it (no stray fallback after unmount)", () => {
+    vi.useFakeTimers();
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const { unmount } = render(<WebviewPanel />);
+    unmount();
+    vi.advanceTimersByTime(8000);
+    expect(open).not.toHaveBeenCalled();
+    open.mockRestore();
+    vi.useRealTimers();
+  });
 });
