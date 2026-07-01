@@ -50,8 +50,9 @@ describe("registerPanel / getPanel / allPanels / seedPanels", () => {
   });
 
   it("re-registration (hot-reload): last def wins, order unchanged, DEV warning emitted", async () => {
-    // vi.stubGlobal ensures import.meta.env.DEV is truthy for the warning branch.
-    vi.stubGlobal("import", { meta: { env: { DEV: true } } });
+    // import.meta.env.DEV is resolved at build time by Vite and cannot be changed at
+    // runtime — vi.stubGlobal("import", ...) has no effect on it. The spy below simply
+    // captures whatever warn call registerPanel makes (always fires in the test build).
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { registerPanel, getPanel, allPanels } = await import("./registry");
 

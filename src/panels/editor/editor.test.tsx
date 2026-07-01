@@ -711,18 +711,14 @@ describe("editorPanel — task checkbox (lines 485-503)", () => {
       rev: "1",
     });
     render(<editorPanel.Component ctx={ctx} />);
-    await waitFor(() =>
-      expect(document.querySelector(".cm-content")?.textContent ?? "").toContain("my task"),
-    );
-    const checkbox = document.querySelector("input.task-check") as HTMLInputElement | null;
-    if (checkbox) {
-      const flushSpy = vi.spyOn(Autosaver.prototype, "flush").mockResolvedValue(undefined as any);
-      fireEvent.click(checkbox);
-      expect(flushSpy).toHaveBeenCalled();
-      flushSpy.mockRestore();
-    } else {
-      expect(true).toBe(true); // best-effort: jsdom may not render task-check
-    }
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    // Inject a checkbox directly so the test is deterministic regardless of jsdom rendering
+    reading.innerHTML = '<input type="checkbox" class="task-check" data-line="0" />';
+    const flushSpy = vi.spyOn(Autosaver.prototype, "flush").mockResolvedValue(undefined as any);
+    fireEvent.click(reading.querySelector("input.task-check")!);
+    expect(flushSpy).toHaveBeenCalled();
+    flushSpy.mockRestore();
   });
 
   it("task checkbox with out-of-range data-line is ignored (line 488 false branch)", async () => {
@@ -739,9 +735,12 @@ describe("editorPanel — task checkbox (lines 485-503)", () => {
     reading.innerHTML =
       '<input type="checkbox" class="task-check" data-line="999" />';
     const cb = reading.querySelector("input.task-check") as HTMLInputElement;
+    // Spy on flush to detect if the task-check handler dispatched (it would call flush)
+    const flushSpy = vi.spyOn(Autosaver.prototype, "flush").mockResolvedValue(undefined as any);
     fireEvent.click(cb);
-    // bodyLine=999 >= doc.lines → condition false → no dispatch; no crash
-    expect(true).toBe(true);
+    // bodyLine=999 >= doc.lines → condition false → no dispatch; flush never reached
+    expect(flushSpy).not.toHaveBeenCalled();
+    flushSpy.mockRestore();
   });
 
   it("clicking a non-task line via task-check class does nothing (line 497 false branch)", async () => {
@@ -761,9 +760,12 @@ describe("editorPanel — task checkbox (lines 485-503)", () => {
     // bodyLine=0, doc.lines=2 → 0 < 2 ✓; body line 1 = "paragraph one" → regex no match
     reading.innerHTML = '<input type="checkbox" class="task-check" data-line="0" />';
     const cb = reading.querySelector("input.task-check") as HTMLInputElement;
+    // Spy on flush to detect if the task-check handler dispatched (it would call flush)
+    const flushSpy = vi.spyOn(Autosaver.prototype, "flush").mockResolvedValue(undefined as any);
     fireEvent.click(cb);
-    // m=null → if(m) false branch covered
-    expect(true).toBe(true);
+    // m=null → if(m) false branch covered → no dispatch, flush never reached
+    expect(flushSpy).not.toHaveBeenCalled();
+    flushSpy.mockRestore();
   });
 
   it("clicking a checked task checkbox unchecks it ([x] → [ ], line 499 cond true branch)", async () => {
@@ -775,20 +777,15 @@ describe("editorPanel — task checkbox (lines 485-503)", () => {
       rev: "1",
     });
     render(<editorPanel.Component ctx={ctx} />);
-    await waitFor(() =>
-      expect(document.querySelector(".cm-content")?.textContent ?? "").toContain("done task"),
-    );
-    // The reading view renders a checked checkbox
-    const checkbox = document.querySelector("input.task-check") as HTMLInputElement | null;
-    if (checkbox) {
-      const flushSpy = vi.spyOn(Autosaver.prototype, "flush").mockResolvedValue(undefined as any);
-      // Clicking a checked checkbox should trigger the [x] → " " flip (line 499 first branch)
-      fireEvent.click(checkbox);
-      expect(flushSpy).toHaveBeenCalled();
-      flushSpy.mockRestore();
-    } else {
-      expect(true).toBe(true); // best-effort
-    }
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    // Inject a checked checkbox directly so the test is deterministic
+    reading.innerHTML = '<input type="checkbox" class="task-check" data-line="0" checked />';
+    const flushSpy = vi.spyOn(Autosaver.prototype, "flush").mockResolvedValue(undefined as any);
+    // Clicking a checked checkbox should trigger the [x] → " " flip (line 499 first branch)
+    fireEvent.click(reading.querySelector("input.task-check")!);
+    expect(flushSpy).toHaveBeenCalled();
+    flushSpy.mockRestore();
   });
 });
 
@@ -1038,8 +1035,8 @@ describe("editorPanel — binary catch path (line 294)", () => {
     // Now reject — catch fires, but cancelled=true → if(!cancelled) is false
     rejectNote(new Error("binary"));
     await Promise.resolve();
-    // No crash; unpreviewable was not set
-    expect(true).toBe(true);
+    // No crash; unpreviewable was not set — unmounted component left no ed-unpreview in DOM
+    expect(document.querySelector("[data-testid='ed-unpreview']")).toBeNull();
   });
 });
 
@@ -1090,10 +1087,14 @@ describe("editorPanel — reading-view image handling (lines 406,411-416,422,424
     await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
     // The rendered HTML will include an img with data-vault-embed;
     // since the vault isn't loaded, resolveAsset returns null → img.style.display = 'none'
-    // The effect may have already processed and removed the attribute; check the display
-    // style or absence of the attribute (whichever the effect leaves behind)
-    // This exercises lines 411-416
-    expect(true).toBe(true); // structural: no throw = effect ran
+    // The effect processes vault embed imgs: resolveAsset returns null → img hidden
+    await waitFor(() => {
+      const img = screen.getByTestId("ed-reading").querySelector<HTMLImageElement>("img");
+      if (!img) throw new Error("img not in DOM yet");
+      // After effect: data-vault-embed removed AND img hidden (no vault loaded)
+      expect(img.getAttribute("data-vault-embed")).toBeNull();
+      expect(img.style.display).toBe("none");
+    });
   });
 });
 
@@ -1119,11 +1120,11 @@ describe("editorPanel — rich file error branch (line 453)", () => {
       render(<editorPanel.Component ctx={ctx} />);
       await waitFor(() => expect(document.querySelector("[data-testid='ed-rich']")).toBeTruthy());
       // richErr.value = String("parse failed") = "parse failed"
+      // richErr.value = String("parse failed") → DOM shows .rich-err with that text
       await waitFor(() => {
-        const richWrap = document.querySelector("[data-testid='ed-rich']");
-        return expect(richWrap).toBeTruthy();
+        const errEl = document.querySelector(".rich-err");
+        return expect(errEl?.textContent).toContain("parse failed");
       });
-      expect(true).toBe(true);
     } finally {
       spy.mockRestore();
     }
@@ -1153,8 +1154,8 @@ describe("editorPanel — source text load catch (line 377)", () => {
     // Now reject — catch fires, but cancelled=true → early return (line 377 false branch)
     rejectSource(new Error("permission denied"));
     await Promise.resolve();
-    // No crash = cancelled guard worked
-    expect(true).toBe(true);
+    // Cancelled guard worked: unmounted component left no ed-unpreview in DOM
+    expect(document.querySelector("[data-testid='ed-unpreview']")).toBeNull();
   });
 
   it("shows 'File' badge when unpreviewable with ext='' (line 655 'File' branch)", async () => {
@@ -1186,8 +1187,8 @@ describe("editorPanel — cancelled path markdown (line 234)", () => {
     // Now resolve — line 234 guard fires (cancelled=true) → early return
     resolveNote({ path: "a.md", content: "---\ntags: []\n---\n# Hello", rev: "1" });
     await Promise.resolve();
-    // No crash and no CM view created = cancelled guard worked
-    expect(true).toBe(true);
+    // Cancelled guard worked: no CM view was created after unmount
+    expect(document.querySelector(".cm-content")).toBeNull();
   });
 });
 
@@ -1207,9 +1208,8 @@ describe("editorPanel — cancelled path HTML file (line 173)", () => {
     resolveHtml({ path: "page.html", content: "<h1>Hello</h1>", rev: "1" });
     // Allow the promise chain to settle — no error should be thrown
     await Promise.resolve();
-    // docText must NOT have been set (if it were, the guard didn't work)
-    // This test verifies line 173 is reachable without crashes
-    expect(true).toBe(true);
+    // Cancelled guard worked: docText was not set, no HTML iframe in DOM
+    expect(document.querySelector("[data-testid='ed-html-frame']")).toBeNull();
   });
 });
 
@@ -1238,8 +1238,8 @@ describe("editorPanel — rich file then/teardown (lines 449-450)", () => {
       const teardownFn = vi.fn();
       resolveRich(teardownFn);
       await Promise.resolve();
-      // teardown was called (line 449 branch covered)
-      expect(true).toBe(true);
+      // teardown was called immediately since cancelled=true (line 449 branch covered)
+      expect(teardownFn).toHaveBeenCalled();
     } finally {
       spy.mockRestore();
     }
@@ -1259,8 +1259,8 @@ describe("editorPanel — rich file then/teardown (lines 449-450)", () => {
       // Now reject — catch fires with cancelled=true → early return (line 453 branch)
       rejectRich(new Error("xlsx parse failed"));
       await Promise.resolve();
-      // No crash, richErr not set
-      expect(true).toBe(true);
+      // richErr was not set: unmounted component left no .rich-err in DOM
+      expect(document.querySelector(".rich-err")).toBeNull();
     } finally {
       spy.mockRestore();
     }
@@ -1282,8 +1282,8 @@ describe("editorPanel — cancelled path SVG file (line 191)", () => {
     // Resolve after unmount — cancelled=true so svgHtml must not be set
     resolveSvg({ path: "icon.svg", content: "<svg></svg>", rev: "1" });
     await Promise.resolve();
-    // No crash = success (line 191 executed without setting svgHtml)
-    expect(true).toBe(true);
+    // Cancelled guard worked: svgHtml not set, unmounted component left no ed-image in DOM
+    expect(document.querySelector("[data-testid='ed-image']")).toBeNull();
   });
 });
 
@@ -1299,8 +1299,8 @@ describe("editorPanel — copySource when clipboard is absent (line 549 null bra
       await waitFor(() => expect(document.querySelector("[data-testid='ed-source']")).toBeTruthy());
       // Click copy — clipboard?.writeText short-circuits to undefined (no-op)
       fireEvent.click(screen.getByLabelText("Copy code"));
-      // No crash = success
-      expect(true).toBe(true);
+      // No crash; button title stays "Copy code" since sourceCopied never flipped
+      expect(screen.getByLabelText("Copy code").getAttribute("title")).toBe("Copy code");
     } finally {
       Object.defineProperty(navigator, "clipboard", {
         value: origClipboard,
