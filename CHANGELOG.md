@@ -1,5 +1,5 @@
 ---
-latest_version: 0.1.4
+latest_version: 0.1.5
 released: 2026-07-01
 ---
 
@@ -12,6 +12,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > For CLI binary changes, see [`onebrain-ai/onebrain-cli`](https://github.com/onebrain-ai/onebrain-cli/blob/main/CHANGELOG.md); for the vault-deployed plugin, see [`onebrain-ai/onebrain`](https://github.com/onebrain-ai/onebrain/blob/main/CHANGELOG.md).
 
 ## [Unreleased]
+
+## [0.1.5] — 2026-07-01
+
+### Changed
+
+- **Settings modal → categorized two-pane console.** The single long scroll is now a left category rail (tablist: Appearance · Preview · Vault · About) + a content pane, so it stays tidy as settings grow. The rail is keyboard-navigable (arrow / Home / End roving `tabindex`), each category has an icon + a titled pane header, and the active category persists across opens (`onebrain.settingsCat`). Controls adopt the DS chamfer clips + accent active-state; segmented buttons and swatches are unchanged in behaviour.
+
+### Added
+
+- **Settings search.** A search box filters the editable settings (theme, accent, density, HTML autorun, media autoplay) across categories into a live results list.
+- **About → "What's new".** The About pane renders the latest changelog entry (fetched from the emitted `/changelog.json`) plus a "Full changelog →" link to `CHANGELOG.md`, alongside the WebUI version, daemon-connection status, and a repository link. A dev-server middleware now serves `/changelog.json` in `npm run dev` too (previously build-only), so the panel behaves identically in dev and prod. New `__APP_REPO__` build constant (from `package.json` `homepage`).
 
 ## [0.1.4] — 2026-07-01
 

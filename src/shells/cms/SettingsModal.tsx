@@ -1,11 +1,16 @@
-// Settings modal — opened from the topbar gear. Two sections: editable
-// Appearance (accent + density, persisted to localStorage via core/stores) and a
-// READ-ONLY view of the loaded onebrain.yml (folders, qmd, schedule, thresholds).
-// Config editing is intentionally not offered here — the vault file stays the
-// source of truth; this surface only reflects it.
+// Settings modal — opened from the topbar gear. A two-pane operator console: a
+// left category rail (tablist) + a content pane. Categories:
+//   • Appearance — theme, accent, density (editable, persisted via core/stores)
+//   • Preview    — .html script autorun + media autoplay (editable)
+//   • Vault      — a READ-ONLY view of the loaded onebrain.yml (the vault file
+//                  stays the source of truth; this surface only reflects it)
+//   • About      — build version, "What's new" (latest changelog), and links
+// A search box filters the editable settings across categories. The active
+// category is persisted so the modal reopens where you left off.
 
 import { createPortal } from "preact/compat";
 import { useEffect, useRef } from "preact/hooks";
+import { useSignal } from "@preact/signals";
 import {
   ACCENTS,
   accent,
@@ -18,12 +23,175 @@ import {
   setHtmlAutorun,
   mediaAutoplay,
   setMediaAutoplay,
+  settingsCategory,
+  setSettingsCategory,
   type AccentName,
+  type SettingsCat,
 } from "../../core/stores";
 import { vaultConfig } from "../../panels/bus";
+import { renderMarkdown } from "../../core/markdown";
+import { fetchChangelog, latestEntry, type ChangelogEntry } from "../../core/changelog";
+import { Icon, type IconName } from "../../ui/Icon";
 import { trapFocus } from "../../ui/Modal";
 import "./settings-modal.css";
 
+// ── Categories (rail order + pane header copy) ───────────────────────────────
+const CATEGORIES: { id: SettingsCat; label: string; icon: IconName; desc: string }[] = [
+  { id: "appearance", label: "Appearance", icon: "contrast", desc: "Theme, accent, and density." },
+  { id: "preview", label: "Preview", icon: "image", desc: "How .html and media files behave in the previewer." },
+  { id: "vault", label: "Vault", icon: "folder", desc: "Reflects onebrain.yml — read-only." },
+  { id: "about", label: "About", icon: "info", desc: "Build version, changelog, and links." },
+];
+
+// Arrow-key roving for the tablist (WAI-ARIA APG). Left/Right alias Up/Down so
+// it also works when the rail wraps horizontally on narrow viewports.
+const navPrev = (i: number, n: number) => (i - 1 + n) % n;
+const navNext = (i: number, n: number) => (i + 1) % n;
+const NAV_MOVE: Record<string, (i: number, n: number) => number> = {
+  ArrowUp: navPrev,
+  ArrowLeft: navPrev,
+  ArrowDown: navNext,
+  ArrowRight: navNext,
+  Home: () => 0,
+  End: (_i, n) => n - 1,
+};
+
+// ── Reusable control rows ────────────────────────────────────────────────────
+/** A labelled segmented control (2+ options). The row label doubles as the
+ *  group's accessible name. */
+function Seg<T extends string | boolean>(props: {
+  label: string;
+  value: T;
+  options: { key: T; label: string }[];
+  onPick: (key: T) => void;
+}) {
+  return (
+    <div class="st-row">
+      <span class="st-label">{props.label}</span>
+      <div class="st-seg" role="group" aria-label={props.label}>
+        {props.options.map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            class={props.value === o.key ? "on" : ""}
+            aria-pressed={props.value === o.key}
+            onClick={() => props.onPick(o.key)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ThemeRow() {
+  return (
+    <Seg
+      label="Theme"
+      value={theme.value}
+      options={[
+        { key: "dark", label: "Dark" },
+        { key: "light", label: "Light" },
+      ]}
+      onPick={setTheme}
+    />
+  );
+}
+
+function AccentRow() {
+  return (
+    <div class="st-row">
+      <span class="st-label">Accent</span>
+      <div class="tb-acc-row">
+        {(Object.keys(ACCENTS) as AccentName[]).map((name) => (
+          <button
+            key={name}
+            type="button"
+            class={`tb-acc${accent.value === name ? " on" : ""}`}
+            style={`--sw:${ACCENTS[name]}`}
+            aria-label={name}
+            title={name}
+            aria-pressed={accent.value === name}
+            onClick={() => setAccent(name)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DensityRow() {
+  return (
+    <Seg
+      label="Density"
+      value={density.value}
+      options={[
+        { key: "comfortable", label: "Comfortable" },
+        { key: "compact", label: "Compact" },
+      ]}
+      onPick={setDensity}
+    />
+  );
+}
+
+function HtmlRow() {
+  return (
+    <>
+      <Seg
+        label="Run HTML scripts"
+        value={htmlAutorun.value}
+        options={[
+          { key: false, label: "Off" },
+          { key: true, label: "On" },
+        ]}
+        onPick={setHtmlAutorun}
+      />
+      <p class="st-hint">
+        Off (recommended): .html previews are static — use the <b>Run</b> button per file. On:
+        scripts auto-run in a sandbox that still can’t reach the app, vault, or token.
+      </p>
+    </>
+  );
+}
+
+function MediaRow() {
+  return (
+    <>
+      <Seg
+        label="Auto-play media"
+        value={mediaAutoplay.value}
+        options={[
+          { key: false, label: "Off" },
+          { key: true, label: "On" },
+        ]}
+        onPick={setMediaAutoplay}
+      />
+      <p class="st-hint">
+        On: audio / video start playing when you open the file (a browser may still wait for a
+        click before it plays sound).
+      </p>
+    </>
+  );
+}
+
+// Editable settings, indexed for search. Each renders the same row component used
+// in its category pane, so search results are live controls (not just links).
+const ITEMS: {
+  id: string;
+  cat: "appearance" | "preview";
+  label: string;
+  keywords: string;
+  Comp: () => preact.JSX.Element;
+}[] = [
+  { id: "theme", cat: "appearance", label: "Theme", keywords: "dark light mode colour scheme", Comp: ThemeRow },
+  { id: "accent", cat: "appearance", label: "Accent", keywords: "color colour hue tint", Comp: AccentRow },
+  { id: "density", cat: "appearance", label: "Density", keywords: "spacing compact comfortable", Comp: DensityRow },
+  { id: "html", cat: "preview", label: "Run HTML scripts", keywords: "html scripts sandbox javascript run", Comp: HtmlRow },
+  { id: "media", cat: "preview", label: "Auto-play media", keywords: "media audio video autoplay sound", Comp: MediaRow },
+];
+
+// ── Vault (read-only onebrain.yml view) ──────────────────────────────────────
 /** Read-only rows describing the loaded onebrain.yml. Values are formatted
  *  defensively because the config's forward-compat keys are typed `unknown`. */
 function ConfigView() {
@@ -54,6 +222,9 @@ function ConfigView() {
   const folders = cfg.folders ?? {};
   return (
     <>
+      <div class="st-ro-note">
+        <Icon name="alert" class="st-ro-ic" /> Read-only — edit onebrain.yml to change these.
+      </div>
       {rows.map((r) => (
         <div class="st-row" key={r.label}>
           <span class="st-label">{r.label}</span>
@@ -77,8 +248,139 @@ function ConfigView() {
   );
 }
 
+// ── About (version + What's new + links) ─────────────────────────────────────
+/** Latest changelog entry, fetched from the emitted /changelog.json artifact. */
+function WhatsNew() {
+  // undefined = loading, null = changelog has no entries, entry = ready.
+  const entry = useSignal<ChangelogEntry | null | undefined>(undefined);
+  const failed = useSignal(false);
+  useEffect(() => {
+    // Cancel the request if the user leaves About before it lands. A late
+    // resolve/reject after unmount only writes to this instance's own orphaned
+    // signals, which @preact/signals handles without an unmounted-update warning.
+    const ac = new AbortController();
+    fetchChangelog(ac.signal)
+      .then((d) => {
+        entry.value = latestEntry(d);
+      })
+      .catch(() => {
+        failed.value = true;
+      });
+    return () => ac.abort();
+  }, []);
+
+  if (failed.value) return <div class="st-wn-note">Couldn’t load the changelog.</div>;
+  if (entry.value === undefined) return <div class="st-wn-note">Loading…</div>;
+  if (entry.value === null) return <div class="st-wn-note">No changelog yet.</div>;
+  const e = entry.value;
+  return (
+    <div class="st-wn">
+      <div class="st-wn-head">
+        <span class="st-wn-ver">v{e.version}</span>
+        {e.date ? <span class="st-wn-date">{e.date}</span> : null}
+      </div>
+      <div
+        class="st-wn-body"
+        // renderMarkdown sanitizes (DOMPurify) — the changelog is first-party anyway.
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(e.markdown).html }}
+      />
+    </div>
+  );
+}
+
+function AboutPane() {
+  const connected = vaultConfig.value != null;
+  return (
+    <>
+      <div class="st-row">
+        <span class="st-label">Version</span>
+        <span class="st-val" data-testid="st-version">v{__APP_VERSION__}</span>
+      </div>
+      <div class="st-row">
+        <span class="st-label">Daemon</span>
+        <span class="st-val">{connected ? "Connected" : "Connecting…"}</span>
+      </div>
+      <div class="st-row">
+        <span class="st-label">Repository</span>
+        <a class="st-link" href={__APP_REPO__} target="_blank" rel="noreferrer noopener">
+          {__APP_REPO__.replace(/^https?:\/\//, "")}
+        </a>
+      </div>
+      <div class="st-wn-section">What’s new</div>
+      <WhatsNew />
+      <a
+        class="st-link st-wn-full"
+        href={`${__APP_REPO__}/blob/main/CHANGELOG.md`}
+        target="_blank"
+        rel="noreferrer noopener"
+      >
+        Full changelog →
+      </a>
+    </>
+  );
+}
+
+// ── Panes ────────────────────────────────────────────────────────────────────
+function ItemList({ cat }: { cat: "appearance" | "preview" }) {
+  return (
+    <>
+      {ITEMS.filter((i) => i.cat === cat).map((i) => (
+        <i.Comp key={i.id} />
+      ))}
+    </>
+  );
+}
+
+function PaneHead({ cat }: { cat: SettingsCat }) {
+  const c = CATEGORIES.find((x) => x.id === cat)!;
+  return (
+    <div class="st-pane-head">
+      <div class="st-pane-title">{c.label}</div>
+      <div class="st-pane-desc">{c.desc}</div>
+    </div>
+  );
+}
+
+function CatPane({ cat }: { cat: SettingsCat }) {
+  return (
+    <>
+      <PaneHead cat={cat} />
+      {cat === "appearance" && <ItemList cat="appearance" />}
+      {cat === "preview" && <ItemList cat="preview" />}
+      {cat === "vault" && <ConfigView />}
+      {cat === "about" && <AboutPane />}
+    </>
+  );
+}
+
+function Results({ results, query }: { results: typeof ITEMS; query: string }) {
+  if (results.length === 0) {
+    return <div class="st-empty">No settings match “{query}”.</div>;
+  }
+  return (
+    <>
+      <div class="st-pane-head">
+        <div class="st-pane-title">Results</div>
+        <div class="st-pane-desc">
+          {results.length} setting{results.length === 1 ? "" : "s"} matching “{query}”.
+        </div>
+      </div>
+      {results.map((i) => (
+        <div class="st-result" key={i.id}>
+          <span class="st-result-cat">{i.cat}</span>
+          <i.Comp />
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── Modal shell ──────────────────────────────────────────────────────────────
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLButtonElement[]>([]);
+  const query = useSignal("");
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -89,10 +391,28 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  const active = settingsCategory.value;
+  const q = query.value.trim();
+  const searching = q !== "";
+  const needle = q.toLowerCase();
+  const results = ITEMS.filter((i) => `${i.label} ${i.keywords}`.toLowerCase().includes(needle));
+
+  function pick(cat: SettingsCat) {
+    setSettingsCategory(cat);
+    query.value = "";
+  }
+  function onNavKey(e: KeyboardEvent, idx: number) {
+    const move = NAV_MOVE[e.key];
+    if (!move) return;
+    e.preventDefault();
+    const next = move(idx, CATEGORIES.length);
+    pick(CATEGORIES[next].id);
+    tabsRef.current[next].focus();
+  }
+
   // Portal to <body>: the topbar (this component's host) sets `backdrop-filter`,
   // which makes a position:fixed descendant relative to the TOPBAR box instead of
-  // the viewport — trapping the overlay in the top strip. Rendering into body
-  // (like ModalHost/TaskModalHost) escapes that containing block.
+  // the viewport. Rendering into body escapes that containing block.
   return createPortal(
     <div
       class="ob-modal-backdrop"
@@ -109,130 +429,59 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         ref={dialogRef}
         data-testid="settings-modal"
       >
-        <div class="ob-modal-title">Settings</div>
-
-        <div class="st-section">Appearance</div>
-        <div class="st-row">
-          <span class="st-label">Theme</span>
-          <div class="st-seg" role="group" aria-label="Theme">
-            <button
-              type="button"
-              class={theme.value === "dark" ? "on" : ""}
-              aria-pressed={theme.value === "dark"}
-              onClick={() => setTheme("dark")}
-            >
-              Dark
-            </button>
-            <button
-              type="button"
-              class={theme.value === "light" ? "on" : ""}
-              aria-pressed={theme.value === "light"}
-              onClick={() => setTheme("light")}
-            >
-              Light
-            </button>
-          </div>
-        </div>
-        <div class="st-row">
-          <span class="st-label">Accent</span>
-          <div class="tb-acc-row">
-            {(Object.keys(ACCENTS) as AccentName[]).map((name) => (
-              <button
-                key={name}
-                type="button"
-                class={`tb-acc${accent.value === name ? " on" : ""}`}
-                style={`--sw:${ACCENTS[name]}`}
-                aria-label={name}
-                title={name}
-                aria-pressed={accent.value === name}
-                onClick={() => setAccent(name)}
-              />
-            ))}
-          </div>
-        </div>
-        <div class="st-row">
-          <span class="st-label">Density</span>
-          <div class="st-seg" role="group" aria-label="Density">
-            <button
-              type="button"
-              class={density.value === "comfortable" ? "on" : ""}
-              aria-pressed={density.value === "comfortable"}
-              onClick={() => setDensity("comfortable")}
-            >
-              Comfortable
-            </button>
-            <button
-              type="button"
-              class={density.value === "compact" ? "on" : ""}
-              aria-pressed={density.value === "compact"}
-              onClick={() => setDensity("compact")}
-            >
-              Compact
-            </button>
-          </div>
+        <div class="st-head">
+          <div class="ob-modal-title">Settings</div>
+          <label class="st-search">
+            <Icon name="search" class="st-search-ic" />
+            <input
+              class="st-search-in"
+              type="search"
+              placeholder="Search appearance & preview"
+              aria-label="Search settings"
+              value={query.value}
+              onInput={(e) => (query.value = (e.target as HTMLInputElement).value)}
+            />
+          </label>
         </div>
 
-        <div class="st-section">Preview</div>
-        <div class="st-row">
-          <span class="st-label">Run HTML scripts</span>
-          <div class="st-seg" role="group" aria-label="Run HTML scripts">
-            <button
-              type="button"
-              class={!htmlAutorun.value ? "on" : ""}
-              aria-pressed={!htmlAutorun.value}
-              onClick={() => setHtmlAutorun(false)}
-            >
-              Off
-            </button>
-            <button
-              type="button"
-              class={htmlAutorun.value ? "on" : ""}
-              aria-pressed={htmlAutorun.value}
-              onClick={() => setHtmlAutorun(true)}
-            >
-              On
-            </button>
-          </div>
-        </div>
-        <p class="st-hint">
-          Off (recommended): .html previews are static — use the <b>Run</b> button per file. On:
-          scripts auto-run in a sandbox that still can’t reach the app, vault, or token.
-        </p>
-        <div class="st-row">
-          <span class="st-label">Auto-play media</span>
-          <div class="st-seg" role="group" aria-label="Auto-play media">
-            <button
-              type="button"
-              class={!mediaAutoplay.value ? "on" : ""}
-              aria-pressed={!mediaAutoplay.value}
-              onClick={() => setMediaAutoplay(false)}
-            >
-              Off
-            </button>
-            <button
-              type="button"
-              class={mediaAutoplay.value ? "on" : ""}
-              aria-pressed={mediaAutoplay.value}
-              onClick={() => setMediaAutoplay(true)}
-            >
-              On
-            </button>
-          </div>
-        </div>
-        <p class="st-hint">
-          On: audio / video start playing when you open the file (a browser may still wait for a
-          click before it plays sound).
-        </p>
+        <div class="st-body">
+          <nav class="st-nav" role="tablist" aria-orientation="vertical" aria-label="Settings categories">
+            {CATEGORIES.map((c, i) => {
+              // Roving tabindex: exactly one tab stays selected + focusable, even
+              // while searching (the results view is an overlay, not a 5th tab).
+              const selected = c.id === active;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="tab"
+                  id={`st-tab-${c.id}`}
+                  aria-selected={selected}
+                  aria-controls="st-panel"
+                  tabIndex={selected ? 0 : -1}
+                  class={selected ? "st-tab on" : "st-tab"}
+                  ref={(el) => {
+                    if (el) tabsRef.current[i] = el;
+                  }}
+                  onClick={() => pick(c.id)}
+                  onKeyDown={(e) => onNavKey(e, i)}
+                >
+                  <Icon name={c.icon} class="st-tab-ic" />
+                  <span>{c.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-        <div class="st-section">
-          Vault config <span class="st-ro">read-only · onebrain.yml</span>
-        </div>
-        <ConfigView />
-
-        <div class="st-section">About</div>
-        <div class="st-row">
-          <span class="st-label">OneBrain WebUI</span>
-          <span class="st-val" data-testid="st-version">v{__APP_VERSION__}</span>
+          <div
+            class="st-pane"
+            role="tabpanel"
+            id="st-panel"
+            aria-label={searching ? "Search results" : undefined}
+            aria-labelledby={searching ? undefined : `st-tab-${active}`}
+          >
+            {searching ? <Results results={results} query={q} /> : <CatPane cat={active} />}
+          </div>
         </div>
 
         <div class="ob-modal-actions">

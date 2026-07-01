@@ -1,43 +1,140 @@
-/* Settings modal — sits on the shared .ob-modal panel (see ui/modal.css).
-   Reuses the topbar accent swatches (.tb-acc / .tb-acc-row). */
+/* Settings modal — two-pane operator console (category rail + content pane) on
+   the shared .ob-modal panel (see ui/modal.css). Reuses the topbar accent
+   swatches (.tb-acc / .tb-acc-row) and DS tokens (clip / accent / fonts). All
+   colours are theme tokens, so the modal follows dark/light automatically. */
 
 .st-modal {
-  width: min(520px, 100%);
+  width: min(720px, 100%);
+  padding: 16px 18px 14px;
   /* Height is unconstrained — the shared .ob-modal-backdrop scrolls the overlay
      when this modal is taller than the viewport, keeping the top reachable. */
 }
 
-.st-section {
+/* ── Header: title + search ─────────────────────────────────────────────── */
+.st-head {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 18px 0 10px;
-  font-size: 9px;
-  letter-spacing: 0.3em;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.st-search {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 180px;
+  padding: 6px 10px;
+  background: color-mix(in oklab, var(--color-bg-deep) 60%, transparent);
+  border: 1px solid var(--color-border);
+  clip-path: var(--clip-chip);
+  transition: border-color 0.15s;
+}
+.st-search:focus-within {
+  border-color: var(--section-accent);
+}
+.st-search-ic {
+  font-size: 13px;
+  flex: none;
+  color: var(--color-muted);
+}
+.st-search-in {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.st-search-in::placeholder {
+  color: var(--color-muted);
+}
+.st-search-in::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* ── Body: category rail + content pane ─────────────────────────────────── */
+.st-body {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 18px;
+  padding-top: 14px;
+  min-height: 316px;
+}
+
+/* category rail (tablist) */
+.st-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-right: 1px solid var(--color-border);
+  padding-right: 14px;
+}
+.st-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: none;
+  border: 1px solid transparent;
+  clip-path: var(--clip-chip);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.st-tab:hover {
+  color: var(--color-text);
+  /* theme-token wash (flips for light mode); distinct from the accent active bg */
+  background: color-mix(in oklab, var(--color-text) 7%, transparent);
+}
+/* clip-path clips the native outline, so give focused chrome an explicit ring */
+.st-tab:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+  color: var(--section-accent);
+  box-shadow: inset 0 0 0 1px var(--section-accent);
+}
+.st-tab.on {
+  color: var(--section-accent);
+  background: var(--accent-weak);
+  border-color: var(--accent-line);
+}
+.st-tab-ic {
+  font-size: 15px;
+  flex: none;
+}
+
+/* content pane */
+.st-pane {
+  min-width: 0;
+}
+.st-pane-head {
+  margin-bottom: 12px;
+}
+/* Eyebrow kicker (mono/uppercase/wide-tracking) — not a second display title,
+   so it doesn't compete with the modal's "SETTINGS" heading. */
+.st-pane-title {
+  font-family: var(--font-mono);
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 10px;
   color: var(--section-accent);
 }
-.st-section:first-of-type {
-  margin-top: 14px;
-}
-.st-ro {
-  letter-spacing: 0.04em;
-  text-transform: none;
-  font-size: 10px;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.4));
+.st-pane-desc {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-text);
 }
 
-.st-hint {
-  margin: 6px 0 2px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
-}
-.st-hint b {
-  color: var(--color-text, #fff);
-  font-weight: 600;
-}
-
+/* ── Control rows ───────────────────────────────────────────────────────── */
 .st-row {
   display: flex;
   align-items: center;
@@ -45,24 +142,34 @@
   gap: 12px;
   min-height: 30px;
   padding: 4px 0;
-  border-bottom: 1px solid color-mix(in oklab, var(--color-border, #2a2a3a) 60%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
 }
 .st-label {
   font-size: 12px;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--color-faint);
 }
 .st-val {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-text, #fff);
+  color: var(--color-text);
   text-align: right;
 }
+.st-hint {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+.st-hint b {
+  color: var(--color-text);
+  font-weight: 600;
+}
 
-/* density segmented control */
+/* segmented control (theme / density / on-off) */
 .st-seg {
   display: inline-flex;
-  border: 1px solid var(--color-border, #2a2a3a);
-  border-radius: 2px;
+  border: 1px solid var(--color-border);
+  clip-path: var(--clip-chip);
   overflow: hidden;
 }
 .st-seg button {
@@ -70,30 +177,54 @@
   border: 0;
   padding: 5px 12px;
   font-size: 11px;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.6));
+  font-family: var(--font-mono);
+  color: var(--color-muted);
   background: var(--color-bg-deep);
   cursor: pointer;
+  transition: color 0.15s, background 0.15s;
 }
 .st-seg button + button {
-  border-left: 1px solid var(--color-border, #2a2a3a);
+  border-left: 1px solid var(--color-border);
 }
 .st-seg button:hover {
-  color: #fff;
+  color: var(--color-text);
+}
+.st-seg button:focus-visible {
+  outline: none;
+  color: var(--section-accent);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
 }
 .st-seg button.on {
   color: var(--section-accent);
-  background: color-mix(in oklab, var(--section-accent) 14%, transparent);
+  background: var(--accent-weak);
 }
 
-/* selected accent swatch gets a ring (the topbar .tb-acc has no .on style yet) */
-.tb-acc.on {
+/* accent swatches — selected (and keyboard-focused) get an accent ring */
+.tb-acc.on,
+.tb-acc:focus-visible {
+  outline: none;
   box-shadow:
-    0 0 0 2px var(--color-bg, #07070d),
+    0 0 0 2px var(--color-bg),
     0 0 0 3px var(--section-accent);
 }
 
-/* read-only folder map */
+/* ── Vault pane (read-only onebrain.yml) ────────────────────────────────── */
+.st-ro-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--color-faint);
+  background: color-mix(in oklab, var(--color-border) 45%, transparent);
+  clip-path: var(--clip-chip);
+}
+.st-ro-ic {
+  font-size: 13px;
+  flex: none;
+  color: var(--color-muted);
+}
 .st-folders {
   padding: 8px 0 2px;
 }
@@ -111,16 +242,139 @@
   font-size: 11px;
 }
 .st-folder code {
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
-  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
 }
 .st-folder span {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  color: var(--color-text, #fff);
+  font-family: var(--font-mono);
+  color: var(--color-text);
 }
 
 .st-empty {
   padding: 10px 0;
   font-size: 12px;
-  color: var(--color-text-muted, rgba(255, 255, 255, 0.45));
+  color: var(--color-muted);
+}
+
+/* ── Search results ─────────────────────────────────────────────────────── */
+.st-result {
+  padding-bottom: 2px;
+}
+.st-result-cat {
+  display: inline-block;
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--section-accent);
+}
+
+/* ── About pane: links + What's new ─────────────────────────────────────── */
+.st-link {
+  color: var(--section-accent);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+.st-link:hover {
+  border-bottom-color: var(--accent-line);
+}
+.st-wn-section {
+  margin: 18px 0 8px;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--section-accent);
+}
+.st-wn {
+  border: 1px solid var(--color-border);
+  clip-path: var(--clip-chip);
+  padding: 12px 14px;
+  background: color-mix(in oklab, var(--color-bg-deep) 45%, transparent);
+}
+.st-wn-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.st-wn-ver {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--section-accent);
+}
+.st-wn-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+}
+.st-wn-body {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-faint);
+}
+.st-wn-body :is(h2, h3, h4) {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 10px 0 4px;
+}
+.st-wn-body p {
+  margin: 4px 0;
+}
+.st-wn-body ul {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+.st-wn-body li {
+  margin: 3px 0;
+}
+.st-wn-body strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.st-wn-body code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  background: color-mix(in oklab, var(--color-text) 10%, transparent);
+  color: var(--color-text);
+  clip-path: var(--clip-chip);
+}
+.st-wn-body a {
+  color: var(--section-accent);
+  text-decoration: none;
+}
+.st-wn-body a:hover {
+  text-decoration: underline;
+}
+.st-wn-note {
+  padding: 12px 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.st-wn-full {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+/* ── Narrow: stack the rail above the pane ──────────────────────────────── */
+@media (max-width: 560px) {
+  .st-body {
+    grid-template-columns: 1fr;
+  }
+  .st-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+    padding-right: 0;
+    padding-bottom: 10px;
+  }
 }

@@ -50,6 +50,7 @@ const ALL_ICONS: IconName[] = [
   "play",
   "copy",
   "contrast",
+  "info",
 ];
 
 describe("Icon", () => {

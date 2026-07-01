@@ -43,13 +43,19 @@
   margin: 0.6em auto;
 }
 
-/* Settings modal rows — match the tighter rhythm. */
+/* Settings modal — match the tighter rhythm. */
 [data-density="compact"] .st-row {
   min-height: 26px;
   padding: 2px 0;
 }
-[data-density="compact"] .st-section {
-  margin: 12px 0 7px;
+[data-density="compact"] .st-pane-head {
+  margin-bottom: 8px;
+}
+[data-density="compact"] .st-wn-section {
+  margin: 12px 0 6px;
+}
+[data-density="compact"] .st-body {
+  min-height: 260px;
 }
 
 /* Chat messages — pack the conversation a touch tighter. */

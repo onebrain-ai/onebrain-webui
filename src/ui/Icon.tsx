@@ -52,7 +52,8 @@ export type IconName =
   | "shrink-h"
   | "play"
   | "copy"
-  | "contrast";
+  | "contrast"
+  | "info";
 
 const PATHS: Record<IconName, preact.JSX.Element> = {
   file: (
@@ -226,6 +227,12 @@ const PATHS: Record<IconName, preact.JSX.Element> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 7.5h.01" />
     </>
   ),
 };

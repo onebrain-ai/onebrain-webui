@@ -7,6 +7,7 @@ import license from "rollup-plugin-license";
 // (see `define` below) — the UI surfaces it in Settings → About.
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
   version: string;
+  homepage: string;
 };
 
 // Read the changelog once at config load so `emitChangelogJson` can bundle a
@@ -151,6 +152,26 @@ function emitChangelogJson(raw: string) {
   };
 }
 
+// `emitChangelogJson` only writes the file in a production build, so under
+// `npm run dev` a request for `/changelog.json` would 404 and Settings → About's
+// "What's new" would show its error state. Serve the same parsed payload from a
+// dev-server middleware so the feature behaves identically in dev and prod.
+function serveChangelogInDev(raw: string) {
+  return {
+    name: "serve-changelog-in-dev",
+    apply: "serve" as const,
+    configureServer(server: {
+      middlewares: { use: (path: string, fn: (req: unknown, res: { setHeader: (k: string, v: string) => void; end: (body: string) => void }) => void) => void };
+    }) {
+      const body = `${JSON.stringify(parseChangelog(raw), null, 2)}\n`;
+      server.middlewares.use("/changelog.json", (_req, res) => {
+        res.setHeader("Content-Type", "application/json");
+        res.end(body);
+      });
+    },
+  };
+}
+
 // The daemon (`onebrain serve` / `onebrain daemon`) the WebUI talks to in dev.
 // Override with `ONEBRAIN_DAEMON=http://host:port npm run dev` to point at a
 // remote / non-default daemon. Default matches `serve.rs` DEFAULT_PORT (6789).
@@ -163,6 +184,7 @@ export default defineConfig({
     stripBeautifulMermaidWebfonts(),
     emitVersionJson(pkg.version),
     emitChangelogJson(changelogRaw),
+    serveChangelogInDev(changelogRaw),
     // Emit dist/THIRD-PARTY-NOTICES.txt listing every bundled dependency's
     // license + verbatim text (rollup-plugin-license reads the ACTUAL modules in
     // the output, so it covers direct + transitive JS deps — the Apache-2.0
@@ -183,9 +205,13 @@ export default defineConfig({
       },
     }),
   ],
-  // Compile-time constant: the WebUI version, shown in Settings → About so users
-  // can tell which build they're running. Also applied in tests (vitest reads it).
-  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  // Compile-time constants: the WebUI version + canonical repo URL, shown in
+  // Settings → About so users can tell which build they're running and jump to
+  // the source / changelog. Also applied in tests (vitest reads them).
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_REPO__: JSON.stringify(pkg.homepage),
+  },
   server: {
     port: 5173,
     // Proxy the daemon JSON API in dev so the SPA can call `/api/*` same-origin

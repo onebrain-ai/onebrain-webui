@@ -29,6 +29,8 @@ import {
   setHtmlAutorun,
   mediaAutoplay,
   setMediaAutoplay,
+  settingsCategory,
+  setSettingsCategory,
   ACCENTS,
 } from "./stores";
 
@@ -148,6 +150,15 @@ describe("mediaAutoplay / setMediaAutoplay", () => {
     expect(mediaAutoplay.value).toBe(true);
     setMediaAutoplay(false);
     expect(mediaAutoplay.value).toBe(false);
+  });
+});
+
+describe("settingsCategory / setSettingsCategory", () => {
+  it("updates the active-category signal", () => {
+    setSettingsCategory("vault");
+    expect(settingsCategory.value).toBe("vault");
+    setSettingsCategory("appearance");
+    expect(settingsCategory.value).toBe("appearance");
   });
 });
 
@@ -273,6 +284,32 @@ describe("stores — module re-init with localStorage stubs", () => {
     const mod = await import("./stores?nanwidth");
     // NaN stored → loadNum returns the dflt (280), then clamp keeps 280.
     expect(mod.sidebarWidth.value).toBe(280);
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("settingsCategory initializes from a valid stored value", async () => {
+    vi.resetModules();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => (k === "onebrain.settingsCat" ? "about" : null),
+      setItem: vi.fn(),
+    });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
+    const mod = await import("./stores?settingsabout");
+    expect(mod.settingsCategory.value).toBe("about");
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("settingsCategory falls back to 'appearance' for an invalid stored value", async () => {
+    vi.resetModules();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => (k === "onebrain.settingsCat" ? "bogus" : null),
+      setItem: vi.fn(),
+    });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
+    const mod = await import("./stores?settingsbad");
+    expect(mod.settingsCategory.value).toBe("appearance");
     vi.unstubAllGlobals();
     vi.resetModules();
   });
