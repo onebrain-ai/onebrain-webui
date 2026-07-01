@@ -2,7 +2,7 @@
 // TaskModalHost is driven by calling openTaskModal() which sets the module-
 // level `active` signal. We verify UI state and modal resolution.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/preact";
 
 import { TaskModalHost, openTaskModal } from "./task-modal";

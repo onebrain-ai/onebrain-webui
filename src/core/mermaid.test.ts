@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mermaidType, beautifulSupports, renderMermaidIn, addMermaidZoomControls } from "./mermaid";
 
 // Mock dynamic imports so tests run without a real bundler resolution.
@@ -142,6 +142,26 @@ describe("renderMermaidIn", () => {
     await renderMermaidIn(root);
     // Official engine must have been called because BM threw.
     expect(mermaid.run).toHaveBeenCalled();
+  });
+
+  it("falls back all candidates to official engine when the beautiful-mermaid chunk fails to load (outer catch)", async () => {
+    // Reset modules so bmMod cache is null, then make the import throw.
+    vi.resetModules();
+    vi.doMock("beautiful-mermaid", () => {
+      throw new Error("chunk load error");
+    });
+    // Re-import fresh copies so the module-level bmMod starts as null.
+    const { renderMermaidIn: freshRender } = await import("./mermaid");
+    const { default: mermaid } = await import("mermaid");
+    const root = makeRoot("flowchart TD\n  A-->B");
+    await freshRender(root);
+    // The BM import failed → all candidates pushed to fallback → official engine ran.
+    expect(mermaid.run).toHaveBeenCalled();
+    // Restore module mocks for subsequent tests.
+    vi.doMock("beautiful-mermaid", () => ({
+      renderMermaidSVG: vi.fn((_src: string) => '<svg><text>bm</text></svg>'),
+    }));
+    vi.resetModules();
   });
 
   it("clears data-processed before re-rendering (idempotent re-run)", async () => {

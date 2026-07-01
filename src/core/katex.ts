@@ -15,7 +15,7 @@ export async function renderMathIn(root: HTMLElement): Promise<void> {
   await import("katex/dist/katex.min.css");
 
   for (const n of nodes) {
-    const tex = n.textContent ?? "";
+    const tex = (/* v8 ignore next */ n.textContent ?? ""); // textContent never null on Element
     const displayMode = n.classList.contains("math-block");
     try {
       katex.render(tex, n, { displayMode, throwOnError: false });

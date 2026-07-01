@@ -1,5 +1,12 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import preact from "@preact/preset-vite";
+
+// Read the package version once at config load so it can be baked into the bundle
+// (see `define` below) — the UI surfaces it in Settings → About.
+const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
+  version: string;
+};
 
 // beautiful-mermaid hard-codes a Google Fonts `@import` into every diagram's
 // inline <style> (Inter + JetBrains Mono, no opt-out). The app is offline-first
@@ -54,6 +61,9 @@ const DAEMON = process.env.ONEBRAIN_DAEMON ?? "http://127.0.0.1:6789";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [preact(), stripBeautifulMermaidWebfonts()],
+  // Compile-time constant: the WebUI version, shown in Settings → About so users
+  // can tell which build they're running. Also applied in tests (vitest reads it).
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   server: {
     port: 5173,
     // Proxy the daemon JSON API in dev so the SPA can call `/api/*` same-origin
@@ -96,6 +106,14 @@ export default defineConfig({
         // with nothing to assert; testing it would only exercise the framework.
         "src/main.tsx",
       ],
+      // The suite is fully covered — gate at 100% so any new uncovered code (or a
+      // genuinely-unreachable branch missing its `/* v8 ignore */`) fails CI.
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
     },
   },
 });

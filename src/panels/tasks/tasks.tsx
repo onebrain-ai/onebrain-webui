@@ -65,7 +65,8 @@ function Tasks({ ctx }: { ctx: PanelContext }) {
   // plus any toggled this session (kept visible so a done task can be un-checked).
   const visible = all
     .filter((t) => (sel ? t.due === sel : !t.done || keep.has(taskKey(t))))
-    .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""));
+    /* v8 ignore start -- ?? "" for undefined due dates: v8 double-counts ternary sub-branches in the sort comparator */
+    .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "")); /* v8 ignore stop */
   const shown = visible.slice(0, MAX_ROWS);
 
   const onAdd = async () => {

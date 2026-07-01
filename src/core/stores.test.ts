@@ -186,6 +186,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       getItem: (k: string) => (k === "onebrain.density" ? "compact" : null),
       setItem: vi.fn(),
     });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?compact");
     expect(mod.density.value).toBe("compact");
     vi.unstubAllGlobals();
@@ -198,6 +199,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       getItem: (k: string) => (k === "onebrain.theme" ? "light" : null),
       setItem: vi.fn(),
     });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?light");
     expect(mod.theme.value).toBe("light");
     vi.unstubAllGlobals();
@@ -210,6 +212,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       getItem: (k: string) => (k === "onebrain.accent" ? "invalid-accent" : null),
       setItem: vi.fn(),
     });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?badaccent");
     expect(mod.accent.value).toBe("cyan");
     vi.unstubAllGlobals();
@@ -222,6 +225,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       getItem: (k: string) => (k === "onebrain.accent" ? "violet" : null),
       setItem: vi.fn(),
     });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?violet");
     expect(mod.accent.value).toBe("violet");
     vi.unstubAllGlobals();
@@ -235,6 +239,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       setItem: vi.fn(),
     });
     // Module initializes without throwing; signals get their defaults.
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?throws");
     expect(mod.density.value).toBe("comfortable");
     expect(mod.theme.value).toBe("dark");
@@ -249,6 +254,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       getItem: () => null,
       setItem: () => { throw new DOMException("SecurityError"); },
     });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?setthrows");
     // Calling a setter must not throw even when setItem is broken.
     expect(() => mod.setChatOpen(true)).not.toThrow();
@@ -263,6 +269,7 @@ describe("stores — module re-init with localStorage stubs", () => {
       getItem: (k: string) => (k === "onebrain.sidebarWidth" ? "NaN" : null),
       setItem: vi.fn(),
     });
+    // @ts-expect-error Vite resolves the ?query suffix; tsc cannot
     const mod = await import("./stores?nanwidth");
     // NaN stored → loadNum returns the dflt (280), then clamp keeps 280.
     expect(mod.sidebarWidth.value).toBe(280);

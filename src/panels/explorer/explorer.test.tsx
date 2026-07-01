@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/preact";
-import { ExplorerTree, explorerPanel } from "./explorer";
+import { ExplorerTree, explorerPanel, splitMatch, fileType } from "./explorer";
 import { vaultTree, vaultError, previewPath, initVault } from "../bus";
 import type { TreeNode } from "../../core/tree";
 
@@ -482,5 +482,23 @@ describe("Explorer wrapper component (line 245)", () => {
     expect(screen.getByText("Vault · Explorer")).toBeTruthy();
     // It also renders the ExplorerTree
     expect(screen.getByPlaceholderText("filter files…")).toBeTruthy();
+  });
+});
+
+describe("splitMatch — empty query guard (line 62)", () => {
+  it("returns null immediately when the query string is empty (line 62 !q branch)", () => {
+    // splitMatch is only called in the filter view where q is always non-empty,
+    // but the guard exists as a defensive early-return. Test it directly.
+    expect(splitMatch("anything", "")).toBeNull();
+    expect(splitMatch("", "")).toBeNull();
+  });
+});
+
+describe("fileType — dir branch (line 14)", () => {
+  it("returns 'dir' for a dir-kind node (defensive guard, never reached by the component but unit-tested here)", () => {
+    // The component only passes kind:'file' nodes to fileType, but the function
+    // has a guard for dirs. Export allows direct unit coverage.
+    const result = fileType({ kind: "dir", name: "my-folder", path: "my-folder", children: [] });
+    expect(result).toBe("dir");
   });
 });

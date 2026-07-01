@@ -33,17 +33,17 @@ const _dueCount = computed(() => {
 });
 const _openCount = computed(() => _tasks.value.filter((t: any) => !t.done).length);
 const _doneCount = computed(() => _tasks.value.filter((t: any) => t.done).length);
-const _toggleTask = vi.fn(async () => {});
-const _editTask = vi.fn(async () => true);
-const _deleteTask = vi.fn(async () => true);
-const _addTask = vi.fn(async () => true);
+const _toggleTask = vi.fn(async (..._args: any[]) => {});
+const _editTask = vi.fn(async (..._args: any[]) => true);
+const _deleteTask = vi.fn(async (..._args: any[]) => true);
+const _addTask = vi.fn(async (..._args: any[]) => true);
 const _todayLocal = vi.fn(() => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 });
 const _taskKey = vi.fn((t: any) => `${t.file}:${t.line}`);
 const _taskDescription = vi.fn((text: string) => text);
-const _taskPriority = vi.fn(() => "none" as const);
+const _taskPriority = vi.fn((_text: string) => "none" as const);
 
 vi.mock("../tasks-store", () => ({
   // Export the pre-created signals by returning them from the factory.
@@ -76,18 +76,20 @@ vi.mock("../bus", async (orig) => ({
   },
 }));
 
-const _confirmModal = vi.fn(async () => true);
+const _confirmModal = vi.fn(async (..._args: any[]) => true);
 vi.mock("../../ui/Modal", async (orig) => ({
   ...(await orig<typeof import("../../ui/Modal")>()),
   confirmModal: (...args: any[]) => _confirmModal(...args),
 }));
 
-const _openTaskModal = vi.fn(async () => ({
-  text: "New task",
-  due: "2026-07-01",
-  priority: "none" as const,
-  file: "01-projects/note.md",
-}));
+const _openTaskModal = vi.fn(
+  async (..._args: any[]): Promise<{ text: string; due: string | null; priority: "none" | "high" | "medium" | "low"; file?: string } | null> => ({
+    text: "New task",
+    due: "2026-07-01",
+    priority: "none" as const,
+    file: "01-projects/note.md",
+  }),
+);
 vi.mock("./task-modal", () => ({
   openTaskModal: (...args: any[]) => _openTaskModal(...args),
 }));
@@ -476,6 +478,19 @@ describe("Tasks panel — branch coverage completions", () => {
     expect(_openTaskModal).toHaveBeenCalledWith(
       expect.objectContaining({ draft: expect.objectContaining({ file: "" }) }),
     );
+  });
+
+  it("tasks NOT matching selectedDate are filtered out (line 67 t.due !== sel branch)", () => {
+    // When sel is set, only tasks with t.due === sel are shown. A task with a different
+    // due date exercises the `t.due === sel` false branch in the filter predicate.
+    _selectedDate.value = "2026-07-15";
+    _tasks.value = [
+      makeTask({ line: 1, text: "Match", due: "2026-07-15" }),
+      makeTask({ line: 2, text: "No match", due: "2026-07-20" }),
+    ];
+    render(<Tasks ctx={ctx} />);
+    expect(screen.getByText("Match")).toBeTruthy();
+    expect(screen.queryByText("No match")).toBeNull();
   });
 
   it("calendar Enter key toggles the selected date (line 140 keyboard branch)", () => {

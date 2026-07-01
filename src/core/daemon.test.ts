@@ -195,7 +195,7 @@ describe("HttpDaemonClient.search()", () => {
 
   it("builds the correct URL with q and mode, returns hits", async () => {
     const hits = [{ path: "a.md", score: 0.9, title: "A", snippet: "snip" }];
-    const f = vi.fn(async () => new Response(JSON.stringify({ hits }), { status: 200 }));
+    const f: FetchMock = vi.fn(async () => new Response(JSON.stringify({ hits }), { status: 200 })) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient("tok");
     const result = await c.search("hello", "lex");
@@ -231,7 +231,7 @@ describe("HttpDaemonClient.fileBlob()", () => {
   beforeEach(() => vi.restoreAllMocks());
 
   it("returns the response blob on success", async () => {
-    const f = vi.fn(async () => new Response(new Blob(["data"]), { status: 200 }));
+    const f: FetchMock = vi.fn(async () => new Response(new Blob(["data"]), { status: 200 })) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient("tok");
     const blob = await c.fileBlob("img.png");
@@ -322,7 +322,7 @@ describe("HttpDaemonClient — null-token branches in send/uploadFile/search/cha
   });
 
   it("search(): omits X-OneBrain-Token header when token is null", async () => {
-    const f = vi.fn(async () => new Response(JSON.stringify({ hits: [] }), { status: 200 }));
+    const f: FetchMock = vi.fn(async () => new Response(JSON.stringify({ hits: [] }), { status: 200 })) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient(null);
     await c.search("q", "lex");
@@ -331,7 +331,7 @@ describe("HttpDaemonClient — null-token branches in send/uploadFile/search/cha
   });
 
   it("chat(): omits X-OneBrain-Token header when token is null", async () => {
-    const f = vi.fn(async () => streamResponse(['event: done\ndata: {"result":""}\n\n']));
+    const f: FetchMock = vi.fn(async () => streamResponse(['event: done\ndata: {"result":""}\n\n'])) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient(null);
     await c.chat({ message: "hi" }, () => {});
@@ -340,7 +340,7 @@ describe("HttpDaemonClient — null-token branches in send/uploadFile/search/cha
   });
 
   it("fileBlob(): omits X-OneBrain-Token header when token is null", async () => {
-    const f = vi.fn(async () => new Response(new Blob(["data"]), { status: 200 }));
+    const f: FetchMock = vi.fn(async () => new Response(new Blob(["data"]), { status: 200 })) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient(null);
     await c.fileBlob("img.png");
@@ -428,7 +428,7 @@ describe("HttpDaemonClient.chat() — SSE streaming", () => {
   });
 
   it("sends the auth token in the request header", async () => {
-    const f = vi.fn(async () => streamResponse(['event: done\ndata: {"result":""}\n\n']));
+    const f: FetchMock = vi.fn(async () => streamResponse(['event: done\ndata: {"result":""}\n\n'])) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient("secret");
     await c.chat({ message: "ping" }, () => {});
@@ -438,7 +438,7 @@ describe("HttpDaemonClient.chat() — SSE streaming", () => {
   });
 
   it("forwards sessionId and model in the POST body", async () => {
-    const f = vi.fn(async () => streamResponse(['event: done\ndata: {"result":""}\n\n']));
+    const f: FetchMock = vi.fn(async () => streamResponse(['event: done\ndata: {"result":""}\n\n'])) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient("tok");
     await c.chat({ message: "go", sessionId: "s-1", model: "opus" }, () => {});

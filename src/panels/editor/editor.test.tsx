@@ -13,22 +13,21 @@ import * as richfileModule from "../../core/richfile";
 //   (first=true, so only lastW/H are set, no dispatch)
 // - A second manual fire simulates a real resize, covering lines 338-343.
 if (typeof globalThis.ResizeObserver === "undefined") {
-  type ROCallback = (entries: { contentRect: { width: number; height: number } }[]) => void;
   globalThis.ResizeObserver = class ResizeObserver {
-    private cb: ROCallback;
-    constructor(cb: ROCallback) {
+    private cb: ResizeObserverCallback;
+    constructor(cb: ResizeObserverCallback) {
       this.cb = cb;
     }
     observe(_el: Element) {
       // 1st call: first=true, sets lastW/H=200/100, returns (line 340 `if (first) return`)
-      this.cb([{ contentRect: { width: 200, height: 100 } }]);
+      this.cb([{ contentRect: { width: 200, height: 100 } }] as unknown as ResizeObserverEntry[], this);
       // 2nd call: real resize (|300-200|=100 > 3) → covers lines 338-344 (setTimeout branch)
-      this.cb([{ contentRect: { width: 300, height: 150 } }]);
+      this.cb([{ contentRect: { width: 300, height: 150 } }] as unknown as ResizeObserverEntry[], this);
       // 3rd call: sub-pixel jitter (|301-300|=1 < 3 AND |151-150|=1 < 3) → early return
       // This covers line 337 binary-expr 3rd arm AND line 332 false branch
-      this.cb([{ contentRect: { width: 301, height: 151 } }]);
+      this.cb([{ contentRect: { width: 301, height: 151 } }] as unknown as ResizeObserverEntry[], this);
       // 4th call: `!r` branch — pass empty entries to cover line 332 true branch
-      this.cb([]);
+      this.cb([], this);
     }
     unobserve() {}
     disconnect() {}
@@ -367,7 +366,7 @@ describe("editorPanel — markdown reading view interactions", () => {
   it("clicking a [data-wikilink] with a resolved target calls openFile", async () => {
     previewPath.value = "a.md";
     // renderFile produces wikilink anchors — inject one manually into the reading div
-    const { container } = render(<editorPanel.Component ctx={ctx} />);
+    render(<editorPanel.Component ctx={ctx} />);
     await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
     const reading = screen.getByTestId("ed-reading");
     // inject a fake wikilink anchor into the reading host
@@ -985,6 +984,35 @@ describe("editorPanel — wikilink navigation", () => {
       (HTMLElement.prototype as any).scrollIntoView = origScrollIntoView;
     }
   });
+
+  it("opens a heading-less [[note]] link without arming pendingHeading", async () => {
+    const vaultDaemon = {
+      tree: vi.fn(async () => ({
+        entries: [{ path: "target.md", name: "target.md", kind: "file" as const }],
+      })),
+    } as any;
+    vaultTree.value = null;
+    await initVault(vaultDaemon);
+    try {
+      // No "#heading" → data-heading is absent, exercising the getAttribute() null arm.
+      daemon.file.mockResolvedValueOnce({
+        path: "a.md",
+        content: "---\ntags: []\n---\n[[target]]",
+        rev: "1",
+      });
+      previewPath.value = "a.md";
+      render(<editorPanel.Component ctx={ctx} />);
+      const link = await waitFor(() => {
+        const el = screen.getByTestId("ed-reading").querySelector<HTMLElement>("[data-wikilink]");
+        if (!el) throw new Error("wikilink not rendered yet");
+        return el;
+      });
+      fireEvent.click(link);
+      expect(ctx.openFile).toHaveBeenCalledWith("target.md");
+    } finally {
+      vaultTree.value = null;
+    }
+  });
 });
 
 describe("editorPanel — binary catch path (line 294)", () => {
@@ -1020,10 +1048,8 @@ describe("editorPanel — onProps handler (lines 467-469)", () => {
     previewPath.value = "a.md";
     render(<editorPanel.Component ctx={ctx} />);
     await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
-    // Properties component is always rendered for md notes — find the title input
-    // (the test daemon returns tags:[x] so we get a props panel)
-    const titleInput = screen.queryByDisplayValue("") || document.querySelector(".props-val");
-    // Just verify the Properties panel was mounted (onChange is covered by Properties tests)
+    // Properties component is always rendered for md notes; just verify it was mounted
+    // (onChange is covered by Properties tests)
     expect(document.querySelector(".props")).toBeTruthy();
   });
 });
@@ -1064,7 +1090,6 @@ describe("editorPanel — reading-view image handling (lines 406,411-416,422,424
     await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
     // The rendered HTML will include an img with data-vault-embed;
     // since the vault isn't loaded, resolveAsset returns null → img.style.display = 'none'
-    const imgEl = document.querySelector<HTMLImageElement>("img[data-vault-embed]");
     // The effect may have already processed and removed the attribute; check the display
     // style or absence of the attribute (whichever the effect leaves behind)
     // This exercises lines 411-416
@@ -1389,5 +1414,54 @@ describe("editorPanel — wikilink with heading (line 503)", () => {
     );
     // The tag click fires openSearch("#work") — searchQuery.value should be "#work"
     await waitFor(() => expect(searchQuery.value).toBe("#work"));
+  });
+});
+
+describe("editorPanel — scrollToHeading false branch (heading not in DOM)", () => {
+  it("same-note [[#heading]] click with missing heading element is a no-op (if(t) false)", async () => {
+    // CSS.escape stub so scrollToHeading doesn't throw
+    if (!globalThis.CSS) (globalThis as any).CSS = {};
+    const origCSSEscape = (globalThis as any).CSS.escape;
+    (globalThis as any).CSS.escape = (s: string) => s.replace(/[^\w-]/g, "\\$&");
+    try {
+      previewPath.value = "a.md";
+      render(<editorPanel.Component ctx={ctx} />);
+      await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+      const reading = screen.getByTestId("ed-reading");
+      // note="" heading="nonexistent" → scrollToHeading("nonexistent") → querySelector returns null → if(t) false
+      reading.innerHTML = '<a data-wikilink="" data-heading="nonexistent">link</a>';
+      fireEvent.click(reading.querySelector("[data-wikilink]")!);
+      // No crash, openFile not called — the false branch of if(t) was taken
+      expect(ctx.openFile).not.toHaveBeenCalled();
+    } finally {
+      if (origCSSEscape !== undefined) (globalThis as any).CSS.escape = origCSSEscape;
+    }
+  });
+});
+
+describe("editorPanel — ResizeObserver setTimeout callback (line 343)", () => {
+  it("minimap reconfigure fires after the 200ms debounce settles on a real resize", async () => {
+    // The ResizeObserver stub fires synchronously in observe(): 1st call sets lastW/H
+    // (first=true → returns early), 2nd call schedules setTimeout(..., 200) covering
+    // lines 341-344 setup. Line 343 is INSIDE that timeout — we advance fake timers
+    // past 200ms while a source file is mounted so sourceView.current is set.
+    // We must install fake timers BEFORE the file loads so setTimeout is captured.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      previewPath.value = "util.ts";
+      daemon.file.mockResolvedValue({ path: "util.ts", content: "const x = 1;", rev: "1" });
+      render(<editorPanel.Component ctx={ctx} />);
+      // Wait for the source editor to mount (uses real async resolution via shouldAdvanceTime)
+      await waitFor(() => expect(document.querySelector("[data-testid='ed-source']")).toBeTruthy(), {
+        timeout: 5000,
+      });
+      // Advance past the 200ms debounce — fires the setTimeout callback at line 343
+      vi.advanceTimersByTime(250);
+      // No crash = the callback ran (sourceView.current?.dispatch is a no-op in jsdom
+      // since the minimap is a stub, but the call itself is covered)
+      expect(document.querySelector("[data-testid='ed-source']")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

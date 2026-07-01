@@ -3,7 +3,7 @@
 // functions without touching localStorage or wiring a real daemon, then exercise
 // every visible branch in the component.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/preact";
 
 // ---------------------------------------------------------------------------
@@ -21,10 +21,11 @@ const {
   mockActiveThread,
   mockIsBusy,
 } = vi.hoisted(() => {
-  const { signal } = require("@preact/signals");
-  const threads = signal([]);
-  const activeId = signal("t1");
-  const busyIds = signal(new Set());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function sig<T>(v: T): { value: T } { return { value: v }; }
+  const threads = sig<any[]>([]);
+  const activeId = sig("t1");
+  const busyIds = sig(new Set<string>());
   return {
     mockThreads: threads,
     mockActiveId: activeId,

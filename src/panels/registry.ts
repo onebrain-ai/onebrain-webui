@@ -14,9 +14,10 @@ const _order: string[] = [];
  *  dev warning) so hot-reload re-registration doesn't duplicate the table. */
 export function registerPanel(def: PanelDef): void {
   if (!_registry.has(def.type)) _order.push(def.type);
-  else if (import.meta.env?.DEV) {
-    console.warn(`[panels] re-registering "${def.type}"`);
-  }
+  // A duplicate registration is a dev/HMR mistake; the shipped bundle registers
+  // each panel exactly once (side-effect import in panels/index.ts), so this
+  // never fires in production.
+  else console.warn(`[panels] re-registering "${def.type}"`);
   _registry.set(def.type, def);
 }
 

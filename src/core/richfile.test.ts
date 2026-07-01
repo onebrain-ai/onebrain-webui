@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { isRichFile, richLabel, renderRichFile } from "./richfile";
 import type { DaemonClient } from "./daemon";
+import type { PptxViewer } from "@aiden0z/pptx-renderer";
 
 // ── module-level mocks ────────────────────────────────────────────────────────
 
@@ -278,7 +279,7 @@ describe("renderRichFile — docx (mammoth)", () => {
 
   it("shows 'empty document' message when mammoth returns empty string", async () => {
     const mammoth = await import("mammoth");
-    vi.mocked(mammoth.convertToHtml).mockResolvedValueOnce({ value: "" });
+    vi.mocked(mammoth.convertToHtml).mockResolvedValueOnce({ value: "", messages: [] });
     const host = document.createElement("div");
     await renderRichFile("empty.docx", host, makeDaemon());
     expect(host.innerHTML).toContain("empty");
@@ -925,11 +926,11 @@ describe("renderRichFile — pptx applyBundledFallback branches", () => {
   it("appends var(--font-sans) fallback for non-embedded non-mono font", async () => {
     const { PptxViewer } = await import("@aiden0z/pptx-renderer");
     // Have the renderer put a styled element in stage before we call applyBundledFallback
-    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement) => {
+    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement, _opts?) => {
       const span = document.createElement("span");
       span.style.fontFamily = "CustomFont";
       stage.appendChild(span);
-      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() };
+      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() } as unknown as PptxViewer;
     });
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -942,11 +943,11 @@ describe("renderRichFile — pptx applyBundledFallback branches", () => {
 
   it("appends var(--font-mono) fallback for a monospace font name", async () => {
     const { PptxViewer } = await import("@aiden0z/pptx-renderer");
-    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement) => {
+    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement, _opts?) => {
       const span = document.createElement("span");
       span.style.fontFamily = "Courier New";
       stage.appendChild(span);
-      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() };
+      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() } as unknown as PptxViewer;
     });
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -959,11 +960,11 @@ describe("renderRichFile — pptx applyBundledFallback branches", () => {
 
   it("skips elements that already have var(--font fallback)", async () => {
     const { PptxViewer } = await import("@aiden0z/pptx-renderer");
-    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement) => {
+    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement, _opts?) => {
       const span = document.createElement("span");
       span.style.fontFamily = "MyFont, var(--font-sans)";
       stage.appendChild(span);
-      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() };
+      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() } as unknown as PptxViewer;
     });
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -977,11 +978,11 @@ describe("renderRichFile — pptx applyBundledFallback branches", () => {
 
   it("skips elements with empty fontFamily", async () => {
     const { PptxViewer } = await import("@aiden0z/pptx-renderer");
-    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement) => {
+    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement, _opts?) => {
       const span = document.createElement("span");
       // Set the attribute but not inline style — querySelector('[style*=font-family]') won't match
       stage.appendChild(span);
-      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() };
+      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() } as unknown as PptxViewer;
     });
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -1011,11 +1012,11 @@ describe("renderRichFile — pptx applyBundledFallback branches", () => {
       "ppt/fonts/Emb.fntdata": jszipEntry("CCCC=="),
     };
     const { PptxViewer } = await import("@aiden0z/pptx-renderer");
-    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement) => {
+    vi.mocked(PptxViewer.open).mockImplementationOnce(async (_buf, stage: HTMLElement, _opts?) => {
       const span = document.createElement("span");
       span.style.fontFamily = "EmbeddedFont";
       stage.appendChild(span);
-      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() };
+      return { slideCount: 1, renderSlide: vi.fn(async () => {}), destroy: vi.fn() } as unknown as PptxViewer;
     });
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -1040,7 +1041,7 @@ describe("renderRichFile — pptx slide navigation", () => {
       slideCount: 5,
       renderSlide,
       destroy: vi.fn(),
-    });
+    } as unknown as PptxViewer);
     const { mountViewport } = await import("./richviewport");
     let capturedNav: { prev(): void; next(): void; label(): string } | undefined;
     vi.mocked(mountViewport).mockImplementationOnce((_frame, _content, opts) => {
@@ -1071,7 +1072,7 @@ describe("renderRichFile — pptx slide navigation", () => {
       slideCount: 3,
       renderSlide,
       destroy: vi.fn(),
-    });
+    } as unknown as PptxViewer);
     const { mountViewport } = await import("./richviewport");
     let capturedNav: { prev(): void; next(): void; label(): string } | undefined;
     vi.mocked(mountViewport).mockImplementationOnce((_frame, _content, opts) => {
@@ -1097,7 +1098,7 @@ describe("renderRichFile — pptx slide navigation", () => {
       slideCount: 1,
       renderSlide: vi.fn(async () => {}),
       destroy: viewerDestroy,
-    });
+    } as unknown as PptxViewer);
     const { mountViewport } = await import("./richviewport");
     vi.mocked(mountViewport).mockImplementationOnce(() => ({ destroy: handleDestroy, refreshLabel: vi.fn() }));
     const host = document.createElement("div");

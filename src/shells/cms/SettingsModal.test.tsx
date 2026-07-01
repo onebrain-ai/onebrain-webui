@@ -33,6 +33,13 @@ describe("SettingsModal", () => {
     expect(screen.getByText(/read-only/)).toBeTruthy();
   });
 
+  it("shows the WebUI version in the About section", () => {
+    render(<SettingsModal onClose={() => {}} />);
+    expect(screen.getByText("About")).toBeTruthy();
+    // Version is baked in from package.json via Vite `define` (__APP_VERSION__).
+    expect(screen.getByTestId("st-version").textContent).toMatch(/^v\d+\.\d+\.\d+/);
+  });
+
   it("theme toggle switches light/dark and applies data-theme", () => {
     render(<SettingsModal onClose={() => {}} />);
     fireEvent.click(screen.getByText("Light"));

@@ -208,6 +208,35 @@ describe("newThread() / selectThread() / isBusy()", () => {
   });
 });
 
+describe("send() — update() ternary false arm (non-target thread kept unchanged)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it("leaves a non-active thread's messages untouched when send() targets another thread", async () => {
+    // With two threads, update(id, fn) maps over both; the non-matching thread
+    // hits the ternary false arm `:t` (line 100 in chat-store.ts).
+    const { threads, activeId, newThread, send } = await import("./chat-store");
+    // Create a second thread; the first is already there.
+    newThread();
+    const firstId = threads.value[1].id; // the original thread (index 1 after prepend)
+    // Switch active to the NEW thread (index 0).
+    const newId = threads.value[0].id;
+    activeId.value = newId;
+
+    const events: CE[] = [{ type: "done", result: "ok", sessionId: null, isError: false }];
+    await send(daemonWith(events), "hello");
+
+    // The first (non-active) thread should be untouched.
+    const firstThread = threads.value.find((t) => t.id === firstId)!;
+    expect(firstThread.messages.length).toBe(0);
+    // The active thread received the messages.
+    const activeThread = threads.value.find((t) => t.id === newId)!;
+    expect(activeThread.messages.length).toBeGreaterThan(0);
+  });
+});
+
 describe("send() — patchLast guard (empty messages)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -242,7 +271,7 @@ describe("send() — patchLast guard (empty messages)", () => {
     }
 
     // Now fire a done event — patchLast sees empty messages and returns early.
-    capturedOnEvent?.({ type: "done", result: "ok", sessionId: null, isError: false });
+    (capturedOnEvent as ((e: CE) => void) | null)?.({ type: "done", result: "ok", sessionId: null, isError: false });
     await sendPromise;
 
     // Thread should still have 0 messages (patchLast was a no-op).

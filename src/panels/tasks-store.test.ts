@@ -315,6 +315,28 @@ describe("inflight guard — duplicate concurrent calls are rejected", () => {
   });
 });
 
+describe("setLocalDone — ternary false arm (non-matching task kept unchanged)", () => {
+  beforeEach(() => {
+    tasks.value = [];
+  });
+
+  it("leaves unrelated tasks unchanged while flipping the target task", async () => {
+    // tasks.value has TWO entries; only one matches. The map's ternary :t branch
+    // (line 94) is exercised on the non-matching task.
+    const target = task({ file: "a.md", line: 1 });
+    const other = task({ file: "b.md", line: 2, text: "other task" });
+    tasks.value = [target, other];
+    const daemon = {
+      file: vi.fn(async () => ({ path: "a.md", content: "- [ ] task one 📅 2026-06-01", rev: "1" })),
+      saveFile: vi.fn(async () => ({ path: "a.md", rev: "2" })),
+      tasks: vi.fn(async () => []),
+    } as any;
+    await toggleTask(daemon, target);
+    // The unrelated task is untouched (its done status unchanged).
+    expect(tasks.value.find((t) => t.file === "b.md")?.done).toBe(false);
+  });
+});
+
 describe("mutateLine drift scenarios", () => {
   beforeEach(() => {
     tasks.value = [];

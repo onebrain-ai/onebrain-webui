@@ -3,7 +3,7 @@
 // getBoundingClientRect, requestAnimationFrame, and the fullscreen API so tests
 // run reliably in jsdom without a real layout engine.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { mountViewport } from "./richviewport";
 
 // CSS side-effect import — no content needed in tests

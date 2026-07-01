@@ -274,6 +274,26 @@ describe("allFiles", () => {
   });
 });
 
+describe("resolveWikilink — suffix-match loop branch (longer candidate skipped)", () => {
+  it("keeps the shorter match when the loop encounters a longer one second", async () => {
+    // Two notes both end with '/foo/note'. Map iteration is insertion order;
+    // the shorter path is inserted first so best is set on the first pass.
+    // On the second pass !best is false AND path.length < best.length is false
+    // → the if-body is skipped (exercises branch 17[1] and binary-expr 18[1]).
+    await initVault({
+      tree: async () => ({
+        root: "",
+        entries: [
+          { path: "01-projects/foo/note.md", name: "note.md", kind: "file" as const },
+          { path: "01-projects/longer-folder/foo/note.md", name: "note.md", kind: "file" as const },
+        ],
+      }),
+    } as any);
+    // Both match suffix "/foo/note"; shorter path should be returned.
+    expect(resolveWikilink("foo/note")).toBe("01-projects/foo/note.md");
+  });
+});
+
 describe("nav history (back/forward)", () => {
   beforeEach(() => {
     navHistory.value = [];

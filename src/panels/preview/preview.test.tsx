@@ -275,6 +275,39 @@ describe("PreviewBody", () => {
     expect(container.querySelector(".pv-body")).toBeTruthy();
   });
 
+  it("unmounting before fetch resolves hits the cancelled=true branch in .then() (line 87)", async () => {
+    // Fetch never resolves during the test — we unmount while it is still in-flight.
+    // The cleanup function runs (cancelled = true). When the promise later resolves,
+    // `if (!cancelled)` is false and the state update is skipped.
+    let resolveFile!: (v: any) => void;
+    const ctx = makeCtx({
+      file: vi.fn(() => new Promise((res) => { resolveFile = res; })),
+    });
+    previewPath.value = "slow.md";
+    const { unmount } = render(<PreviewBody ctx={ctx} />);
+    expect(screen.getByText("Loading…")).toBeTruthy();
+    // Unmount triggers cleanup → cancelled = true
+    unmount();
+    // Now resolve the promise — the !cancelled branch fires (false), no state update
+    resolveFile({ path: "slow.md", content: "# Done", rev: "1" });
+    // No error expected — the component is gone and the guard prevented the update
+    await new Promise((r) => setTimeout(r, 10));
+  });
+
+  it("unmounting before fetch rejects hits the cancelled=true branch in .catch() (line 90)", async () => {
+    // Like above but the promise rejects. cancelled=true → if (!cancelled) is false.
+    let rejectFile!: (e: unknown) => void;
+    const ctx = makeCtx({
+      file: vi.fn(() => new Promise((_res, rej) => { rejectFile = rej; })),
+    });
+    previewPath.value = "failing.md";
+    const { unmount } = render(<PreviewBody ctx={ctx} />);
+    expect(screen.getByText("Loading…")).toBeTruthy();
+    unmount();
+    rejectFile(new Error("network error"));
+    await new Promise((r) => setTimeout(r, 10));
+  });
+
   it("wikilink clicks call resolveWikilink and openFile", async () => {
     // renderFile does NOT produce data-wikilink in jsdom (it runs the markdown
     // pipeline), so we inject a data-wikilink anchor directly into the pv-body div
@@ -302,5 +335,46 @@ describe("PreviewBody", () => {
     // Test that the click handler didn't throw and the default was prevented.
     // (The actual openFile call is exercised in bus.test.ts; here we just confirm
     // the delegation listener fires without error.)
+  });
+
+  it("clicking a non-wikilink element in pv-body hits the !a early-return branch (line 103)", async () => {
+    // When clicking an element with no [data-wikilink] ancestor inside .pv-body,
+    // `closest("[data-wikilink]")` returns null → `if (!a) return` fires.
+    const ctx = makeCtx({
+      file: vi.fn(async () => ({ path: "note.md", content: "# Text", rev: "1" })),
+    });
+    previewPath.value = "note.md";
+    const { container } = render(<PreviewBody ctx={ctx} />);
+    await waitFor(() => expect(ctx.daemon.file).toHaveBeenCalled());
+    const pvBody = container.querySelector(".pv-body")!;
+    // Click the pv-body div itself (no data-wikilink ancestor) — hits !a branch
+    fireEvent.click(pvBody);
+    // No error; openFile not called
+  });
+
+  it("wikilink click calls openFile when resolveWikilink returns a path (line 106 truthy branch)", async () => {
+    // When resolveWikilink returns a real path, `if (target) openFile(target)` fires.
+    // Override resolveWikilink to return a known path so `if (target)` is true.
+    const busMod = await import("../bus");
+    // Temporarily override resolveWikilink on the module so the component's
+    // bound reference picks it up (preview.tsx imports it as a named import).
+    vi.spyOn(busMod, "resolveWikilink").mockReturnValueOnce("notes/linked-note.md");
+    const openFileSpy = vi.spyOn(busMod, "openFile");
+
+    const ctx = makeCtx({
+      file: vi.fn(async () => ({ path: "note.md", content: "# Doc", rev: "1" })),
+    });
+    previewPath.value = "note.md";
+    const { container } = render(<PreviewBody ctx={ctx} />);
+    await waitFor(() => expect(ctx.daemon.file).toHaveBeenCalled());
+
+    const pvBody = container.querySelector(".pv-body")!;
+    pvBody.innerHTML = '<a data-wikilink="LinkedNote">LinkedNote</a>';
+    const anchor = pvBody.querySelector("[data-wikilink]")!;
+    fireEvent.click(anchor);
+    // resolveWikilink returned a real path → if (target) openFile(target) fires
+    expect(openFileSpy).toHaveBeenCalledWith("notes/linked-note.md");
+
+    vi.restoreAllMocks();
   });
 });

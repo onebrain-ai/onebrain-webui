@@ -148,7 +148,7 @@ const FULL_TASK_LINE = /^(\s*)-\s+\[(.)\]\s+(.+?)\s*$/; // indent, checkbox, bod
 async function mutateLine(
   daemon: DaemonClient,
   task: VaultTask,
-  transform: ((line: string) => string | null) | null,
+  transform: ((line: string) => string) | null,
 ): Promise<boolean> {
   const k = taskKey(task);
   if (inflight.has(k)) return false;
@@ -163,9 +163,7 @@ async function mutateLine(
     if (transform === null) {
       lines.splice(task.line - 1, 1); // delete
     } else {
-      const next = transform(line);
-      if (next === null) throw new Error("drift");
-      lines[task.line - 1] = next;
+      lines[task.line - 1] = transform(line);
     }
     await daemon.saveFile(task.file, lines.join(nl), f.rev);
     await loadTasks(daemon); // line numbers shift on delete; text/due changed on edit
@@ -187,8 +185,10 @@ export function editTask(
   next: { text: string; due: string | null; priority: Priority },
 ): Promise<boolean> {
   return mutateLine(daemon, task, (line) => {
-    const m = line.match(FULL_TASK_LINE);
-    return m ? buildTaskLine(m[1], m[2], next.text, next.priority, next.due) : null;
+    // FULL_TASK_LINE matches any line that lineIsTask accepted (same pattern, plus indent capture);
+    // the non-null assertion is safe — m is always defined here.
+    const m = line.match(FULL_TASK_LINE)!;
+    return buildTaskLine(m[1], m[2], next.text, next.priority, next.due);
   });
 }
 

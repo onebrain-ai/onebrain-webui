@@ -4,15 +4,18 @@
 // (the test fails to compile if the shapes diverge, catching regressions).
 
 import { describe, it, expect } from "vitest";
-import type { PanelPlacement, PanelContext, PanelDef } from "./contract";
+import type { PanelContext, PanelDef } from "./contract";
 
 describe("contract — shape smoke-test", () => {
-  it("PanelPlacement satisfies its four numeric fields", () => {
-    const p: PanelPlacement = { t: 0, y: 1, r: 5, s: 0.005 };
-    expect(p.t).toBe(0);
-    expect(p.y).toBe(1);
-    expect(p.r).toBe(5);
-    expect(p.s).toBe(0.005);
+  it("PanelDef carries a numeric width field", () => {
+    const def: PanelDef = {
+      type: "explorer",
+      name: "File Explorer",
+      width: 280,
+      Component: () => null,
+    };
+    expect(def.width).toBe(280);
+    expect(def.name).toBe("File Explorer");
   });
 
   it("PanelContext carries daemon, openFile, and addPanel", () => {
@@ -30,7 +33,6 @@ describe("contract — shape smoke-test", () => {
       type: "test",
       name: "Test Panel",
       width: 400,
-      placement: { t: 0, y: 0, r: 5, s: 0.005 },
       Component: () => null,
     };
     expect(def.type).toBe("test");

@@ -24,7 +24,7 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 function slugifyPath(realPath: string): string {
   const segs = realPath.split("/");
-  const file = segs.pop() ?? "";
+  const file = (/* v8 ignore next */ segs.pop() ?? ""); // split always returns ≥1 element; ?? "" is unreachable
   const dot = file.lastIndexOf(".");
   const stem = dot > 0 ? file.slice(0, dot) : file;
   const ext = dot > 0 ? file.slice(dot) : "";
@@ -49,14 +49,15 @@ function searchVault(q: string, files: string[]): SearchHit[] {
   const term = q.toLowerCase();
   const out: SearchHit[] = [];
   for (const path of files) {
-    const name = path.split("/").pop() ?? path;
+    const name = (/* v8 ignore next */ path.split("/").pop() ?? path); // split always returns ≥1 element; ?? path is unreachable
     const lpath = path.toLowerCase();
     const nameIdx = name.toLowerCase().indexOf(term);
     const pathIdx = lpath.indexOf(term);
     if (nameIdx < 0 && pathIdx < 0) continue;
     let score = 0.55;
     if (nameIdx >= 0) score += 0.3;
-    if (pathIdx >= 0) score += Math.min(0.3, (lpath.split(term).length - 1) * 0.1);
+    /* v8 ignore start -- pathIdx >= 0 is always true here: line 56 already skips entries where both indices are < 0 */
+    if (pathIdx >= 0) score += Math.min(0.3, (lpath.split(term).length - 1) * 0.1); /* v8 ignore stop */
     out.push({ path, score: Math.min(0.99, score), title: name, snippet: "" });
   }
   return out.sort((a, b) => b.score - a.score).slice(0, 20);
@@ -73,7 +74,6 @@ function Search({ ctx }: { ctx: PanelContext }) {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [tier, setTier] = useState<Tier>(null);
-  const [errMsg, setErrMsg] = useState("");
   // Once a search hits "qmd unavailable" (503 / network), drop to the client-side
   // fallback for the rest of the session instead of re-hammering the endpoint.
   // The ref drives the effect's early-return so flipping it doesn't re-run the
@@ -107,7 +107,6 @@ function Search({ ctx }: { ctx: PanelContext }) {
       setHits([]);
       setTier(null);
       setLoading(false);
-      setErrMsg("");
       return;
     }
     // qmd already known unavailable → client-side filename/path match, instantly.
@@ -115,13 +114,11 @@ function Search({ ctx }: { ctx: PanelContext }) {
       setHits(searchVault(q, allFiles()));
       setTier("offline");
       setLoading(false);
-      setErrMsg("");
       return;
     }
     const ac = new AbortController();
     let live = true;
     setLoading(true);
-    setErrMsg("");
     const timer = window.setTimeout(async () => {
       // tier 1 — BM25 keyword (no LLM, fast)
       try {
@@ -161,9 +158,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
 
   // Status line above the results: live progress, then the final tier + count.
   let status: preact.JSX.Element | null = null;
-  if (errMsg) {
-    status = <div class="qs-status qs-err">⚠ {errMsg}</div>;
-  } else if (loading) {
+  if (loading) {
     status = (
       <div class="qs-status">
         <span class="qs-spin" /> searching…
@@ -202,7 +197,7 @@ function Search({ ctx }: { ctx: PanelContext }) {
       <>
         {hits.map((h) => {
           const real = realBySlug.get(h.path) ?? h.path;
-          const name = h.title || real.split("/").pop() || real;
+          const name = /* v8 ignore next */ h.title || real.split("/").pop() || real; // title or pop() always non-empty for valid paths; || real is unreachable
           const dir = real.split("/").slice(0, -1).join("/") || "root";
           return (
             <div key={h.path} class={`qs-hit${real === active ? " active" : ""}`} onClick={() => ctx.openFile(real)}>

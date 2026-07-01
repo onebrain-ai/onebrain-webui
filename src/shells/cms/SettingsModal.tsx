@@ -229,6 +229,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </div>
         <ConfigView />
 
+        <div class="st-section">About</div>
+        <div class="st-row">
+          <span class="st-label">OneBrain WebUI</span>
+          <span class="st-val" data-testid="st-version">v{__APP_VERSION__}</span>
+        </div>
+
         <div class="ob-modal-actions">
           <button type="button" class="ob-modal-btn primary" onClick={onClose}>
             Done

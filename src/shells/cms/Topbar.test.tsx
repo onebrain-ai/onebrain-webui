@@ -122,6 +122,7 @@ describe("Topbar", () => {
     vi.useFakeTimers();
     const { unmount } = render(<Topbar />);
     const clockBefore = document.querySelector(".tb-clock")!.textContent;
+    expect(clockBefore).toBeTruthy();
     // Advance 1001ms to fire the interval callback (now.value = currentTime()).
     act(() => { vi.advanceTimersByTime(1001); });
     const clockAfter = document.querySelector(".tb-clock")!.textContent;

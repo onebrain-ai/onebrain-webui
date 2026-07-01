@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/preact";
 import { ModalHost, promptModal, confirmModal, trapFocus } from "./Modal";
 

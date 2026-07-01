@@ -64,7 +64,7 @@ export async function enhanceCodeBlocksIn(root: HTMLElement): Promise<void> {
     const pre = code.parentElement as HTMLElement | null;
     if (!pre || pre.dataset.enhanced || pre.closest(".cm-codeblock")) continue;
     const lang = code.className.match(/language-([\w-]+)/)?.[1] ?? "";
-    const raw = (code.textContent ?? "").replace(/\n$/, "");
+    const raw = (/* v8 ignore next */ code.textContent ?? "").replace(/\n$/, ""); // textContent never null on Element
     // Only JSON is reflowed — it's lossless (a commented/invalid json fails the
     // parse and is preserved). YAML/XML/others are shown exactly as written so
     // their comments and intentional layout survive; the serialisers drop them.

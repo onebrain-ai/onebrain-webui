@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { EditorState, Transaction } from "@codemirror/state";
+import { EditorState, StateEffect } from "@codemirror/state";
 import { EditorView, WidgetType } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { livePreview, decorationCount } from "./plugin";
@@ -188,6 +188,19 @@ describe("livePreview", () => {
     v.destroy();
   });
 
+  it("update() is a no-op when none of docChanged/viewportChanged/selectionSet are true", () => {
+    // Dispatching a pure-effects transaction triggers update() but with all three
+    // change flags false → the if-body is skipped; decorations are unchanged.
+    const noopEffect = StateEffect.define<void>();
+    const v = viewWith("# Heading\n\nx", 11); // cursor on "x" → heading decorated
+    const before = decorationCount(v);
+    // Dispatch an effects-only transaction: no doc change, no selection change.
+    v.dispatch({ effects: noopEffect.of(undefined) });
+    // Decorations unchanged since build() was not re-called.
+    expect(decorationCount(v)).toBe(before);
+    v.destroy();
+  });
+
   it("decorationCount returns 0 for a view without the livePreview plugin", () => {
     // Exercises the early-return path in decorationCount (plugin not found).
     const state = EditorState.create({ doc: "# hi" });
@@ -206,8 +219,8 @@ describe("livePreview", () => {
     // Walk decorations to find the widget's DOM node and trigger mousedown.
     let widgetDom: HTMLElement | null = null;
     plugin?.decorations.between(0, v.state.doc.length, (_from, _to, deco) => {
-      // @ts-expect-error — accessing private spec for test only
-      const w = deco.spec?.widget;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = (deco.spec as any)?.widget;
       if (w && typeof w.toDOM === "function" && !widgetDom) {
         const dom = w.toDOM() as HTMLElement;
         // Only take the wikilink widget (span, not input).
@@ -216,7 +229,7 @@ describe("livePreview", () => {
     });
     if (widgetDom) {
       const event = new MouseEvent("mousedown", { bubbles: true });
-      widgetDom.dispatchEvent(event);
+      (widgetDom as HTMLElement).dispatchEvent(event);
       expect(bus.openFile).toHaveBeenCalledWith("alpha.md");
     }
     v.destroy();
@@ -228,8 +241,8 @@ describe("livePreview", () => {
     const v = viewWith("[[Nonexistent]]\n\nx", 16);
     const plugin = v.plugin(livePreview());
     plugin?.decorations.between(0, v.state.doc.length, (_from, _to, deco) => {
-      // @ts-expect-error
-      const w = deco.spec?.widget;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = (deco.spec as any)?.widget;
       if (w && typeof w.toDOM === "function") {
         const dom = w.toDOM() as HTMLElement;
         dom.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
@@ -246,8 +259,8 @@ describe("livePreview", () => {
     const plugin = v1.plugin(livePreview());
     const widgets: WidgetType[] = [];
     plugin?.decorations.between(0, v1.state.doc.length, (_f, _t, deco) => {
-      // @ts-expect-error — accessing private spec for test only
-      const w = deco.spec?.widget;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = (deco.spec as any)?.widget;
       if (w) widgets.push(w);
     });
     // There should be at least two widgets: a CheckboxWidget and a WikilinkWidget.

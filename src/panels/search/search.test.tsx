@@ -298,6 +298,157 @@ describe("Search panel — no results", () => {
   });
 });
 
+describe("Search panel — cancellation branches (live=false paths)", () => {
+  it("cleanup before lex resolves hits if (!live) return in .then() (line 125)", async () => {
+    // Start a search, clear the query before lex resolves → cleanup sets live=false.
+    // When lex then resolves, `if (!live) return` fires (no state update).
+    let resolveLex!: (v: any) => void;
+    const ctx = makeCtx({
+      search: vi.fn((_q: string, mode: string) => {
+        if (mode === "lex") return new Promise((res) => { resolveLex = res; });
+        return new Promise(() => {}); // hybrid never resolves
+      }),
+    });
+    render(<Search ctx={ctx} />);
+    // Trigger the 250ms debounce timer by typing
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "hello" } });
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
+    // Clear the query immediately (triggers cleanup → live=false)
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "" } });
+    // Now resolve lex — if (!live) return fires, no state update
+    await act(async () => {
+      resolveLex([{ path: "a.md", score: 0.9, title: "Should Not Appear", snippet: "" }]);
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    // The hit should NOT appear (cleanup cancelled the in-flight search)
+    expect(screen.queryByText("Should Not Appear")).toBeNull();
+  });
+
+  it("cleanup before lex throws hits if (!live || ac.signal.aborted) return in catch (line 129)", async () => {
+    // Start a search, clear the query, then let lex throw.
+    // `if (!live || ac.signal.aborted) return` fires in the catch block.
+    let rejectLex!: (e: unknown) => void;
+    const ctx = makeCtx({
+      search: vi.fn((_q: string, mode: string) => {
+        if (mode === "lex") return new Promise((_res, rej) => { rejectLex = rej; });
+        return new Promise(() => {});
+      }),
+    });
+    render(<Search ctx={ctx} />);
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "test" } });
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
+    // Clear before lex errors
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "" } });
+    await act(async () => {
+      rejectLex(new Error("cancelled"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    // No error displayed (cancellation was handled silently)
+    expect(screen.queryByText(/cancelled/)).toBeNull();
+  });
+
+  it("cleanup before hybrid resolves hits if (!live) return in hybrid .then() (line 142)", async () => {
+    // Lex resolves, then user clears before hybrid resolves.
+    // `if (!live) return` in hybrid's .then() fires.
+    let resolveLex!: (v: any) => void;
+    let resolveHyb!: (v: any) => void;
+    const ctx = makeCtx({
+      search: vi.fn((_q: string, mode: string) => {
+        if (mode === "lex") return new Promise((res) => { resolveLex = res; });
+        return new Promise((res) => { resolveHyb = res; });
+      }),
+    });
+    render(<Search ctx={ctx} />);
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "vue" } });
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
+    // Resolve lex first
+    await act(async () => {
+      resolveLex([{ path: "a.md", score: 0.7, title: "Lex Hit", snippet: "" }]);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    // Clear query (sets live=false) before hybrid resolves
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "" } });
+    await act(async () => {
+      resolveHyb([{ path: "b.md", score: 0.95, title: "Hyb Hit", snippet: "" }]);
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    // Hybrid result should NOT appear (live=false → early return)
+    expect(screen.queryByText("Hyb Hit")).toBeNull();
+  });
+
+  it("cleanup while hybrid is in-flight hits if (live) setLoading in finally (line 148 false branch)", async () => {
+    // Same scenario: lex resolves, user clears, hybrid throws.
+    // In finally: `if (live) setLoading(false)` → live=false → setLoading NOT called.
+    let resolveLex!: (v: any) => void;
+    let rejectHyb!: (e: unknown) => void;
+    const ctx = makeCtx({
+      search: vi.fn((_q: string, mode: string) => {
+        if (mode === "lex") return new Promise((res) => { resolveLex = res; });
+        return new Promise((_res, rej) => { rejectHyb = rej; });
+      }),
+    });
+    render(<Search ctx={ctx} />);
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "react" } });
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
+    await act(async () => {
+      resolveLex([{ path: "c.md", score: 0.8, title: "Lex Only", snippet: "" }]);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    // Clear before hybrid finishes
+    fireEvent.input(screen.getByPlaceholderText("search the vault…"), { target: { value: "" } });
+    await act(async () => {
+      rejectHyb(new Error("hybrid failed"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    // No crash; loading was already cleaned up by the live=false guard
+  });
+
+  it("searchVault: term matches path but not filename (line 58 nameIdx<0, line 59 pathIdx≥0 branches)", async () => {
+    // A file where the search term is in the directory portion but not the filename.
+    // e.g. searching "projects" finds "01-projects/my-note.md": pathIdx≥0 but nameIdx<0.
+    _fakeFiles = ["01-projects/my-note.md"];
+    const ctx = makeCtx({
+      search: vi.fn(async () => { throw new Error("qmd off"); }),
+    });
+    render(<Search ctx={ctx} />);
+    await triggerSearch("projects");
+    // "projects" matches path "01-projects/my-note.md" but not filename "my-note.md"
+    await waitFor(() => expect(screen.getByText(/my-note\.md/)).toBeTruthy(), { timeout: 2000 });
+  });
+
+  it("offline sort comparator runs when ≥2 results match (line 63 sort fn)", async () => {
+    // The sort comparator `(a, b) => b.score - a.score` only fires with ≥2 hits.
+    // Two files both containing "note" trigger the comparator.
+    _fakeFiles = ["notes/note-alpha.md", "notes/note-beta.md"];
+    const ctx = makeCtx({
+      search: vi.fn(async () => { throw new Error("qmd off"); }),
+    });
+    render(<Search ctx={ctx} />);
+    await triggerSearch("note");
+    await waitFor(() => {
+      expect(screen.getByText(/note-alpha\.md/)).toBeTruthy();
+      expect(screen.getByText(/note-beta\.md/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("slugifyPath: file with no extension covers stem=file and ext='' branches (lines 29-30)", async () => {
+    // A file like "Makefile" has lastIndexOf(".") = -1 (dot <= 0), so stem=file and ext="".
+    // This exercises the `else file` branch on line 29 and `else ""` branch on line 30.
+    // The file is in _fakeFiles so slugifyPath is called during realBySlug computation.
+    _fakeFiles = ["01-projects/Makefile"];
+    const ctx = makeCtx({
+      search: vi.fn(async (_q: string, mode: string) => {
+        if (mode === "lex") return [{ path: "01-projects/makefile", score: 0.9, title: "Makefile", snippet: "" }];
+        return new Promise(() => {});
+      }),
+    });
+    vaultTree.value = [];
+    render(<Search ctx={ctx} />);
+    await triggerSearch("make");
+    await waitFor(() => expect(screen.getByText("Makefile")).toBeTruthy(), { timeout: 2000 });
+  });
+});
+
 describe("Search panel — hit click opens file", () => {
   function makeCtxWithHits(hits: any[]) {
     return makeCtx({

@@ -5,7 +5,6 @@ import {
   setChatOpen,
   sidebarTab,
   sidebarCollapsed,
-  setSidebarCollapsed,
   sidebarWidth,
   chatWidth,
 } from "../../core/stores";
@@ -292,4 +291,5 @@ describe("CmsShell", () => {
     editorBridge.value = null;
     saveStatus.value = "idle";
   });
+
 });

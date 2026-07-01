@@ -48,7 +48,7 @@ function memoryPrefix(): string {
 }
 
 function humanize(path: string): string {
-  const base = path.split("/").pop()?.replace(/\.md$/i, "") ?? path;
+  const base = (/* v8 ignore next */ path.split("/").pop()?.replace(/\.md$/i, "")) ?? path; // pop() always returns a string; ?? path is unreachable
   return base.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

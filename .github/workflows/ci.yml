@@ -11,13 +11,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # jsdom@28 (via vitest) needs Node >=20.19; 22 is the current LTS.
+          node-version: '22'
           cache: 'npm'
       - run: npm ci
       - name: typecheck
         run: npm run typecheck
-      - name: test
-        run: npm test
+      - name: test + coverage gate
+        run: npm run test:coverage
       - name: build
         run: npm run build
       - name: offline guard (no external font/CDN refs in dist)

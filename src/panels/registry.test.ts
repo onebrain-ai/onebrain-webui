@@ -10,7 +10,6 @@ function stubDef(type: string, seed?: boolean): PanelDef {
     type,
     name: type,
     width: 300,
-    placement: { t: 0, y: 0, r: 5, s: 0.005 },
     seed,
     Component: () => null,
   };

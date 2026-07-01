@@ -477,6 +477,113 @@ describe("Memory panel — load error state", () => {
   });
 });
 
+describe("Memory panel — branch coverage completions", () => {
+  it("reads type from fm.metadata.type when fm.type is absent (line 72 meta.type branch)", async () => {
+    // Frontmatter with no top-level 'type' key but a nested 'metadata: {type: dev}'.
+    // parseFrontmatter stores that as fm.metadata = { type: "dev" } and fm.type is undefined.
+    // This hits the `fm.type ?? meta.type ?? "other"` branch where fm.type is falsy.
+    const Memory = await freshMemory();
+    _fakeFiles = ["05-agent/memory/meta-typed.md"];
+    const rawContent = `---\nmetadata:\n  type: dev\nupdated: 2026-01-01\n---\n# Meta Typed Fact\n`;
+    const ctx = makeCtx({
+      file: vi.fn(async (path: string) => ({ path, content: rawContent, rev: "1" })),
+    });
+    vaultTree.value = [];
+    render(<Memory ctx={ctx} />);
+    await waitFor(() => expect(screen.getByText("Meta Typed Fact")).toBeTruthy());
+    // The entry should appear under "Dev" group (type resolved from metadata.type)
+    expect(screen.getAllByText("Dev").length).toBeGreaterThan(0);
+  });
+
+  it("falls back to fm.created when fm.updated is absent (line 87 ?? fm.created branch)", async () => {
+    // Frontmatter has 'created' but no 'updated' — hits the `?? fm.created` branch.
+    const Memory = await freshMemory();
+    _fakeFiles = ["05-agent/memory/created-only.md"];
+    const rawContent = `---\ntype: behavioral\ncreated: 2025-03-15\n---\n# Created Only\n`;
+    const ctx = makeCtx({
+      file: vi.fn(async (path: string) => ({ path, content: rawContent, rev: "1" })),
+    });
+    vaultTree.value = [];
+    render(<Memory ctx={ctx} />);
+    await waitFor(() => expect(screen.getByText("Created Only")).toBeTruthy());
+  });
+
+  it("uses empty string when both fm.updated and fm.created are absent (line 87 ?? '' branch)", async () => {
+    // Neither 'updated' nor 'created' in frontmatter → `String(undefined ?? undefined ?? '')` = `""`.
+    const Memory = await freshMemory();
+    _fakeFiles = ["05-agent/memory/no-dates.md"];
+    const rawContent = `---\ntype: behavioral\n---\n# No Dates\n`;
+    const ctx = makeCtx({
+      file: vi.fn(async (path: string) => ({ path, content: rawContent, rev: "1" })),
+    });
+    vaultTree.value = [];
+    render(<Memory ctx={ctx} />);
+    await waitFor(() => expect(screen.getByText("No Dates")).toBeTruthy());
+  });
+
+  it("defaults rawType to 'other' when both fm.type and meta.type are absent (line 74 ?? 'other' branch)", async () => {
+    // When neither fm.type nor fm.metadata.type exist, `fm.type ?? meta.type ?? "other"`
+    // resolves to "other" — hitting the final ?? "other" branch.
+    const Memory = await freshMemory();
+    _fakeFiles = ["05-agent/memory/no-type.md"];
+    // Frontmatter with NO type or metadata.type keys at all
+    const rawContent = `---\nupdated: 2026-01-01\n---\n# No Type Fact\n`;
+    const ctx = makeCtx({
+      file: vi.fn(async (path: string) => ({ path, content: rawContent, rev: "1" })),
+    });
+    vaultTree.value = [];
+    render(<Memory ctx={ctx} />);
+    await waitFor(() => expect(screen.getByText("No Type Fact")).toBeTruthy());
+    // Should appear under "Other" group
+    expect(screen.getAllByText("Other").length).toBeGreaterThan(0);
+  });
+
+  it("outer catch stringifies non-Error throws (line 98 String(e) branch)", async () => {
+    // Throwing a string (not an Error) from allFiles triggers the `String(e)` branch
+    // in the outer catch of load().
+    const busMod = await import("../bus");
+    const allFilesMock = busMod.allFiles as ReturnType<typeof vi.fn>;
+    let callCount = 0;
+    allFilesMock.mockImplementation(() => {
+      callCount++;
+      if (callCount === 2) throw "string-error-42"; // non-Error value
+      return [];
+    });
+
+    const Memory = await freshMemory();
+    vaultTree.value = [];
+    render(<Memory ctx={makeCtx()} />);
+    await waitFor(() => {
+      expect(screen.getByText("string-error-42")).toBeTruthy();
+    });
+    allFilesMock.mockImplementation(() => _fakeFiles);
+  });
+});
+
+describe("Memory panel — inactive sort order", () => {
+  it("sorts inactive entries by updated date newest-first (line 163 sort comparator)", async () => {
+    // The sort comparator `(a, b) => b.updated.localeCompare(a.updated)` on inactiveShown
+    // is only called when there are ≥2 inactive entries to compare.
+    const Memory = await freshMemory();
+    _fakeFiles = ["05-agent/memory/old-inactive.md", "05-agent/memory/new-inactive.md"];
+    const ctx = makeCtx({
+      file: vi.fn(async (path: string) => {
+        if (path.includes("old-inactive")) {
+          return { path, content: memNote({ type: "behavioral", title: "Old Inactive", status: "expired", updated: "2024-01-01" }), rev: "1" };
+        }
+        return { path, content: memNote({ type: "behavioral", title: "New Inactive", status: "expired", updated: "2025-06-01" }), rev: "1" };
+      }),
+    });
+    vaultTree.value = [];
+    const { container } = render(<Memory ctx={ctx} />);
+    await waitFor(() => expect(screen.getByText("New Inactive")).toBeTruthy());
+    // Both inactive; newer should appear first
+    const titles = Array.from(container.querySelectorAll(".mem-item-title")).map((el) => el.textContent);
+    expect(titles[0]).toBe("New Inactive");
+    expect(titles[1]).toBe("Old Inactive");
+  });
+});
+
 describe("Memory panel — clicking an entry", () => {
   it("clicking an item button does not throw", async () => {
     const Memory = await freshMemory();
