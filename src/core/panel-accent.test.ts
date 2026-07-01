@@ -123,4 +123,17 @@ describe("load() — module-level init reads from storage (covers lines 12-13)",
     vi.stubGlobal("localStorage", ls);
     vi.resetModules();
   });
+
+  it("falls back to empty map when the stored value is malformed JSON (covers the catch)", async () => {
+    // getItem returns invalid JSON → JSON.parse throws → load()'s catch returns {}.
+    // (Covers line 15 deterministically regardless of the host's localStorage behaviour.)
+    const preLs = makeLocalStorage();
+    preLs.setItem("ob-spatial-panel-accents", "{not valid json");
+    vi.stubGlobal("localStorage", preLs);
+    vi.resetModules();
+    const { panelAccent: freshPanelAccent } = await import("./panel-accent");
+    expect(freshPanelAccent("any")).toBeNull();
+    vi.stubGlobal("localStorage", ls);
+    vi.resetModules();
+  });
 });

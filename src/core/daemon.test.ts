@@ -231,7 +231,10 @@ describe("HttpDaemonClient.fileBlob()", () => {
   beforeEach(() => vi.restoreAllMocks());
 
   it("returns the response blob on success", async () => {
-    const f: FetchMock = vi.fn(async () => new Response(new Blob(["data"]), { status: 200 })) as unknown as FetchMock;
+    // A plain fake response, NOT `new Response(new Blob(...))`: undici (Node's
+    // fetch) reads a jsdom Blob via `.stream()`, which differs across Node
+    // versions (works on 26, throws "object.stream is not a function" on 22).
+    const f: FetchMock = vi.fn(async () => ({ ok: true, status: 200, blob: async () => new Blob(["data"]) })) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient("tok");
     const blob = await c.fileBlob("img.png");
@@ -340,7 +343,10 @@ describe("HttpDaemonClient — null-token branches in send/uploadFile/search/cha
   });
 
   it("fileBlob(): omits X-OneBrain-Token header when token is null", async () => {
-    const f: FetchMock = vi.fn(async () => new Response(new Blob(["data"]), { status: 200 })) as unknown as FetchMock;
+    // A plain fake response, NOT `new Response(new Blob(...))`: undici (Node's
+    // fetch) reads a jsdom Blob via `.stream()`, which differs across Node
+    // versions (works on 26, throws "object.stream is not a function" on 22).
+    const f: FetchMock = vi.fn(async () => ({ ok: true, status: 200, blob: async () => new Blob(["data"]) })) as unknown as FetchMock;
     vi.stubGlobal("fetch", f);
     const c = new HttpDaemonClient(null);
     await c.fileBlob("img.png");

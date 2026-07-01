@@ -90,4 +90,17 @@ describe("initialAmbient() — storage-backed default", () => {
     expect(ambientOn.value).toBe(false);
     expect(ls.getItem("ob-ambient")).toBe("0");
   });
+
+  it("defaults to ambient on when storage is sandboxed (getItem throws — covers the catch)", async () => {
+    // Force the module-load read to throw so initialAmbient()'s catch runs.
+    // (Node's experimental localStorage throws on some versions but not others,
+    // so cover this branch deterministically rather than relying on the host.)
+    vi.stubGlobal("localStorage", { ...ls, getItem: () => { throw new DOMException("SecurityError"); } });
+    vi.resetModules();
+    const { ambientOn: fresh } = await import("./motion");
+    expect(fresh.value).toBe(true);
+    vi.unstubAllGlobals();
+    vi.resetModules();
+    vi.stubGlobal("localStorage", ls);
+  });
 });
