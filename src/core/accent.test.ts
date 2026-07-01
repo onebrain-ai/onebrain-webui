@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ACCENT_HEX, ACCENT_KEYS, accentName, accentHex, setAccent, initAccent } from "./accent";
+import { ACCENT_HEX, ACCENT_KEYS, accentName, setAccent, initAccent } from "./accent";
 
 // jsdom in this project does not provide window.localStorage (no testEnvironmentOptions.url
 // is set). Stub it with a simple in-memory Map so production code's localStorage
@@ -36,19 +36,6 @@ describe("ACCENT_HEX / ACCENT_KEYS", () => {
     for (const k of ACCENT_KEYS) {
       expect(ACCENT_HEX[k]).toMatch(/^#[0-9a-f]{6}$/i);
     }
-  });
-});
-
-describe("accentHex()", () => {
-  it("returns the hex for the current accent signal value", () => {
-    accentName.value = "violet";
-    expect(accentHex()).toBe(ACCENT_HEX.violet);
-  });
-
-  it("falls back to cyan when the signal holds an unknown key", () => {
-    // Simulate a corrupt signal value without going through setAccent (which guards).
-    accentName.value = "unknown-key";
-    expect(accentHex()).toBe(ACCENT_HEX.cyan);
   });
 });
 

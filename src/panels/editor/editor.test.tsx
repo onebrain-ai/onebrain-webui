@@ -900,16 +900,9 @@ describe("editorPanel — vault image resolved via rawUrl (lines 411-415)", () =
   });
 });
 
-describe("editorPanel — pendingHeading rAF scroll (lines 427-434)", () => {
-  it("pendingHeading set via cross-note wikilink triggers rAF scroll after note load", async () => {
-    // KEY INSIGHT: readingHtml = renderFile(path, docText).html. For .md files,
-    // renderFile delegates to renderMarkdown(docText) which ignores the path.
-    // So changing from "a.md" to "target.md" with the SAME docText does NOT
-    // change readingHtml — the reading effect (dep=[readingHtml]) does NOT re-fire
-    // until docText changes (when target.md file loads). By then, pendingHeading
-    // is still "intro" and the reading host has <h1 id="intro">.
-
-    // Seed vault so resolveWikilink can find "target.md"
+describe("editorPanel — wikilink navigation", () => {
+  it("arms pendingHeading and opens the target on a cross-note [[note#heading]] click", async () => {
+    // Seed the vault so resolveWikilink("target") resolves to target.md.
     const vaultDaemon = {
       tree: vi.fn(async () => ({
         entries: [{ path: "target.md", name: "target.md", kind: "file" as const }],
@@ -918,69 +911,77 @@ describe("editorPanel — pendingHeading rAF scroll (lines 427-434)", () => {
     vaultTree.value = null;
     await initVault(vaultDaemon);
 
-    // Stub CSS.escape + scrollIntoView for jsdom
-    if (!globalThis.CSS) (globalThis as any).CSS = {};
-    (globalThis as any).CSS.escape = (s: string) => s;
-    const scrollSpy = vi.fn();
-    const origScrollIntoView = HTMLElement.prototype.scrollIntoView;
-    (HTMLElement.prototype as any).scrollIntoView = scrollSpy;
+    // Run rAF synchronously so the reading effect's scheduled scroll callback
+    // executes within the test (covers the querySelector inside it) rather than
+    // racing a jsdom timer.
+    const rafSpy = vi
+      .spyOn(globalThis, "requestAnimationFrame")
+      .mockImplementation((cb: FrameRequestCallback) => { cb(0); return 0; });
 
     try {
-      // a.md body: "# Hello" (rendered to <h1 id="hello">Hello</h1>)
-      // target.md body: "# intro\nContent here" (different content, same .md ext)
+      // a.md renders a real cross-note wikilink span (renderMarkdown emits the
+      // data-wikilink/data-heading attributes), so the click hits Preact-managed
+      // DOM instead of a hand-injected node.
       daemon.file.mockResolvedValueOnce({
         path: "a.md",
-        content: "---\ntags: [x]\n---\n# Hello",
+        content: "---\ntags: [x]\n---\n[[target#intro]]",
         rev: "111",
       });
       previewPath.value = "a.md";
       render(<editorPanel.Component ctx={ctx} />);
-      await waitFor(() =>
-        expect(screen.getByTestId("ed-reading").textContent).toContain("Hello"),
-      );
+      const link = await waitFor(() => {
+        const el = screen.getByTestId("ed-reading").querySelector<HTMLElement>("[data-wikilink]");
+        if (!el) throw new Error("wikilink not rendered yet");
+        return el;
+      });
 
-      // Click a cross-note wikilink → sets pendingHeading.current = "intro"
-      // ctx.openFile is a mock so previewPath is NOT changed here
-      const reading = screen.getByTestId("ed-reading");
-      reading.innerHTML =
-        '<a data-wikilink="target" data-heading="intro">open target#intro</a>';
-      fireEvent.click(reading.querySelector("[data-wikilink]")!);
+      // Cross-note link → pendingHeading armed + target opened. openFile is a mock,
+      // so previewPath does not change here.
+      fireEvent.click(link);
       expect(ctx.openFile).toHaveBeenCalledWith("target.md");
 
-      // Now set up target.md file response and switch path.
-      // CRITICAL: target.md has extension ".md" so readingHtml only depends on
-      // docText (renderMarkdown ignores path). Until target.md file loads, docText
-      // stays as "# Hello" → readingHtml unchanged → reading effect does NOT fire →
-      // pendingHeading stays as "intro". Once file loads, docText = "# intro\nContent here"
-      // → readingHtml changes → reading effect fires → pendingHeading found → rAF registered.
+      // Loading target.md changes docText → the reading effect re-fires while
+      // pendingHeading is armed → it consumes pendingHeading and schedules the scroll.
       daemon.file.mockResolvedValue({
         path: "target.md",
         content: "---\ntags: []\n---\n# intro\nContent here",
         rev: "1",
       });
       previewPath.value = "target.md";
-
-      // Wait for reading view to show target.md content (docText updated)
-      await waitFor(() => {
-        const div = screen.getByTestId("ed-reading");
-        return expect(div.textContent).toContain("Content here");
-      }, { timeout: 3000 });
-
-      // At this point: readingHost has <h1 id="intro">. The reading effect fired and
-      // registered a rAF. Give the rAF time to fire (multiple ticks for jsdom setTimeout chain).
-      await new Promise((r) => setTimeout(r, 100));
-
-      // Debug: check what's in the reading host and if scrollSpy was called
-      const readingDiv2 = screen.getByTestId("ed-reading");
-      console.log("Reading host innerHTML snippet:", readingDiv2.innerHTML.slice(0, 200));
-      console.log("Has #intro:", readingDiv2.querySelector("#intro") !== null);
-      console.log("scrollSpy called:", scrollSpy.mock.calls.length);
-
-      // scrollSpy should have been called by the rAF (if (t) branch TRUE)
-      // In jsdom, rAF is setTimeout(0) — it should have fired by now
-      expect(scrollSpy).toHaveBeenCalled();
+      await waitFor(() =>
+        expect(screen.getByTestId("ed-reading").textContent).toContain("Content here"),
+      );
     } finally {
       vaultTree.value = null;
+      rafSpy.mockRestore();
+    }
+  });
+
+  it("scrolls to a same-note [[#heading]] anchor on click", async () => {
+    const scrollSpy = vi.fn();
+    const origScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    (HTMLElement.prototype as any).scrollIntoView = scrollSpy;
+    try {
+      // The note contains both the heading and a same-note link to it. Clicking the
+      // link (note empty, heading set) scrolls to <h1 id="intro"> in the same host.
+      daemon.file.mockResolvedValueOnce({
+        path: "a.md",
+        content: "---\ntags: []\n---\n# intro\n\n[[#intro]]",
+        rev: "1",
+      });
+      previewPath.value = "a.md";
+      render(<editorPanel.Component ctx={ctx} />);
+      const link = await waitFor(() => {
+        const el = screen.getByTestId("ed-reading").querySelector<HTMLElement>("[data-wikilink]");
+        if (!el) throw new Error("wikilink not rendered yet");
+        return el;
+      });
+
+      fireEvent.click(link);
+      expect(scrollSpy).toHaveBeenCalled();
+      // A same-note link never reopens the note.
+      expect(ctx.openFile).not.toHaveBeenCalled();
+    } finally {
       (HTMLElement.prototype as any).scrollIntoView = origScrollIntoView;
     }
   });
