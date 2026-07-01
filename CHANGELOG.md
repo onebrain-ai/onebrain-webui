@@ -1,6 +1,6 @@
 ---
-latest_version: 0.1.0
-released: 2026-06-30
+latest_version: 0.1.1
+released: 2026-07-01
 ---
 
 # OneBrain WebUI Changelog
@@ -13,8 +13,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-07-01
+
 ### Added
 
+- **`version.json` in the build output.** A Vite plugin emits `dist/version.json` (`{"version":"…"}`, from `package.json`) alongside the bundle, so consumers of the embedded `dist` — notably `onebrain serve` — can report the running WebUI version without parsing the minified JS. Complements the baked-in `__APP_VERSION__` (Settings → About).
+- **`changelog.json` in the build output.** A Vite plugin parses `CHANGELOG.md` into structured JSON (`{latest, released, entries:[{version, date, markdown}]}`) and emits `dist/changelog.json`, so the WebUI can render a "What's new" view from the embedded dist without shipping a markdown parser for the changelog.
 - **Test coverage tooling + suite.** Added `@vitest/coverage-v8`, a `coverage` config block (v8 provider, `text` + `html` reporters, excludes for test files / `*.d.ts` / the `main.tsx` bootstrap), and a `test:coverage` npm script. Raised coverage from a ~39% statements baseline to **100% statements / branches / functions / lines** across `core/`, `panels/`, `shells/`, and `ui/`. Genuinely-unreachable defensive branches (`?? ""` on non-null DOM APIs, jsdom-uncontrollable image state, compile-time constants) are annotated with `/* v8 ignore */` + a reason; provably-dead code was removed. A CI coverage gate enforces the 100% thresholds so coverage can't regress.
 - **WebUI version in Settings → About.** The running build's version (from `package.json`, injected via Vite `define` as `__APP_VERSION__`) is shown in the Settings modal, so it's clear which build is live.
 - **This changelog**, following the `onebrain-cli` / `onebrain` convention.

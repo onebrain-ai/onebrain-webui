@@ -8,6 +8,12 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
   version: string;
 };
 
+// Read the changelog once at config load so `emitChangelogJson` can bundle a
+// structured `changelog.json` into the dist — the WebUI (or any consumer of the
+// embedded dist) can fetch it to render a "What's new" view without parsing raw
+// markdown itself.
+const changelogRaw = readFileSync(new URL("./CHANGELOG.md", import.meta.url), "utf8");
+
 // beautiful-mermaid hard-codes a Google Fonts `@import` into every diagram's
 // inline <style> (Inter + JetBrains Mono, no opt-out). The app is offline-first
 // — CSP blocks external styles and DOMPurify strips the rule at runtime, so it
@@ -53,6 +59,97 @@ function stripBeautifulMermaidWebfonts() {
   };
 }
 
+// Emit a machine-readable `version.json` into the dist root. `__APP_VERSION__`
+// is baked into the minified JS (surfaced in Settings → About), but the onebrain
+// CLI embeds this dist and reports the running WebUI version from `onebrain
+// serve` — it needs a marker it can read without parsing the bundle. Sourced
+// from the same `pkg.version` the bundle uses, so the two never drift.
+function emitVersionJson(version: string) {
+  return {
+    name: "emit-version-json",
+    generateBundle(this: {
+      emitFile: (f: { type: "asset"; fileName: string; source: string }) => void;
+    }) {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: `${JSON.stringify({ version })}\n`,
+      });
+    },
+  };
+}
+
+interface ChangelogEntry {
+  /** Version string from the `## [x.y.z]` heading, or `"Unreleased"`. */
+  version: string;
+  /** ISO date from the heading (`— 2026-07-01`), or null if none. */
+  date: string | null;
+  /** The section body (everything under the heading) as raw markdown. */
+  markdown: string;
+}
+
+// Parse a Keep-a-Changelog `CHANGELOG.md` into structured JSON. Splits on the
+// `## ` version headings (the chunk before the first one — title + intro — is
+// dropped) and pulls the version + date out of each `## [x.y.z] — date` line,
+// leaving the section body as raw markdown for the consumer to render. Frontmatter
+// (`latest_version` / `released`) is surfaced at the top level. Format-tolerant:
+// a heading it can't parse still yields an entry (version = the raw heading text),
+// and it never throws (a bad shape degrades, it doesn't crash the build).
+//
+// Known limitation: the split is not fence-aware, so a column-0 `## ` line INSIDE
+// a fenced code block would be mis-read as a version heading. The changelog has no
+// such fences today; keep example headings indented or inline if you ever add one.
+function parseChangelog(raw: string): {
+  latest: string | null;
+  released: string | null;
+  entries: ChangelogEntry[];
+} {
+  let body = raw;
+  let latest: string | null = null;
+  let released: string | null = null;
+  // `\r?` so a CRLF checkout (Windows / core.autocrlf) still recognises the
+  // frontmatter block rather than silently dropping `latest`/`released`.
+  const frontmatter = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (frontmatter) {
+    body = raw.slice(frontmatter[0].length);
+    latest = frontmatter[1].match(/^latest_version:\s*(.+)$/m)?.[1].trim() ?? null;
+    released = frontmatter[1].match(/^released:\s*(.+)$/m)?.[1].trim() ?? null;
+  }
+  const entries = body
+    .split(/^## /m)
+    .slice(1) // drop the title + intro chunk before the first heading
+    .map((section): ChangelogEntry => {
+      const newline = section.indexOf("\n");
+      const heading = (newline === -1 ? section : section.slice(0, newline)).trim();
+      const markdown = (newline === -1 ? "" : section.slice(newline + 1)).trim();
+      return {
+        version: heading.match(/\[([^\]]+)\]/)?.[1] ?? heading,
+        date: heading.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
+        markdown,
+      };
+    });
+  return { latest, released, entries };
+}
+
+// Emit a structured `changelog.json` into the dist root (see `emitVersionJson`
+// for why a machine-readable marker beats parsing the bundle). Parsed once from
+// CHANGELOG.md at config load; pretty-printed since it's fetched on demand, not
+// on a hot path.
+function emitChangelogJson(raw: string) {
+  return {
+    name: "emit-changelog-json",
+    generateBundle(this: {
+      emitFile: (f: { type: "asset"; fileName: string; source: string }) => void;
+    }) {
+      this.emitFile({
+        type: "asset",
+        fileName: "changelog.json",
+        source: `${JSON.stringify(parseChangelog(raw), null, 2)}\n`,
+      });
+    },
+  };
+}
+
 // The daemon (`onebrain serve` / `onebrain daemon`) the WebUI talks to in dev.
 // Override with `ONEBRAIN_DAEMON=http://host:port npm run dev` to point at a
 // remote / non-default daemon. Default matches `serve.rs` DEFAULT_PORT (6789).
@@ -60,7 +157,12 @@ const DAEMON = process.env.ONEBRAIN_DAEMON ?? "http://127.0.0.1:6789";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [preact(), stripBeautifulMermaidWebfonts()],
+  plugins: [
+    preact(),
+    stripBeautifulMermaidWebfonts(),
+    emitVersionJson(pkg.version),
+    emitChangelogJson(changelogRaw),
+  ],
   // Compile-time constant: the WebUI version, shown in Settings → About so users
   // can tell which build they're running. Also applied in tests (vitest reads it).
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
