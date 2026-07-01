@@ -83,6 +83,10 @@ export interface DaemonClient {
   chat(req: ChatRequest, onEvent: (e: ChatEvent) => void, signal?: AbortSignal): Promise<void>;
   /** `GET /api/vault/tasks` — every dated Obsidian-Tasks line in the vault. */
   tasks(): Promise<VaultTask[]>;
+  /** `GET /api/webview/preflight?url=` — ask the daemon whether a URL may be
+   *  embedded in an iframe (X-Frame-Options / CSP frame-ancestors). Any
+   *  daemon-side doubt returns false → caller opens a new tab instead. */
+  webviewPreflight(url: string): Promise<boolean>;
   /** `GET /api/vault/search?q=&mode=` — qmd-backed vault search. Pass `signal`
    *  to cancel a stale in-flight query (the panel aborts the previous request
    *  on each keystroke). */
@@ -159,6 +163,15 @@ export class HttpDaemonClient implements DaemonClient {
 
   tasks(): Promise<VaultTask[]> {
     return this.getJson<{ tasks: VaultTask[] }>("/api/vault/tasks").then((r) => r.tasks);
+  }
+
+  /** Ask the daemon whether a URL may be embedded in an iframe (X-Frame-Options /
+   *  CSP frame-ancestors). Any daemon-side doubt returns false → caller opens a
+   *  new tab instead. */
+  webviewPreflight(url: string): Promise<boolean> {
+    return this.getJson<{ frameable: boolean }>(
+      `/api/webview/preflight?url=${encodeURIComponent(url)}`,
+    ).then((r) => r.frameable);
   }
 
   async search(q: string, mode: SearchMode, signal?: AbortSignal): Promise<SearchHit[]> {

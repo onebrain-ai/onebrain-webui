@@ -183,6 +183,15 @@ describe("HttpDaemonClient extra write methods", () => {
     expect(result[0].text).toBe("do");
   });
 
+  it("webviewPreflight returns the frameable flag", async () => {
+    const f = mockFetch(200, { frameable: true });
+    vi.stubGlobal("fetch", f);
+    const c = new HttpDaemonClient("tok");
+    await expect(c.webviewPreflight("https://example.com")).resolves.toBe(true);
+    const [url] = f.mock.calls[0];
+    expect(url).toContain("/api/webview/preflight?url=https%3A%2F%2Fexample.com");
+  });
+
   it("send(): network-level failure throws DaemonError status 0", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     const c = new HttpDaemonClient("tok");
