@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import preact from "@preact/preset-vite";
+import license from "rollup-plugin-license";
 
 // Read the package version once at config load so it can be baked into the bundle
 // (see `define` below) — the UI surfaces it in Settings → About.
@@ -162,6 +163,25 @@ export default defineConfig({
     stripBeautifulMermaidWebfonts(),
     emitVersionJson(pkg.version),
     emitChangelogJson(changelogRaw),
+    // Emit dist/THIRD-PARTY-NOTICES.txt listing every bundled dependency's
+    // license + verbatim text (rollup-plugin-license reads the ACTUAL modules in
+    // the output, so it covers direct + transitive JS deps — the Apache-2.0
+    // xlsx / @maxgraph/core / pptx-renderer, the MIT libs incl. katex, etc.).
+    // Works the bundler can't see — CSS-imported @fontsource fonts, and deps that
+    // a package pre-inlines into its own bundle (echarts/zrender via
+    // @aiden0z/pptx-renderer) — are appended by scripts/append-untracked-notices.mjs.
+    // Required attribution for everything embedded in the onebrain binary;
+    // served at /THIRD-PARTY-NOTICES.txt.
+    license({
+      thirdParty: {
+        includePrivate: false,
+        multipleVersions: true,
+        output: {
+          file: "dist/THIRD-PARTY-NOTICES.txt",
+          encoding: "utf-8",
+        },
+      },
+    }),
   ],
   // Compile-time constant: the WebUI version, shown in Settings → About so users
   // can tell which build they're running. Also applied in tests (vitest reads it).

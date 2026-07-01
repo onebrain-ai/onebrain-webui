@@ -1,5 +1,5 @@
 ---
-latest_version: 0.1.2
+latest_version: 0.1.3
 released: 2026-07-01
 ---
 
@@ -12,6 +12,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > For CLI binary changes, see [`onebrain-ai/onebrain-cli`](https://github.com/onebrain-ai/onebrain-cli/blob/main/CHANGELOG.md); for the vault-deployed plugin, see [`onebrain-ai/onebrain`](https://github.com/onebrain-ai/onebrain/blob/main/CHANGELOG.md).
 
 ## [Unreleased]
+
+## [0.1.3] — 2026-07-01
+
+### Added
+
+- **Complete `THIRD-PARTY-NOTICES.txt`.** `rollup-plugin-license` emits attribution for every bundled JS dependency (direct + transitive — Apache-2.0 `xlsx` / `@maxgraph/core` / `@aiden0z/pptx-renderer`, `dompurify`, all the MIT/BSD/Zlib libs) with verbatim license text. `scripts/append-untracked-notices.mjs` then adds the works the JS bundler can't see: the CSS-imported `@fontsource` fonts (SIL OFL-1.1), and the deps that packages pre-inline into their own bundle (invisible to the module graph): **echarts** (Apache-2.0, incl. its NOTICE per §4d) + **zrender** (BSD-3-Clause) via `@aiden0z/pptx-renderer`, and the Apache-2.0 SheetJS libs `xlsx` inlines (cfb, codepage, crc-32, adler-32, ssf, frac, wmf, word). A comprehensive audit (every runtime dep's declared deps cross-checked against the notices + the shipped dist) confirms nothing embedded is left unattributed. So every third-party work embedded in the onebrain binary is attributed in one file (served at `/THIRD-PARTY-NOTICES.txt`). Supersedes `FONT-NOTICES.txt` (0.1.2) — consolidated here.
 
 ## [0.1.2] — 2026-07-01
 
