@@ -290,8 +290,10 @@ function WhatsNew() {
 
 function AboutPane() {
   const connected = vaultConfig.value != null;
+  // Flex column: the fixed rows + eyebrow + "Full changelog" link stay put; only
+  // the WhatsNew card between them grows to fill the pane and scrolls internally.
   return (
-    <>
+    <div class="st-about">
       <div class="st-row">
         <span class="st-label">Version</span>
         <span class="st-val" data-testid="st-version">v{__APP_VERSION__}</span>
@@ -316,7 +318,7 @@ function AboutPane() {
       >
         Full changelog →
       </a>
-    </>
+    </div>
   );
 }
 

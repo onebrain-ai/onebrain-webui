@@ -5,10 +5,11 @@
 
 .st-modal {
   width: min(720px, 100%);
-  /* Cap to the viewport (the backdrop pads 24px top+bottom) and lay out as a
-     column: fixed header + footer, the body flexes and its pane scrolls — so a
-     long pane (e.g. About → What's new) never pushes the modal off-screen. */
-  max-height: calc(100vh - 48px);
+  /* FIXED height (capped to the viewport — the backdrop pads 24px top+bottom) so
+     the modal is the same size in every category, not resized per pane. Column
+     layout: fixed header + footer, the body fills the middle. Long content (the
+     About → What's new card) scrolls inside its own box, never the modal. */
+  height: min(540px, calc(100vh - 48px));
   padding: 16px 18px 14px;
   display: flex;
   flex-direction: column;
@@ -117,14 +118,17 @@
   flex: none;
 }
 
-/* content pane — the only scroll region; header, rail, and Done stay put */
+/* content pane — flex column filling the fixed body height. Short panes sit at
+   the top (consistent modal size); the About pane's WhatsNew card is what
+   scrolls, not the pane itself. overflow-y:auto is a safety net for an unusually
+   long read-only Vault config. */
 .st-pane {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  /* keep scrolled content clear of the scrollbar gutter */
-  padding-right: 4px;
 }
 .st-pane-head {
   margin-bottom: 12px;
@@ -294,6 +298,17 @@
 .st-link:hover {
   border-bottom-color: var(--accent-line);
 }
+/* About pane = flex column filling the pane; only the WhatsNew card flexes.
+   Everything else (rows, eyebrow, "Full changelog") keeps its natural height. */
+.st-about {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.st-about > *:not(.st-wn):not(.st-wn-note) {
+  flex: none;
+}
 .st-wn-section {
   margin: 18px 0 8px;
   font-size: 9px;
@@ -301,7 +316,15 @@
   text-transform: uppercase;
   color: var(--section-accent);
 }
+/* The What's-new card: grows to fill the leftover space and scrolls internally,
+   so the rows above and the "Full changelog" link below stay fixed. */
+.st-wn,
+.st-wn-note {
+  flex: 1 1 auto;
+  min-height: 80px;
+}
 .st-wn {
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   clip-path: var(--clip-chip);
   padding: 12px 14px;
