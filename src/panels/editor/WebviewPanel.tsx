@@ -1,0 +1,73 @@
+import { useEffect, useRef, useState } from "preact/hooks";
+import { webviewUrl, webviewMode, closeWebview, toggleWebviewMode } from "./webview-store";
+
+/** In-app webview. Reads the store; mounted by the editor when webviewOpen is
+ *  true. A load-hang timer (8s) falls back to a new tab so a silently-blocked
+ *  or dead frame can't strand the user on a blank pane. */
+export function WebviewPanel() {
+  const url = webviewUrl.value ?? "";
+  const [loaded, setLoaded] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLoaded(false);
+    timer.current = setTimeout(() => {
+      if (!loaded) {
+        window.open(url, "_blank", "noopener,noreferrer");
+        closeWebview();
+      }
+    }, 8000);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+    // Re-arm when the framed url changes.
+  }, [url]);
+
+  const onLoad = () => {
+    setLoaded(true);
+    if (timer.current) clearTimeout(timer.current);
+  };
+
+  return (
+    <div class={`ed-webview ed-webview-${webviewMode.value}`}>
+      <div class="ed-webview-bar">
+        <button
+          class="ed-iconbtn"
+          type="button"
+          aria-label="Back to document"
+          title="Back to document"
+          onClick={closeWebview}
+        >
+          &lsaquo;
+        </button>
+        <span class="ed-webview-url" title={url}>{url}</span>
+        <button
+          class="ed-iconbtn"
+          type="button"
+          aria-label="Toggle layout"
+          title="Toggle pane / side"
+          onClick={toggleWebviewMode}
+        >
+          &#8646;
+        </button>
+        <a
+          class="ed-iconbtn"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open in new tab"
+          title="Open externally"
+        >
+          &#8599;
+        </a>
+      </div>
+      <iframe
+        class="ed-webview-frame"
+        src={url}
+        sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+        referrerpolicy="no-referrer"
+        onLoad={onLoad}
+      />
+    </div>
+  );
+}
