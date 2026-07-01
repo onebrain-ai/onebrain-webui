@@ -135,6 +135,21 @@ export function setMediaAutoplay(on: boolean): void {
   saveString("onebrain.mediaAutoplay", on ? "1" : "0");
 }
 
+// ── Settings modal: last-viewed category ─────────────────────────────────────
+// The settings modal is a two-pane console (category rail + content). Persisting
+// the active category means reopening the modal lands where you left off.
+export type SettingsCat = "appearance" | "preview" | "vault" | "about";
+const SETTINGS_CATS: readonly SettingsCat[] = ["appearance", "preview", "vault", "about"];
+export const settingsCategory = signal<SettingsCat>(loadSettingsCategory());
+export function setSettingsCategory(cat: SettingsCat): void {
+  settingsCategory.value = cat;
+  saveString("onebrain.settingsCat", cat);
+}
+function loadSettingsCategory(): SettingsCat {
+  const v = loadString("onebrain.settingsCat", "appearance");
+  return (SETTINGS_CATS as readonly string[]).includes(v) ? (v as SettingsCat) : "appearance";
+}
+
 /** Apply the persisted theme settings to the document. Call once at boot. */
 export function applyThemeSettings(): void {
   applyAccent(accent.value);
