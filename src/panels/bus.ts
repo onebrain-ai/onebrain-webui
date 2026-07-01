@@ -163,7 +163,9 @@ export function resolveAsset(name: string): string | null {
   let best: string | null = null;
   for (const p of _files) {
     const lp = p.toLowerCase();
-    const hit = n.includes("/") ? lp === n || lp.endsWith("/" + n) : (lp.split("/").pop() ?? "") === n;
+    const lpParts = lp.split("/");
+    const basename = lpParts[lpParts.length - 1]; // split always returns ≥1 element; always defined
+    const hit = n.includes("/") ? lp === n || lp.endsWith("/" + n) : basename === n;
     if (hit && (!best || p.length < best.length)) best = p;
   }
   return best;

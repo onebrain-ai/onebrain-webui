@@ -10,7 +10,7 @@ import "./explorer.css";
 
 type FileType = "dir" | "img" | "html" | "yml" | "md";
 
-function fileType(node: TreeNode): FileType {
+export function fileType(node: TreeNode): FileType {
   if (node.kind === "dir") return "dir";
   const ext = node.name.includes(".") ? node.name.split(".").pop()!.toLowerCase() : "";
   if (["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"].includes(ext)) return "img";
@@ -122,7 +122,7 @@ export function ExplorerTree({ ctx }: { ctx: PanelContext }) {
     const hits = allFiles().filter((p) => p.toLowerCase().includes(q));
     fileCount = hits.length;
     for (const path of hits) {
-      const name = path.split("/").pop() ?? path;
+      const name = path.split("/").pop()!;
       const dir = path.split("/").slice(0, -1).join("/"); // "" for a vault-root file
       const type = fileType({ kind: "file", name, path, children: [] });
       const nm = splitMatch(name, q);

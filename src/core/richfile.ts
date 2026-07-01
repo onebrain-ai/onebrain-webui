@@ -16,7 +16,7 @@ import "./richfile.css";
 const RICH_EXTENSIONS = new Set(["xlsx", "csv", "tsv", "docx", "pptx", "drawio", "ipynb"]);
 
 function ext(path: string): string {
-  return (path.split(".").pop() ?? "").toLowerCase();
+  return (/* v8 ignore next */ path.split(".").pop() ?? "").toLowerCase(); // split always returns ≥1 element
 }
 
 /** True when `path` is a rich file the editor renders (not a text/code preview). */
@@ -84,7 +84,7 @@ function sanitizeDrawioLabels(xml: string): string | null {
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     if (doc.querySelector("parsererror")) return null;
     for (const el of Array.from(doc.querySelectorAll("[value]"))) {
-      const v = el.getAttribute("value") ?? "";
+      const v = (/* v8 ignore next */ el.getAttribute("value") ?? ""); // [value] selector guarantees attribute exists
       // Only touch labels that actually contain a tag — leave plain text (incl. a
       // literal "A < B") untouched so DOMPurify can't eat a stray "<".
       if (/<[a-z!/]/i.test(v)) el.setAttribute("value", DOMPurify.sanitize(v));

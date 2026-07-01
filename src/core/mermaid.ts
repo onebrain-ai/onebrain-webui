@@ -106,13 +106,13 @@ export async function renderMermaidIn(root: HTMLElement): Promise<void> {
 
   // Pass 1 — beautiful-mermaid for the types it supports.
   const fallback: HTMLElement[] = [];
-  const candidates = nodes.filter((n) => beautifulSupports(n.textContent ?? ""));
+  const candidates = nodes.filter((n) => beautifulSupports(/* v8 ignore next */ n.textContent ?? "")); // textContent never null on Element
   if (candidates.length > 0) {
     try {
       const { renderMermaidSVG } = (bmMod ??= await import("beautiful-mermaid"));
       for (const n of candidates) {
         try {
-          const svg = renderMermaidSVG(n.textContent ?? "", BM_OPTS);
+          const svg = renderMermaidSVG(/* v8 ignore next */ n.textContent ?? "", BM_OPTS); // textContent never null on Element
           // DOMPurify strips scripts/handlers and sanitises the inline `style=`
           // attributes (where a diagram's own `classDef`/`style` directives land).
           // beautiful-mermaid's THEMING lives in a generated `<style>` block

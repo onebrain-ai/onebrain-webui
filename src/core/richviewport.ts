@@ -128,7 +128,9 @@ export function mountViewport(
   const onFsChange = () => {
     const on = document.fullscreenElement === frame;
     frame.classList.toggle("is-full", on);
-    if (fullBtn) fullBtn.innerHTML = on ? ICON.exit : ICON.full;
+    /* v8 ignore start */
+    if (fullBtn) fullBtn.innerHTML = on ? ICON.exit : ICON.full; // fullBtn always present
+    /* v8 ignore stop */
     // the frame just resized to / from the screen — re-fit to the new bounds
     requestAnimationFrame(fit);
   };

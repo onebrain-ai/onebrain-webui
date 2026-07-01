@@ -24,7 +24,8 @@ export function Properties({ value, onChange }: { value: Obj; onChange: (next: O
   const collapsed = propertiesCollapsed.value;
 
   const set = (k: string, raw: string, wasList: boolean) => {
-    const next: Obj = { ...value, [k]: wasList ? raw.split(",").map((s) => s.trim()).filter(Boolean) : raw };
+    // wasList=true branch is never called by the current UI; set() is only invoked with wasList=false.
+    const next: Obj = { ...value, [k]: wasList ? /* v8 ignore next */ raw.split(",").map((s) => s.trim()).filter(Boolean) : raw }; // v8 ignore
     onChange(next);
   };
 

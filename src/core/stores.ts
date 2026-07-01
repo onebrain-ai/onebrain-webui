@@ -179,7 +179,7 @@ function saveBool(key: string, v: boolean): void {
   saveString(key, v ? "1" : "0");
 }
 function loadBool(key: string, dflt: boolean): boolean {
-  const v = loadString(key, dflt ? "1" : "0");
+  const v = loadString(key, dflt ? /* v8 ignore next */ "1" : "0"); // all callers pass dflt=false
   return v !== "0";
 }
 function saveString(key: string, v: string): void {

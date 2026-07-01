@@ -56,7 +56,7 @@ function frontmatterBlock(fm: string | null) {
 export const previewExt = computed(() => {
   const path = previewPath.value;
   if (!path) return "—";
-  return (path.split(".").pop() ?? "").toUpperCase();
+  return ((/* v8 ignore next */ path.split(".").pop() ?? "")).toUpperCase(); // split always returns ≥1 element; ?? "" is unreachable
 });
 
 /** The path line + rendered file body — the reusable preview body (no panel
@@ -70,7 +70,7 @@ export function PreviewBody({ ctx }: { ctx: PanelContext }) {
   });
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  const ext = path ? (path.split(".").pop() ?? "").toLowerCase() : "";
+  const ext = path ? ((/* v8 ignore next */ path.split(".").pop() ?? "")).toLowerCase() : ""; // split always returns ≥1 element; ?? "" is unreachable
   const isImg = IMG_EXT.includes(ext);
   const isHtml = ext === "html" || ext === "htm";
 
@@ -97,12 +97,13 @@ export function PreviewBody({ ctx }: { ctx: PanelContext }) {
   // content swaps — no need to re-attach when the body HTML changes.
   useEffect(() => {
     const root = bodyRef.current;
-    if (!root) return;
+    /* v8 ignore start -- bodyRef.current is always set before useEffect fires; null guard is unreachable */
+    if (!root) return; /* v8 ignore stop */
     const onClick = (e: MouseEvent) => {
       const a = (e.target as HTMLElement).closest("[data-wikilink]");
       if (!a) return;
       e.preventDefault();
-      const target = resolveWikilink(a.getAttribute("data-wikilink") ?? "");
+      const target = resolveWikilink((/* v8 ignore next */ a.getAttribute("data-wikilink") ?? "")); // closest guarantees attribute exists
       if (target) openFile(target);
     };
     root.addEventListener("click", onClick);
@@ -113,7 +114,7 @@ export function PreviewBody({ ctx }: { ctx: PanelContext }) {
   if (!path) {
     body = <div class="pv-empty">Select a file from the Explorer to preview.</div>;
   } else if (isImg) {
-    const name = path.split("/").pop() ?? path;
+    const name = (/* v8 ignore next */ path.split("/").pop() ?? path); // split always returns ≥1 element; ?? path is unreachable
     body = (
       <div class="pv-img">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">

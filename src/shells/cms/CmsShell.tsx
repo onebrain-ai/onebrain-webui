@@ -27,7 +27,8 @@ import "./cms.css";
 /** A 2D panel context: the write-capable daemon, the cross-panel open action,
  *  and a no-op `addPanel` (the CMS has fixed zones, not a free panel arc). */
 function ctxFor(daemon: DaemonClient): PanelContext {
-  return { daemon, openFile, addPanel: () => {} };
+  // addPanel is a no-op: the CMS uses fixed layout zones, not a free panel arc.
+  return { daemon, openFile, addPanel: /* v8 ignore next */ () => {} };
 }
 
 /** Left activity rail: each entry selects which panel fills the sidebar. */

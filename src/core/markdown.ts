@@ -163,7 +163,7 @@ const ICON_SVG: Record<string, string> = {
   quote: '<path d="M7 7h4v6c0 2-1.5 3.5-3.5 4M14 7h4v6c0 2-1.5 3.5-3.5 4"/>',
 };
 function calloutIconHtml(type: string): string {
-  const inner = ICON_SVG[CALLOUT_ICON_KEY[type] ?? "info"] ?? ICON_SVG.info;
+  /* v8 ignore start */ const inner = ICON_SVG[CALLOUT_ICON_KEY[type] ?? "info"] ?? ICON_SVG.info; /* v8 ignore stop */ // CALLOUT_ICON_KEY always maps to a valid ICON_SVG key; second ?? never fires
   return `<svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
 
@@ -362,7 +362,7 @@ function renderBody(src: string, lineBase = 0, allowHtmlBlock = true): string {
       const blockStart = i;
       const buf: string[] = [];
       while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
-      const callout = /^\[!([\w-]+)\]([-+]?)\s*(.*)$/.exec(buf[0] ?? "");
+      const callout = /^\[!([\w-]+)\]([-+]?)\s*(.*)$/.exec(/* v8 ignore next */ buf[0] ?? ""); // buf always ≥1 element
       if (callout) {
         const type = callout[1].toLowerCase();
         const fold = callout[2]; // "" static · "-" collapsed · "+" foldable-open
@@ -483,7 +483,7 @@ const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdx"]);
  *  …) renders as a formatting-preserving code block. `esc()` makes the body
  *  inert, so the static `<pre><code>` wrapper needs no DOMPurify pass. */
 export function renderFile(path: string, content: string): ParsedNote {
-  const ext = (path.split(".").pop() ?? "").toLowerCase();
+  const ext = (/* v8 ignore next */ path.split(".").pop() ?? "").toLowerCase(); // split always returns ≥1 element
   if (MARKDOWN_EXTENSIONS.has(ext)) return renderMarkdown(content);
   const langClass = ext ? ` class="language-${esc(ext)}"` : "";
   return { frontmatter: null, html: `<pre><code${langClass}>${esc(content)}</code></pre>` };
