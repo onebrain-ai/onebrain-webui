@@ -45,4 +45,33 @@ describe("frontmatter", () => {
   it("body-only note with no frontmatter composes to just the body", () => {
     expect(compose({ raw: null, obj: {}, edited: false }, "# Body")).toBe("# Body");
   });
+
+  // parseFrontmatter line 37-39: non-object YAML (array / scalar / null) → {}
+  it("parseFrontmatter returns {} for non-object YAML (array at top level)", () => {
+    // A bare YAML list is valid YAML but not a frontmatter object.
+    expect(parseFrontmatter("- a\n- b")).toEqual({});
+  });
+
+  it("parseFrontmatter returns {} for a scalar string", () => {
+    expect(parseFrontmatter("just a string")).toEqual({});
+  });
+
+  it("parseFrontmatter returns {} for null input", () => {
+    expect(parseFrontmatter(null)).toEqual({});
+  });
+
+  // compose line 58: edited=true but obj is empty → body only (no fence emitted).
+  it("compose with edited=true and empty obj emits just the body (no empty fence)", () => {
+    const out = compose({ raw: "tags: [a]", obj: {}, edited: true }, "# Body");
+    expect(out).toBe("# Body");
+    expect(out).not.toContain("---");
+  });
+
+  // splitNote with CRLF frontmatter fence.
+  it("splitNote handles CRLF line endings in the frontmatter fence", () => {
+    const src = "---\r\ntitle: Hi\r\n---\r\n# Body\n";
+    const { raw, body } = splitNote(src);
+    expect(raw).toBe("title: Hi");
+    expect(body).toContain("# Body");
+  });
 });

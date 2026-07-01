@@ -292,6 +292,93 @@ describe("renderMarkdown — rendering", () => {
   });
 });
 
+describe("renderMarkdown — branch coverage for block-math and raw-HTML guard", () => {
+  // Lines ~294-306: multi-line $$ block (the single-line $$ path is already hit above).
+  it("renders a multi-line $$…$$ block (fenced math, not single-line)", () => {
+    const out = html("$$\n\\int_0^1 x\\,dx\n$$");
+    expect(out).toContain('class="math-block"');
+    expect(out).toContain("\\int_0^1 x\\,dx");
+  });
+
+  // Ensure raw HTML inside a blockquote is NOT passed through verbatim (allowHtmlBlock=false).
+  it("does NOT pass raw HTML through inside a blockquote body (security guard)", () => {
+    const out = html("> <img onerror=alert(1) src=x>");
+    // The img tag must not appear as a real element — it should be escaped text or stripped.
+    expect(out).not.toMatch(/<img[^>]*onerror/i);
+  });
+
+  // renderFile extension: a file with no extension gets no language class.
+  // path.split(".").pop() on "dir/file." returns "" (empty string after the dot).
+  it("renderFile: file with empty extension omits the language class", () => {
+    // A path ending in "." produces an empty extension string → no class attr.
+    const { html: h } = renderFile("dir/noext.", "data");
+    expect(h).toContain("<pre><code>");
+    expect(h).not.toContain('class="language-"');
+  });
+
+  // .mdx is treated as markdown (branch in MARKDOWN_EXTENSIONS check).
+  it("renderFile: .mdx is rendered through the markdown pipeline", () => {
+    const { html: h } = renderFile("index.mdx", "# MDX Title");
+    expect(h).toContain('<h1 id="mdx-title">MDX Title</h1>');
+  });
+
+  // uniqueSlug: empty heading text → id="section" then id="section-2" for duplicates.
+  it("empty heading text gets id='section'; a second empty heading gets 'section-2'", () => {
+    // The `base || "section"` fallback in uniqueSlug fires for an empty heading text.
+    // ATX heading `# ` with trailing space produces empty text after trim.
+    const out = html("# \n\n# ");
+    expect(out).toContain('id="section"');
+    expect(out).toContain('id="section-2"');
+  });
+
+  // Three identical headings: the uniqueSlug loop runs more than once.
+  it("three identical headings get ids slug, slug-2, slug-3", () => {
+    const out = html("## Dup\n\n## Dup\n\n## Dup");
+    expect(out).toContain('id="dup"');
+    expect(out).toContain('id="dup-2"');
+    expect(out).toContain('id="dup-3"');
+  });
+
+  // Callout with no title text → falls back to capitalized type name.
+  it("callout with no title text uses the capitalized type as the title", () => {
+    const out = html("> [!note]\n> body text");
+    // The `|| type.charAt(0).toUpperCase() + type.slice(1)` branch fires.
+    expect(out).toContain("Note");
+    expect(out).toContain("body text");
+  });
+
+  // Callout with no body → bodyHtml is "" (the empty branch of body.trim()).
+  it("callout with no body renders without a callout-body div", () => {
+    const out = html("> [!tip] No body here");
+    expect(out).toContain('data-callout="tip"');
+    expect(out).not.toContain('class="callout-body"');
+  });
+
+  // blockquote with a single empty `>` line — buf[0] is "" → buf[0] ?? "" = "".
+  it("a bare `>` with no text renders as an empty blockquote (no callout)", () => {
+    const out = html(">");
+    expect(out).toContain("<blockquote>");
+    expect(out).not.toContain("callout");
+  });
+
+  // Wikilink with #heading anchor: covers hash >= 0 branch on lines 122-123 and
+  // the `head ?` truthy branch on line 125.
+  it("[[note#heading]] wikilink carries data-heading with the slugified anchor", () => {
+    const out = html("see [[Project Notes#Setup Guide]]");
+    expect(out).toContain('data-wikilink="Project Notes"');
+    expect(out).toContain('data-heading="setup-guide"');
+  });
+
+  // Unknown callout type → falls back to "info" icon (CALLOUT_ICON_KEY[type] ?? "info"
+  // on line 166, then ICON_SVG[...] ?? ICON_SVG.info).
+  it("unknown callout type uses the 'info' fallback icon", () => {
+    const out = html("> [!unicorn] Special\n> body");
+    expect(out).toContain('data-callout="unicorn"');
+    // The info icon SVG path is rendered (the fallback).
+    expect(out).toContain("callout-icon");
+  });
+});
+
 describe("renderFile — non-markdown files render as code, not markdown", () => {
   const yaml = "folders:\n  projects: 01-projects\n  areas: 02-areas\nschedule:\n  - cron: 0 9 * * *\n    skill: /daily\n";
 

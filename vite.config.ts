@@ -81,5 +81,21 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      // Count every source module, not just the ones a test happens to import —
+      // otherwise untested files silently vanish from the denominator.
+      all: true,
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "**/*.test.{ts,tsx}",
+        "**/*.d.ts",
+        "src/test-setup.ts",
+        // App entry: CSS imports + a single render() call. Pure bootstrap glue
+        // with nothing to assert; testing it would only exercise the framework.
+        "src/main.tsx",
+      ],
+    },
   },
 });
