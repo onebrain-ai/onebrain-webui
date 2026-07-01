@@ -19,8 +19,13 @@ function loadMode(): WebviewMode {
 export const webviewOpen = signal<boolean>(false);
 export const webviewUrl = signal<string | null>(null);
 export const webviewMode = signal<WebviewMode>(loadMode());
-export const webviewLoading = signal<boolean>(false);
 export const webviewNotice = signal<string | null>(null);
+
+// Monotonic request sequence. Guards against two overlapping openExternalLink
+// calls resolving out of order (a slow first click landing after a fast
+// second click), and against a preflight resolving after closeWebview() was
+// already called (e.g. the user switched notes while it was in flight).
+let requestSeq = 0;
 
 let noticeTimer: ReturnType<typeof setTimeout> | null = null;
 function flashNotice(msg: string): void {
@@ -41,14 +46,16 @@ export async function openExternalLink(
   url: string,
   daemon: Pick<DaemonClient, "webviewPreflight">,
 ): Promise<void> {
-  webviewLoading.value = true;
+  const seq = ++requestSeq;
   let frameable = false;
   try {
     frameable = await daemon.webviewPreflight(url);
   } catch {
     frameable = false; // any preflight failure → safe fallback
   }
-  webviewLoading.value = false;
+  // A newer click (or a close/note-switch) superseded this request while the
+  // preflight was in flight — drop the result, whichever way it resolved.
+  if (seq !== requestSeq) return;
   if (frameable) {
     webviewUrl.value = url;
     webviewOpen.value = true;
@@ -58,6 +65,7 @@ export async function openExternalLink(
 }
 
 export function closeWebview(): void {
+  requestSeq++; // invalidate any in-flight preflight so it can't reopen the panel
   webviewOpen.value = false;
   webviewUrl.value = null;
 }

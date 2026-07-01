@@ -27,7 +27,7 @@ import { enhanceCodeBlocksIn } from "../../core/codeblock";
 import { formatCode } from "../../core/codeformat";
 import { Icon } from "../../ui/Icon";
 import { WebviewPanel } from "./WebviewPanel";
-import { openExternalLink, webviewOpen, webviewNotice } from "./webview-store";
+import { openExternalLink, webviewOpen, webviewNotice, closeWebview } from "./webview-store";
 import "./editor.css";
 
 /** Binary file types with no in-app preview — shown as an icon + Download button
@@ -159,11 +159,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   useEffect(() => {
     if (!path) return;
     // Each note starts clean — clear any prior note's save/conflict state so a
-    // stale toast/indicator can't carry over to a different note.
+    // stale toast/indicator can't carry over to a different note. A webview
+    // opened from note A's content must not survive into note B (wrong content,
+    // stale back button) — close it too.
     saveStatus.value = "idle";
     dirty.value = false;
     conflictRev.value = null;
     unpreviewable.value = false;
+    closeWebview();
     htmlInteractive.value = htmlAutorun.peek(); // follow the Settings "Run HTML scripts" toggle; "Run" overrides per-file
     let cancelled = false;
 
@@ -308,6 +311,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
       _cmdSaveRun = null;
     };
   }, [path]);
+
+  // Leaving reading mode (toggle to edit) unmounts the webview panel but must
+  // also reset webviewOpen — otherwise toggling back to reading resurrects the
+  // stale webview (re-arming its hang timer + reloading the iframe) instead of
+  // showing the plain reading view.
+  useEffect(() => {
+    if (!reading.value) closeWebview();
+  }, [reading.value]);
 
   // Image / SVG preview: mount the shared pan-zoom-fullscreen viewport on the frame.
   useEffect(() => {

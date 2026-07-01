@@ -42,4 +42,10 @@ describe("WebviewPanel", () => {
     open.mockRestore();
     vi.useRealTimers();
   });
+
+  it("renders the split layout class when webviewMode is 'side'", () => {
+    webviewMode.value = "side";
+    const { container } = render(<WebviewPanel />);
+    expect(container.querySelector(".ed-webview-side")).toBeTruthy();
+  });
 });

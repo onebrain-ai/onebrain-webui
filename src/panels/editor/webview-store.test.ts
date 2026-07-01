@@ -53,6 +53,36 @@ describe("openExternalLink", () => {
     expect(open).toHaveBeenCalled();
     open.mockRestore();
   });
+
+  it("applies only the latest of two overlapping calls when the first resolves last", async () => {
+    // Click A, then click B while A's preflight is still in flight. A resolves
+    // LAST — without sequencing it would win and clobber B's (correct, latest) url.
+    let releaseA!: (v: boolean) => void;
+    const aPromise = new Promise<boolean>((res) => { releaseA = res; });
+    const daemon = {
+      webviewPreflight: vi.fn()
+        .mockImplementationOnce(() => aPromise) // click A: deferred
+        .mockImplementationOnce(async () => true), // click B: resolves immediately
+    };
+    const first = openExternalLink("https://a.example", daemon);
+    const second = openExternalLink("https://b.example", daemon);
+    await second; // B resolves first
+    expect(webviewUrl.value).toBe("https://b.example");
+    releaseA(true); // now let A resolve, superseded
+    await first;
+    expect(webviewUrl.value).toBe("https://b.example"); // still B — A's stale result dropped
+  });
+
+  it("a preflight resolving after closeWebview() does not resurrect the panel", async () => {
+    let release!: (v: boolean) => void;
+    const promise = new Promise<boolean>((res) => { release = res; });
+    const daemon = { webviewPreflight: vi.fn().mockImplementation(() => promise) };
+    const pending = openExternalLink("https://example.com", daemon);
+    closeWebview(); // invalidate the in-flight request before it resolves
+    release(true);
+    await pending;
+    expect(webviewOpen.value).toBe(false);
+  });
 });
 
 describe("mode", () => {

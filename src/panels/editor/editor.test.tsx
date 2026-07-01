@@ -6,7 +6,7 @@ import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
 import { searchQuery, sidebarTab } from "../../core/stores";
 import * as richfileModule from "../../core/richfile";
-import { webviewOpen, webviewUrl, webviewNotice } from "./webview-store";
+import { webviewOpen, webviewUrl, webviewNotice, closeWebview } from "./webview-store";
 
 // jsdom does not implement ResizeObserver. Stub it AND fire a synthetic resize
 // so the ResizeObserver callback body (lines 331-343) gets covered:
@@ -447,6 +447,61 @@ describe("editorPanel — markdown reading view interactions", () => {
     fireEvent.click(reading.querySelector("[data-wikilink]")!);
     fireEvent.click(reading.querySelector('a[href^="mailto:"]')!);
     expect(daemon.webviewPreflight).not.toHaveBeenCalled();
+  });
+
+  it("closes a stale webview when the open note switches", async () => {
+    previewPath.value = "a.md";
+    daemon.file.mockImplementation(async (p: string) => ({
+      path: p,
+      content: p === "a.md" ? "# A" : "# B",
+      rev: "1",
+    }));
+    render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    reading.innerHTML = '<a href="https://example.com">external</a>';
+    fireEvent.click(reading.querySelector('a[href="https://example.com"]')!);
+    await waitFor(() => expect(webviewOpen.value).toBe(true));
+
+    // switch to note B — the stale webview (framing A's link) must not survive
+    previewPath.value = "b.md";
+    await waitFor(() => expect(webviewOpen.value).toBe(false));
+  });
+
+  it("resets a stale webview when leaving reading mode, so toggling back does not resurrect it", async () => {
+    previewPath.value = "a.md";
+    render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    reading.innerHTML = '<a href="https://example.com">external</a>';
+    fireEvent.click(reading.querySelector('a[href="https://example.com"]')!);
+    await waitFor(() => expect(webviewOpen.value).toBe(true));
+
+    // toggle to edit mode — leaving reading mode must reset the stale webview
+    fireEvent.click(screen.getByTestId("ed-reading-toggle"));
+    expect(webviewOpen.value).toBe(false);
+
+    // toggle back to reading — must NOT resurrect the old webview
+    fireEvent.click(screen.getByTestId("ed-reading-toggle"));
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    expect(webviewOpen.value).toBe(false);
+  });
+
+  it("normal open -> close -> reopen in the same note still works", async () => {
+    previewPath.value = "a.md";
+    render(<editorPanel.Component ctx={ctx} />);
+    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
+    const reading = screen.getByTestId("ed-reading");
+    reading.innerHTML = '<a href="https://example.com">external</a>';
+    fireEvent.click(reading.querySelector('a[href="https://example.com"]')!);
+    await waitFor(() => expect(webviewOpen.value).toBe(true));
+
+    closeWebview();
+    expect(webviewOpen.value).toBe(false);
+
+    fireEvent.click(reading.querySelector('a[href="https://example.com"]')!);
+    await waitFor(() => expect(webviewOpen.value).toBe(true));
+    expect(webviewUrl.value).toBe("https://example.com");
   });
 });
 
