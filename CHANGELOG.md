@@ -1,5 +1,5 @@
 ---
-latest_version: 0.1.3
+latest_version: 0.1.4
 released: 2026-07-01
 ---
 
@@ -12,6 +12,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > For CLI binary changes, see [`onebrain-ai/onebrain-cli`](https://github.com/onebrain-ai/onebrain-cli/blob/main/CHANGELOG.md); for the vault-deployed plugin, see [`onebrain-ai/onebrain`](https://github.com/onebrain-ai/onebrain/blob/main/CHANGELOG.md).
 
 ## [Unreleased]
+
+## [0.1.4] — 2026-07-01
+
+### Fixed
+
+- **Accessibility & SEO (Lighthouse).** CodeMirror editor + read-only source views now expose an `aria-label` (WCAG 4.1.2); the viewport meta no longer disables zoom (`user-scalable=no` / `maximum-scale` removed, WCAG 1.4.4); a `<meta name="description">` was added; and three sub-10px labels (topbar eyebrow, explorer file-count, file-extension) move from `--color-ghost` to the `--color-faint` token so they meet the 4.5:1 contrast ratio (WCAG 1.4.3) — the global ghost token is unchanged. Desktop Lighthouse: **Accessibility 86 → 100**, SEO 82 → 91, Best Practices 100, Performance 99.
 
 ## [0.1.3] — 2026-07-01
 

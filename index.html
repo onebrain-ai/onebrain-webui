@@ -2,8 +2,14 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <!-- No maximum-scale / user-scalable=no: never disable zoom (WCAG 1.4.4 —
+         low-vision users must be able to pinch/zoom). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="OneBrain Web UI — the universal surface for the OneBrain daemon: explorer, editor, search, tasks, chat, memory, and skills for your personal AI knowledge OS."
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>OneBrain</title>
     <!-- Fonts are self-hosted via @fontsource (src/ds/fonts.css) so the embedded
