@@ -12,8 +12,9 @@ function loadMode(): WebviewMode {
   try {
     return localStorage.getItem(MODE_KEY) === "side" ? "side" : "pane";
   } catch {
-    /* v8 ignore next -- private-mode localStorage throw; not reliably reproducible across jsdom/CI envs */
+    /* v8 ignore start -- private-mode localStorage throw; not reliably reproducible across jsdom/CI envs */
     return "pane";
+    /* v8 ignore stop */
   }
 }
 
@@ -35,8 +36,9 @@ function loadWidth(): number {
     const n = Number(localStorage.getItem(WIDTH_KEY));
     return n > 0 ? clampWidth(n) : 720; // absent/NaN/0 → default
   } catch {
-    /* v8 ignore next -- private-mode localStorage throw; not reliably reproducible across jsdom/CI envs */
+    /* v8 ignore start -- private-mode localStorage throw; not reliably reproducible across jsdom/CI envs */
     return 720;
+    /* v8 ignore stop */
   }
 }
 export const webviewWidth = signal<number>(loadWidth());
