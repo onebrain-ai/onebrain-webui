@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { webviewUrl, webviewMode, closeWebview, toggleWebviewMode } from "./webview-store";
 
 /** In-app webview. Reads the store; mounted by the editor when webviewOpen is
@@ -6,16 +6,12 @@ import { webviewUrl, webviewMode, closeWebview, toggleWebviewMode } from "./webv
  *  or dead frame can't strand the user on a blank pane. */
 export function WebviewPanel() {
   const url = webviewUrl.value ?? "";
-  const [loaded, setLoaded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setLoaded(false);
     timer.current = setTimeout(() => {
-      if (!loaded) {
-        window.open(url, "_blank", "noopener,noreferrer");
-        closeWebview();
-      }
+      window.open(url, "_blank", "noopener,noreferrer");
+      closeWebview();
     }, 8000);
     return () => {
       if (timer.current) clearTimeout(timer.current);
@@ -24,7 +20,6 @@ export function WebviewPanel() {
   }, [url]);
 
   const onLoad = () => {
-    setLoaded(true);
     if (timer.current) clearTimeout(timer.current);
   };
 
