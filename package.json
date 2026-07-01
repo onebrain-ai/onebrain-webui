@@ -1,6 +1,6 @@
 {
   "name": "@onebrain-ai/webui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "OneBrain WebUI — the universal surface (2D CMS shell) for the OneBrain daemon. Obsidian replacement, runs the agent on any platform.",
   "license": "MIT OR Apache-2.0",
