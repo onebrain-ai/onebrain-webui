@@ -252,6 +252,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
           doc: split.body,
           extensions: [
             EditorView.lineWrapping,
+            // Accessible name for the editor's ARIA textbox (WCAG 4.1.2).
+            EditorView.contentAttributes.of({ "aria-label": "Note editor" }),
             // A drawn cursor + active-line highlight so you can always see where
             // the caret is on the dark theme (the native caret is near-invisible).
             drawSelection(),
@@ -365,6 +367,8 @@ function Editor({ ctx }: { ctx: PanelContext }) {
               drawSelection(),
               EditorState.readOnly.of(true),
               EditorView.editable.of(false),
+              // Accessible name for the read-only source view's ARIA textbox.
+              EditorView.contentAttributes.of({ "aria-label": "Source (read-only)" }),
               // syntax colours follow the per-preview theme (the ◐ toggle)
               syntaxHighlighting(
                 previewTheme.peek() === "light" ? defaultHighlightStyle : oneDarkHighlightStyle,
