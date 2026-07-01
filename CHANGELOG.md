@@ -1,5 +1,5 @@
 ---
-latest_version: 0.1.1
+latest_version: 0.1.2
 released: 2026-07-01
 ---
 
@@ -12,6 +12,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > For CLI binary changes, see [`onebrain-ai/onebrain-cli`](https://github.com/onebrain-ai/onebrain-cli/blob/main/CHANGELOG.md); for the vault-deployed plugin, see [`onebrain-ai/onebrain`](https://github.com/onebrain-ai/onebrain/blob/main/CHANGELOG.md).
 
 ## [Unreleased]
+
+## [0.1.2] — 2026-07-01
+
+### Added
+
+- **`FONT-NOTICES.txt` in the build output.** A post-build step (`scripts/gen-notices.mjs`) concatenates the embedded fonts' actual license files (Inter / Chakra Petch / JetBrains Mono — SIL OFL-1.1; KaTeX — MIT) into `dist/FONT-NOTICES.txt`, so the OFL/MIT attribution those licenses require travels with the dist (and the onebrain binary that embeds it; served at `/FONT-NOTICES.txt`). Fails the build if a font's license file is missing. (Font scope only — the bundled JS deps' Apache-2.0/MIT notices are a separate follow-up.)
+
+### Changed
+
+- **Strip redundant legacy font formats.** A CSS-aware post-build step (`scripts/strip-legacy-fonts.mjs`) removes `.woff`/`.ttf` files whose `@font-face` also lists a `.woff2` (modern browsers + the Studio webview fetch woff2 first and never request them) — **−1.48 MB** (89 files). Fonts whose face has no woff2 (KaTeX_Size3, the Vietnamese Chakra/JetBrains subsets) are kept, so nothing breaks. Combined with the CLI's gzip embed, the onebrain binary drops **16.2 MB → ~7.9 MB (−51%)**.
 
 ## [0.1.1] — 2026-07-01
 
