@@ -1,38 +1,90 @@
 name: release
-# On a vX.Y.Z tag: build the dist, run the offline guard, package it as a
-# versioned tarball + sha256, and attach both to the GitHub Release. This is the
-# single artifact every consumer pins — onebrain-cli embeds it (build.rs fetches
-# this release asset, verifying the sha256), and Studio/PWA reuse the same dist.
+# Publishes the versioned dist tarball + sha256 as a GitHub Release — the single
+# prebuilt artifact every consumer uses. onebrain-cli's release workflow
+# DOWNLOADS this (pinned by version + sha256 in its Cargo.toml `[package.metadata.webui]`) instead of
+# rebuilding the webui from source, so the dist is built exactly once, here.
+#
+# Runs on every push to main: if package.json's version has no release yet,
+# it builds and publishes `v<version>` automatically (each merged PR bumps the
+# version per repo convention, so every merge ships its dist). Manual `v*` tag
+# pushes are also honored for re-publishing a specific version.
 on:
   push:
+    branches: ['main']
     tags: ['v*']
 
 permissions:
   contents: write
 
+# Serialize runs so two near-simultaneous main merges can't race the
+# exists-check and double-create the same release.
+concurrency:
+  group: release-dist
+  cancel-in-progress: false
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - name: resolve version · skip if already released
+        id: v
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="$(node -p "require('./package.json').version")"
+          fi
+          # Strict semver-ish guard: V is interpolated into shell + asset names
+          # below, so refuse anything that isn't a plain version string.
+          if ! printf '%s' "$V" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
+            echo "Refusing suspicious version string: $V" >&2
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$V already exists — nothing to do."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.v.outputs.exists == 'false'
         with:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+        if: steps.v.outputs.exists == 'false'
       - run: npm run build
+        if: steps.v.outputs.exists == 'false'
       - name: offline guard (no external font/CDN refs)
+        if: steps.v.outputs.exists == 'false'
         run: node scripts/check-offline.mjs
       - name: package dist
+        if: steps.v.outputs.exists == 'false'
+        env:
+          V: ${{ steps.v.outputs.version }}
         run: |
-          V="${GITHUB_REF_NAME#v}"
           ART="onebrain-webui-v${V}-dist.tar.gz"
           tar -czf "$ART" -C dist .
           sha256sum "$ART" | awk '{print $1}' > "$ART.sha256"
           echo "Packaged $ART ($(du -h "$ART" | cut -f1)); sha256 $(cat "$ART.sha256")"
-      - name: publish release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            onebrain-webui-v*-dist.tar.gz
-            onebrain-webui-v*-dist.tar.gz.sha256
+      - name: create release + attach assets
+        if: steps.v.outputs.exists == 'false'
+        env:
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release create "v$V" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "v$V" \
+            --notes "OneBrain WebUI v$V — prebuilt dist tarball (+sha256). Consumed by onebrain-cli's release workflow via its Cargo.toml [package.metadata.webui] pin. See CHANGELOG.md for details." \
+            "onebrain-webui-v${V}-dist.tar.gz" \
+            "onebrain-webui-v${V}-dist.tar.gz.sha256"; then
+            # Lost a create race (or re-run): fine as long as the release exists.
+            gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null
+            echo "Release v$V already exists — treating as success."
+          fi
