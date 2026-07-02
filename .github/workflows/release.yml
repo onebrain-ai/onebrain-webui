@@ -16,6 +16,12 @@ on:
 permissions:
   contents: write
 
+# Serialize runs so two near-simultaneous main merges can't race the
+# exists-check and double-create the same release.
+concurrency:
+  group: release-dist
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -70,10 +76,15 @@ jobs:
         env:
           V: ${{ steps.v.outputs.version }}
         run: |
-          gh release create "v$V" \
+          set -euo pipefail
+          if ! gh release create "v$V" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "v$V" \
             --notes "OneBrain WebUI v$V — prebuilt dist tarball (+sha256). Consumed by onebrain-cli's release workflow via its webui.pin. See CHANGELOG.md for details." \
             "onebrain-webui-v${V}-dist.tar.gz" \
-            "onebrain-webui-v${V}-dist.tar.gz.sha256"
+            "onebrain-webui-v${V}-dist.tar.gz.sha256"; then
+            # Lost a create race (or re-run): fine as long as the release exists.
+            gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null
+            echo "Release v$V already exists — treating as success."
+          fi
