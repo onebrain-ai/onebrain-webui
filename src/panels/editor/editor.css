@@ -603,6 +603,23 @@
   vertical-align: -0.08em;
   opacity: 0.72;
 }
+/* Brand marks render in their OFFICIAL colors (simple-icons hexes), not the
+   link accent. Near-black logos (GitHub, X, Wikipedia, Medium, OpenAI,
+   Anthropic) fall back to the theme text color — that IS those brands'
+   dark-background treatment, and pure black would vanish on the console. */
+.md-linkico[data-brand] {
+  opacity: 0.9;
+  color: var(--color-text);
+}
+.md-linkico[data-brand="youtube"] { color: #ff0000; }
+.md-linkico[data-brand="facebook"] { color: #0866ff; }
+.md-linkico[data-brand="instagram"] { color: #ff0069; }
+.md-linkico[data-brand="linkedin"] { color: #0a66c2; }
+.md-linkico[data-brand="reddit"] { color: #ff4500; }
+.md-linkico[data-brand="stackoverflow"] { color: #f58025; }
+.md-linkico[data-brand="npm"] { color: #cb3837; }
+.md-linkico[data-brand="discord"] { color: #5865f2; }
+.md-linkico[data-brand="google"] { color: #4285f4; }
 a:hover .md-linkico {
   opacity: 1;
 }
