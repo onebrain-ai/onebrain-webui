@@ -5,6 +5,7 @@ import {
   webviewWidth,
   setWebviewWidth,
   closeWebview,
+  confirmAndOpenNewTab,
   toggleWebviewMode,
 } from "./webview-store";
 
@@ -70,8 +71,10 @@ export function WebviewPanel() {
     setFwdAvail(0);
     setPendingNav(null);
     timer.current = setTimeout(() => {
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Never loaded — close the stuck pane and ASK before opening a new tab
+      // (a silent popup 8s after the click would also be blocker-bait).
       closeWebview();
+      void confirmAndOpenNewTab(url);
     }, 8000);
     return () => {
       // timer.current is always set by the time cleanup runs (it's assigned

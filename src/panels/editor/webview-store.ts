@@ -4,6 +4,7 @@
 
 import { signal } from "@preact/signals";
 import type { DaemonClient } from "../../core/daemon";
+import { confirmModal } from "../../ui/Modal";
 
 export type WebviewMode = "pane" | "side";
 const MODE_KEY = "onebrain.webviewMode";
@@ -21,7 +22,6 @@ function loadMode(): WebviewMode {
 export const webviewOpen = signal<boolean>(false);
 export const webviewUrl = signal<string | null>(null);
 export const webviewMode = signal<WebviewMode>(loadMode());
-export const webviewNotice = signal<string | null>(null);
 
 // Side-panel width in px (drag-resizable), clamped + persisted — mirrors the
 // shell's sidebar/chat-dock resize. Only applies in `side` mode; `pane` is full.
@@ -58,18 +58,18 @@ export function setWebviewWidth(px: number): void {
 // already called (e.g. the user switched notes while it was in flight).
 let requestSeq = 0;
 
-let noticeTimer: ReturnType<typeof setTimeout> | null = null;
-function flashNotice(msg: string): void {
-  webviewNotice.value = msg;
-  if (noticeTimer) clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(() => {
-    webviewNotice.value = null;
-  }, 4000);
-}
-
-function openInNewTab(url: string): void {
-  window.open(url, "_blank", "noopener,noreferrer");
-  flashNotice("This site can't be embedded — opened it in a new tab.");
+/** Fallback for a link that can't be framed (or a frame that never loaded):
+ *  ASK before popping a new tab instead of doing it silently. Bonus: the
+ *  window.open fires from the OK click — a fresh user gesture — so popup
+ *  blockers can't eat the tab (an async-preflight or 8s-timer open could be
+ *  outside the browser's transient-activation window). */
+export async function confirmAndOpenNewTab(url: string): Promise<void> {
+  const ok = await confirmModal({
+    title: "Open in a new tab?",
+    message: `This site can't be shown inside the app — ${url}`,
+    okLabel: "Open tab",
+  });
+  if (ok) window.open(url, "_blank", "noopener,noreferrer");
 }
 
 /** Intercept target: preflight, then frame in-app or fall back to a new tab. */
@@ -91,7 +91,7 @@ export async function openExternalLink(
     webviewUrl.value = url;
     webviewOpen.value = true;
   } else {
-    openInNewTab(url);
+    await confirmAndOpenNewTab(url);
   }
 }
 

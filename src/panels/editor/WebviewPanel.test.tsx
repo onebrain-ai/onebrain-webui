@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, fireEvent, act } from "@testing-library/preact";
+
+// The hang-timer fallback asks via the DS confirm modal before popping a tab.
+vi.mock("../../ui/Modal", () => ({ confirmModal: vi.fn() }));
+import { confirmModal } from "../../ui/Modal";
+const confirmMock = vi.mocked(confirmModal);
+
 import { WebviewPanel } from "./WebviewPanel";
 import { webviewUrl, webviewOpen, webviewMode, webviewWidth, setWebviewWidth } from "./webview-store";
 
@@ -7,6 +13,8 @@ beforeEach(() => {
   webviewOpen.value = true;
   webviewUrl.value = "https://example.com";
   webviewMode.value = "pane";
+  confirmMock.mockReset();
+  confirmMock.mockResolvedValue(false); // default: user cancels the fallback ask
 });
 
 describe("WebviewPanel", () => {
@@ -32,13 +40,34 @@ describe("WebviewPanel", () => {
     expect(webviewMode.value).toBe("side");
   });
 
-  it("hang timer falls back to a new tab if the iframe never loads", () => {
+  it("hang timer closes the pane and ASKS before opening a new tab; confirm opens it", async () => {
     vi.useFakeTimers();
+    confirmMock.mockResolvedValue(true);
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     render(<WebviewPanel />);
-    vi.advanceTimersByTime(8000);
+    await act(async () => {
+      vi.advanceTimersByTime(8000);
+    });
+    expect(webviewOpen.value).toBe(false); // stuck pane closed first
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("https://example.com") }),
+    );
     expect(open).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer");
+    open.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("hang timer's ask does NOT open a tab when the user cancels", async () => {
+    vi.useFakeTimers();
+    confirmMock.mockResolvedValue(false);
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<WebviewPanel />);
+    await act(async () => {
+      vi.advanceTimersByTime(8000);
+    });
     expect(webviewOpen.value).toBe(false);
+    expect(confirmMock).toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
     open.mockRestore();
     vi.useRealTimers();
   });
@@ -57,6 +86,7 @@ describe("WebviewPanel", () => {
     fireEvent.load(iframe);
     vi.advanceTimersByTime(8000);
     expect(open).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
     expect(webviewOpen.value).toBe(true);
     open.mockRestore();
     vi.useRealTimers();
@@ -69,6 +99,7 @@ describe("WebviewPanel", () => {
     unmount();
     vi.advanceTimersByTime(8000);
     expect(open).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
     open.mockRestore();
     vi.useRealTimers();
   });
@@ -82,17 +113,17 @@ describe("WebviewPanel", () => {
     expect(after.getAttribute("src")).toBe("https://example.com");
   });
 
-  it("reload re-arms the hang timer so a fresh load still gets fallback protection", () => {
+  it("reload re-arms the hang timer so a fresh load still gets fallback protection", async () => {
     vi.useFakeTimers();
-    const open = vi.spyOn(window, "open").mockReturnValue(null);
     const { getByLabelText, container } = render(<WebviewPanel />);
     // Load the first mount so its timer is cleared, then reload — the remounted
     // iframe must arm its OWN hang timer rather than relying on the cleared one.
     fireEvent.load(container.querySelector("iframe")!);
     fireEvent.click(getByLabelText("Reload"));
-    vi.advanceTimersByTime(8000);
-    expect(open).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer");
-    open.mockRestore();
+    await act(async () => {
+      vi.advanceTimersByTime(8000);
+    });
+    expect(confirmMock).toHaveBeenCalled(); // fallback ask fired for the remounted frame
     vi.useRealTimers();
   });
 

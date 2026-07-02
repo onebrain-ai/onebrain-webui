@@ -636,16 +636,3 @@ body.ed-webview-resizing .ed-webview-frame {
   border: 0;
   background: #fff;
 }
-.ed-webview-notice {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  padding: 8px 14px;
-  border-radius: 6px;
-  background: var(--accent-weak);
-  border: 1px solid var(--accent-line);
-  color: var(--color-text);
-  font-size: 13px;
-}

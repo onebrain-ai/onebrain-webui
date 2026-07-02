@@ -27,7 +27,7 @@ import { enhanceCodeBlocksIn } from "../../core/codeblock";
 import { formatCode } from "../../core/codeformat";
 import { Icon } from "../../ui/Icon";
 import { WebviewPanel } from "./WebviewPanel";
-import { openExternalLink, webviewOpen, webviewNotice, closeWebview } from "./webview-store";
+import { openExternalLink, webviewOpen, closeWebview } from "./webview-store";
 import "./editor.css";
 
 /** Binary file types with no in-app preview — shown as an icon + Download button
@@ -846,7 +846,6 @@ function Editor({ ctx }: { ctx: PanelContext }) {
                   over it. Conditional mount (not hidden) so the panel's hang-timer
                   cleanup fires when the webview closes. */}
               {webviewOpen.value && <WebviewPanel />}
-              {webviewNotice.value && <div class="ed-webview-notice">{webviewNotice.value}</div>}
             </div>
           )}
           <div class={reading.value ? "ed ed-hidden" : "ed"} ref={host} />

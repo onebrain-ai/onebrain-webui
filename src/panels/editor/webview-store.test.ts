@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
+
+// The fallback path asks via the DS confirm modal before popping a new tab —
+// mock it so tests control the user's answer without rendering ModalHost.
+vi.mock("../../ui/Modal", () => ({ confirmModal: vi.fn() }));
+import { confirmModal } from "../../ui/Modal";
+const confirmMock = vi.mocked(confirmModal);
+
 import {
-  webviewOpen, webviewUrl, webviewMode, webviewNotice, webviewWidth,
+  webviewOpen, webviewUrl, webviewMode, webviewWidth,
   openExternalLink, closeWebview, toggleWebviewMode, setWebviewWidth,
   WEBVIEW_MIN, WEBVIEW_MAX,
 } from "./webview-store";
@@ -25,7 +32,7 @@ beforeEach(() => {
   localStorage.clear();
   closeWebview();
   webviewMode.value = "pane";
-  webviewNotice.value = null;
+  confirmMock.mockReset();
 });
 
 describe("openExternalLink", () => {
@@ -36,17 +43,32 @@ describe("openExternalLink", () => {
     expect(webviewUrl.value).toBe("https://example.com");
   });
 
-  it("falls back to a new tab (no panel) when not frameable", async () => {
+  it("asks first when not frameable, and opens the tab on confirm", async () => {
+    confirmMock.mockResolvedValue(true);
     const daemon = { webviewPreflight: vi.fn().mockResolvedValue(false) };
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     await openExternalLink("https://github.com", daemon);
     expect(webviewOpen.value).toBe(false);
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("https://github.com") }),
+    );
     expect(open).toHaveBeenCalledWith("https://github.com", "_blank", "noopener,noreferrer");
-    expect(webviewNotice.value).toBeTruthy();
     open.mockRestore();
   });
 
-  it("falls back to a new tab when preflight throws", async () => {
+  it("does NOT open a tab when the user cancels the confirm", async () => {
+    confirmMock.mockResolvedValue(false);
+    const daemon = { webviewPreflight: vi.fn().mockResolvedValue(false) };
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    await openExternalLink("https://github.com", daemon);
+    expect(confirmMock).toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+    expect(webviewOpen.value).toBe(false);
+    open.mockRestore();
+  });
+
+  it("asks + opens on confirm when preflight throws", async () => {
+    confirmMock.mockResolvedValue(true);
     const daemon = { webviewPreflight: vi.fn().mockRejectedValue(new Error("net")) };
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     await openExternalLink("https://x.example", daemon);
@@ -86,37 +108,6 @@ describe("openExternalLink", () => {
   });
 });
 
-describe("flashNotice (via openExternalLink fallback)", () => {
-  it("auto-clears the notice after its timeout", async () => {
-    vi.useFakeTimers();
-    const daemon = { webviewPreflight: vi.fn().mockResolvedValue(false) };
-    const open = vi.spyOn(window, "open").mockReturnValue(null);
-    await openExternalLink("https://github.com", daemon);
-    expect(webviewNotice.value).toBeTruthy();
-    vi.advanceTimersByTime(4000);
-    expect(webviewNotice.value).toBeNull();
-    open.mockRestore();
-    vi.useRealTimers();
-  });
-
-  it("clears a still-pending notice timer when a second fallback fires first", async () => {
-    vi.useFakeTimers();
-    const daemon = { webviewPreflight: vi.fn().mockResolvedValue(false) };
-    const open = vi.spyOn(window, "open").mockReturnValue(null);
-    await openExternalLink("https://a.example", daemon);
-    expect(webviewNotice.value).toBeTruthy();
-    // second fallback before the first notice timer elapses: exercises the
-    // `if (noticeTimer) clearTimeout(noticeTimer)` branch in flashNotice
-    vi.advanceTimersByTime(1000);
-    await openExternalLink("https://b.example", daemon);
-    expect(webviewNotice.value).toBeTruthy();
-    // only 4s from the SECOND call should be needed to clear it (old timer was cleared)
-    vi.advanceTimersByTime(4000);
-    expect(webviewNotice.value).toBeNull();
-    open.mockRestore();
-    vi.useRealTimers();
-  });
-});
 
 describe("mode", () => {
   it("toggles and persists to localStorage", () => {

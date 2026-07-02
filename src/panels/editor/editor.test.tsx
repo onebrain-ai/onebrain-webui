@@ -6,7 +6,7 @@ import { Autosaver, saveStatus, dirty, conflictRev } from "../../core/autosave";
 import { editorBridge } from "../../core/editor-bridge";
 import { searchQuery, sidebarTab } from "../../core/stores";
 import * as richfileModule from "../../core/richfile";
-import { webviewOpen, webviewUrl, webviewNotice, closeWebview } from "./webview-store";
+import { webviewOpen, webviewUrl, closeWebview } from "./webview-store";
 
 // jsdom does not implement ResizeObserver. Stub it AND fire a synthetic resize
 // so the ResizeObserver callback body (lines 331-343) gets covered:
@@ -61,7 +61,6 @@ beforeEach(() => {
   daemon.webviewPreflight.mockResolvedValue(true);
   webviewOpen.value = false;
   webviewUrl.value = null;
-  webviewNotice.value = null;
 });
 
 describe("editorPanel — empty state", () => {
@@ -447,16 +446,6 @@ describe("editorPanel — markdown reading view interactions", () => {
     fireEvent.click(reading.querySelector("[data-wikilink]")!);
     fireEvent.click(reading.querySelector('a[href^="mailto:"]')!);
     expect(daemon.webviewPreflight).not.toHaveBeenCalled();
-  });
-
-  it("renders the webview fallback notice when set", async () => {
-    previewPath.value = "a.md";
-    render(<editorPanel.Component ctx={ctx} />);
-    await waitFor(() => expect(screen.getByTestId("ed-reading")).toBeTruthy());
-    webviewNotice.value = "This site can't be embedded — opened it in a new tab.";
-    await waitFor(() =>
-      expect(screen.getByText("This site can't be embedded — opened it in a new tab.")).toBeTruthy(),
-    );
   });
 
   it("closes a stale webview when the open note switches", async () => {
