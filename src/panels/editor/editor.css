@@ -22,10 +22,7 @@
 .ed-source .cm-scroller { font-size: var(--src-fs, 13px); }
 /* preview surface + text re-tint with [data-pv-theme] (the ◐ background toggle) */
 .ed-source,
-/* Fill the pane so the rich viewer's frame (and its transparency checkerboard)
-   covers the whole area, not just the content's intrinsic box. */
-.ed-richwrap { background: var(--color-bg); flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.ed-rich { flex: 1; min-height: 0; }
+.ed-richwrap { background: var(--color-bg); }
 .ed-source .cm-content { color: var(--color-text); }
 .ed-source .cm-gutters {
   background: var(--color-bg-deep);
