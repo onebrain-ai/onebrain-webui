@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/preact";
+import { render, fireEvent, act } from "@testing-library/preact";
 import { WebviewPanel } from "./WebviewPanel";
 import { webviewUrl, webviewOpen, webviewMode, webviewWidth, setWebviewWidth } from "./webview-store";
 
@@ -139,6 +139,85 @@ describe("WebviewPanel", () => {
     // Further mousemove after mouseup must have no effect (listener removed).
     fireEvent.mouseMove(document, { clientX: 900 });
     expect(webviewWidth.value).toBe(400);
+  });
+
+  it("back/forward start disabled — the original page has no in-frame history", () => {
+    const { container, getByLabelText } = render(<WebviewPanel />);
+    fireEvent.load(container.querySelector("iframe")!); // original page
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(true);
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("in-frame navigation enables Back; clicking it steers the joint history and then enables Forward", () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const { container, getByLabelText } = render(<WebviewPanel />);
+    const iframe = container.querySelector("iframe")!;
+    fireEvent.load(iframe); // original page
+    fireEvent.load(iframe); // organic in-frame link click → depth 1
+    const backBtn = getByLabelText("Page back") as HTMLButtonElement;
+    expect(backBtn.disabled).toBe(false);
+    fireEvent.click(backBtn);
+    expect(back).toHaveBeenCalledTimes(1);
+    // While the back navigation is in flight, both buttons are held disabled.
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(true);
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.load(container.querySelector("iframe")!); // back completed → depth 0, fwd 1
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(true);
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(false);
+    back.mockRestore();
+  });
+
+  it("Forward replays the entry, and a fresh organic navigation truncates forward history", () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const fwd = vi.spyOn(window.history, "forward").mockImplementation(() => {});
+    const { container, getByLabelText } = render(<WebviewPanel />);
+    const iframe = container.querySelector("iframe")!;
+    fireEvent.load(iframe); // original
+    fireEvent.load(iframe); // organic → depth 1
+    fireEvent.click(getByLabelText("Page back"));
+    fireEvent.load(iframe); // depth 0, fwd 1
+    fireEvent.click(getByLabelText("Page forward"));
+    expect(fwd).toHaveBeenCalledTimes(1);
+    fireEvent.load(iframe); // forward completed → depth 1, fwd 0
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(true);
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(false);
+    // Go back again, then navigate organically — the forward entry is truncated.
+    fireEvent.click(getByLabelText("Page back"));
+    fireEvent.load(iframe); // depth 0, fwd 1
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.load(iframe); // organic click → depth 1, fwd reset to 0
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(true);
+    back.mockRestore();
+    fwd.mockRestore();
+  });
+
+  it("reload resets the in-frame history state (fresh frame, fresh history)", () => {
+    const { container, getByLabelText } = render(<WebviewPanel />);
+    const iframe = container.querySelector("iframe")!;
+    fireEvent.load(iframe); // original
+    fireEvent.load(iframe); // organic → depth 1, Back enabled
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(getByLabelText("Reload"));
+    fireEvent.load(container.querySelector("iframe")!); // remounted frame's original page
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(true);
+    expect((getByLabelText("Page forward") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("a pending nav that never completes re-enables the buttons after the safety timeout", () => {
+    vi.useFakeTimers();
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const { container, getByLabelText } = render(<WebviewPanel />);
+    const iframe = container.querySelector("iframe")!;
+    fireEvent.load(iframe); // original (also clears the hang timer)
+    fireEvent.load(iframe); // organic → depth 1
+    fireEvent.click(getByLabelText("Page back")); // no load ever fires (no-op back)
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(2500); // safety valve clears the stuck pending state
+    });
+    expect((getByLabelText("Page back") as HTMLButtonElement).disabled).toBe(false);
+    back.mockRestore();
+    vi.useRealTimers();
   });
 
   it("resize falls back to window.innerWidth when the panel has no parent element", () => {
