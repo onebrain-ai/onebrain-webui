@@ -34,6 +34,10 @@ describe("linkIconHtml", () => {
     expect(linkIconHtml("https://news.ycombinator.com/item?id=1")).toContain(
       'data-brand="ycombinator"',
     );
+    expect(linkIconHtml("https://www.firefox.com")).toContain('data-brand="firefox"');
+    expect(linkIconHtml("https://developer.mozilla.org/en-US/")).toContain(
+      'data-brand="mozilla"',
+    );
   });
 
   it("returns the generic arrow-out icon for an unknown site", () => {

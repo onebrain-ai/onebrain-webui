@@ -629,6 +629,7 @@
 .md-linkico[data-brand="humblebundle"] { color: #cc2929; }
 .md-linkico[data-brand="cloudflare"] { color: #f38020; }
 .md-linkico[data-brand="ycombinator"] { color: #f0652f; }
+.md-linkico[data-brand="firefox"] { color: #ff7139; }
 a:hover .md-linkico {
   opacity: 1;
 }
