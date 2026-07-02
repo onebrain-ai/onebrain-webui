@@ -22,7 +22,7 @@ describe("WebviewPanel", () => {
 
   it("close button returns to the document", () => {
     const { getByLabelText } = render(<WebviewPanel />);
-    fireEvent.click(getByLabelText("Back to document"));
+    fireEvent.click(getByLabelText("Close"));
     expect(webviewOpen.value).toBe(false);
   });
 

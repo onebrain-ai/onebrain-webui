@@ -122,11 +122,11 @@ export function WebviewPanel() {
         <button
           class="ed-iconbtn"
           type="button"
-          aria-label="Back to document"
-          title="Back to document"
+          aria-label="Close"
+          title="Close — back to document"
           onClick={closeWebview}
         >
-          &lsaquo;
+          &#215;
         </button>
         <button
           class="ed-iconbtn"
