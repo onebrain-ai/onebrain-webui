@@ -327,6 +327,46 @@ describe("mountViewport — fullscreen", () => {
     _fullscreenElement = null;
     handle.destroy();
   });
+
+  it("falls back to the webkit-prefixed fullscreen API (Safari / WKWebView)", () => {
+    const { frame, content } = makeViewport();
+    // WebKit env: no standard requestFullscreen, only the prefixed one.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const f = frame as any;
+    f.requestFullscreen = undefined;
+    f.webkitRequestFullscreen = vi.fn();
+    const handle = mountViewport(frame, content);
+    frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click();
+    expect(f.webkitRequestFullscreen).toHaveBeenCalled();
+
+    // Now "in" webkit fullscreen → the exit path uses webkitExitFullscreen.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = document as any;
+    _fullscreenElement = null;
+    d.webkitFullscreenElement = frame;
+    const origExit = document.exitFullscreen;
+    d.exitFullscreen = undefined;
+    d.webkitExitFullscreen = vi.fn();
+    // a webkit fullscreenchange event also drives the is-full class
+    document.dispatchEvent(new Event("webkitfullscreenchange"));
+    expect(frame.classList.contains("is-full")).toBe(true);
+    frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click();
+    expect(d.webkitExitFullscreen).toHaveBeenCalled();
+    d.webkitFullscreenElement = undefined;
+    d.exitFullscreen = origExit;
+    handle.destroy();
+  });
+
+  it("fullscreen button is a no-op when no fullscreen API exists at all", () => {
+    const { frame, content } = makeViewport();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const f = frame as any;
+    f.requestFullscreen = undefined;
+    f.webkitRequestFullscreen = undefined;
+    const handle = mountViewport(frame, content);
+    expect(() => frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click()).not.toThrow();
+    handle.destroy();
+  });
 });
 
 // ── mountViewport — drag to pan ───────────────────────────────────────────────

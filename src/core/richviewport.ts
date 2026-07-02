@@ -37,6 +37,13 @@ export interface ViewportHandle {
   destroy(): void;
 }
 
+// WebKit-prefixed fullscreen surface (Safari / WKWebView).
+type FsDoc = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => void;
+};
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => void };
+
 const MIN = 0.2;
 const MAX = 8;
 
@@ -142,12 +149,23 @@ export function mountViewport(
   };
   refreshLabel();
 
+  // Fullscreen with a WebKit fallback: Safari and embedded WKWebViews (the
+  // Studio surface, Obsidian's viewer, etc.) expose only the webkit-prefixed
+  // API, so the unprefixed calls silently no-op there — the button would
+  // "expand within the page" but never enter real screen fullscreen.
+  const fsElement = (): Element | null =>
+    document.fullscreenElement ?? (document as FsDoc).webkitFullscreenElement ?? null;
   const toggleFull = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else frame.requestFullscreen?.();
+    if (fsElement()) {
+      const exit = document.exitFullscreen ?? (document as FsDoc).webkitExitFullscreen;
+      if (exit) exit.call(document);
+    } else {
+      const req = frame.requestFullscreen ?? (frame as FsEl).webkitRequestFullscreen;
+      if (req) req.call(frame);
+    }
   };
   const onFsChange = () => {
-    const on = document.fullscreenElement === frame;
+    const on = fsElement() === frame;
     frame.classList.toggle("is-full", on);
     /* v8 ignore start */
     if (fullBtn) fullBtn.innerHTML = on ? ICON.exit : ICON.full; // fullBtn always present
@@ -156,6 +174,7 @@ export function mountViewport(
     requestAnimationFrame(fit);
   };
   document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
 
   bar.addEventListener("click", (e) => {
     const a = (e.target as HTMLElement).closest("button")?.dataset.a;
@@ -251,6 +270,7 @@ export function mountViewport(
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onKeyUp);
       document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
       frame.removeEventListener("wheel", onWheel);
       // The toolbar + frame classes/attrs are imperative DOM — remove them
       // explicitly. Preact may REUSE the host div for the next file's branch

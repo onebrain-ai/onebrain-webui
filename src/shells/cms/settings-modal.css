@@ -380,7 +380,13 @@
   padding: 1px 5px;
   background: color-mix(in oklab, var(--color-text) 10%, transparent);
   color: var(--color-text);
-  clip-path: var(--clip-chip);
+  /* border-radius (not clip-path) + clone so a code span that WRAPS across
+     lines gets a clean rounded box on EACH line fragment — clip-path would clip
+     the whole inline to one rect and shear off the wrapped remainder. */
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 .st-wn-body a {
   color: var(--section-accent);
