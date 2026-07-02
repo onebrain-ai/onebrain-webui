@@ -73,7 +73,8 @@
 .rich-vframe.is-grabbing {
   cursor: grabbing;
 }
-.rich-vframe:fullscreen {
+.rich-vframe:fullscreen,
+.rich-vframe:-webkit-full-screen {
   width: 100vw;
   height: 100vh;
   background: var(--color-bg);
@@ -95,6 +96,10 @@
     linear-gradient(45deg, rgba(0, 0, 0, 0.06) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.06) 75%);
   background-position: 0 0, 11px 11px;
   background-size: 22px 22px;
+}
+/* pattern toggle: plain (flat) background — same dark/light tone, no squares */
+.rich-vframe.rich-bg-plain {
+  background-image: none;
 }
 
 /* mermaid diagram in the reading view: hover reveals an "open full screen" button */

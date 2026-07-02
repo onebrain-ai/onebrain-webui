@@ -3,11 +3,27 @@
 // getBoundingClientRect, requestAnimationFrame, and the fullscreen API so tests
 // run reliably in jsdom without a real layout engine.
 
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
 import { mountViewport } from "./richviewport";
 
 // CSS side-effect import — no content needed in tests
 vi.mock("./richviewport.css", () => ({}));
+
+// jsdom can run on an opaque origin where localStorage is absent (prod code
+// tolerates that via try/catch). In-memory shim so the pattern-toggle tests
+// can drive persistence — same pattern as chat-store.test.ts.
+beforeAll(() => {
+  if (typeof globalThis.localStorage === "undefined") {
+    const store = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, String(v)),
+      removeItem: (k: string) => void store.delete(k),
+      clear: () => store.clear(),
+    };
+  }
+});
 
 // ── geometry stubs ────────────────────────────────────────────────────────────
 
@@ -214,6 +230,49 @@ describe("mountViewport — toolbar buttons", () => {
     handle.destroy();
   });
 
+  it("pattern button exists only with bgToggle, and toggles checkerboard → plain (persisted)", () => {
+    localStorage.removeItem("onebrain.previewPlainBg");
+    const bare = makeViewport();
+    const bareHandle = mountViewport(bare.frame, bare.content);
+    expect(bare.frame.querySelector('[data-a="pattern"]')).toBeNull();
+    bareHandle.destroy();
+
+    const { frame, content } = makeViewport();
+    const handle = mountViewport(frame, content, { bgToggle: true });
+    expect(frame.classList.contains("rich-bg-plain")).toBe(false); // checkerboard by default
+    frame.querySelector<HTMLButtonElement>('[data-a="pattern"]')!.click();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(true);
+    expect(localStorage.getItem("onebrain.previewPlainBg")).toBe("1");
+    frame.querySelector<HTMLButtonElement>('[data-a="pattern"]')!.click();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(false);
+    expect(localStorage.getItem("onebrain.previewPlainBg")).toBe("0");
+    handle.destroy();
+  });
+
+  it("a persisted plain preference applies on mount, and destroy removes the class", () => {
+    localStorage.setItem("onebrain.previewPlainBg", "1");
+    const { frame, content } = makeViewport();
+    const handle = mountViewport(frame, content, { bgToggle: true });
+    expect(frame.classList.contains("rich-bg-plain")).toBe(true);
+    handle.destroy();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(false);
+    localStorage.removeItem("onebrain.previewPlainBg");
+  });
+
+  it("pattern toggle still applies in-session when localStorage.setItem throws (private mode)", () => {
+    localStorage.removeItem("onebrain.previewPlainBg");
+    const { frame, content } = makeViewport();
+    const handle = mountViewport(frame, content, { bgToggle: true });
+    const orig = localStorage.setItem;
+    localStorage.setItem = () => {
+      throw new Error("blocked");
+    };
+    frame.querySelector<HTMLButtonElement>('[data-a="pattern"]')!.click();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(true); // class applied despite persist failure
+    localStorage.setItem = orig;
+    handle.destroy();
+  });
+
   it("applyBg is a no-op when bgToggle is not set (no bg classes added)", () => {
     const { frame, content } = makeViewport();
     const handle = mountViewport(frame, content);
@@ -266,6 +325,57 @@ describe("mountViewport — fullscreen", () => {
     frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click();
     expect(document.exitFullscreen).toHaveBeenCalled();
     _fullscreenElement = null;
+    handle.destroy();
+  });
+
+  it("falls back to the webkit-prefixed fullscreen API (Safari / WKWebView)", () => {
+    const { frame, content } = makeViewport();
+    // WebKit env: no standard requestFullscreen, only the prefixed one.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const f = frame as any;
+    f.requestFullscreen = undefined;
+    f.webkitRequestFullscreen = vi.fn();
+    const handle = mountViewport(frame, content);
+    frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click();
+    expect(f.webkitRequestFullscreen).toHaveBeenCalled();
+
+    // Now "in" webkit fullscreen → the exit path uses webkitExitFullscreen.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = document as any;
+    _fullscreenElement = null;
+    d.webkitFullscreenElement = frame;
+    const origExit = document.exitFullscreen;
+    d.exitFullscreen = undefined;
+    d.webkitExitFullscreen = vi.fn();
+    // a webkit fullscreenchange event also drives the is-full class
+    document.dispatchEvent(new Event("webkitfullscreenchange"));
+    expect(frame.classList.contains("is-full")).toBe(true);
+    frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click();
+    expect(d.webkitExitFullscreen).toHaveBeenCalled();
+    d.webkitFullscreenElement = undefined;
+    d.exitFullscreen = origExit;
+    handle.destroy();
+  });
+
+  it("fullscreen button is a no-op when no fullscreen API exists (both request and exit paths)", () => {
+    const { frame, content } = makeViewport();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const f = frame as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = document as any;
+    f.requestFullscreen = undefined;
+    f.webkitRequestFullscreen = undefined;
+    const handle = mountViewport(frame, content);
+    // request path: not in fullscreen, neither API → no-op, no throw
+    expect(() => frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click()).not.toThrow();
+    // exit path: "in" fullscreen but neither exit API exists → `if (exit)` false branch
+    _fullscreenElement = frame;
+    const origExit = document.exitFullscreen;
+    d.exitFullscreen = undefined;
+    d.webkitExitFullscreen = undefined;
+    expect(() => frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click()).not.toThrow();
+    _fullscreenElement = null;
+    d.exitFullscreen = origExit;
     handle.destroy();
   });
 });

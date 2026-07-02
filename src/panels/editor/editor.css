@@ -177,6 +177,9 @@
 .ed-toggle .ic { font-size: 14px; }
 .ed-toggle:hover { background: var(--accent-line); }
 .ed-hidden { display: none; }
+/* Positioned ancestor for the in-app webview overlay/split (.ed-webview is
+   absolutely positioned and needs to anchor here, not to the whole panel). */
+.ed-reading-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 /* Centre a readable-width column on wide screens (side padding grows to keep the
    text ~780px and centred, instead of a thin column jammed against the left with
    a huge empty right). Every block then fills the same column → consistent. */
@@ -371,8 +374,17 @@
 .ed-reading h6 { font-size: .9em; opacity: .8; }
 .ed-reading h1, .ed-reading h2 { padding-bottom: .25em; border-bottom: 1px solid var(--color-border); }
 .ed-reading p { margin: .7em 0; }
-.ed-reading a, .ed-reading .ob-wikilink { color: var(--section-accent); text-decoration: none; cursor: pointer; }
-.ed-reading a:hover, .ed-reading .ob-wikilink:hover { text-decoration: underline; }
+/* Links carry a faint persistent underline (not colour alone — WCAG 1.4.1 /
+   Lighthouse link-in-text-block); hover strengthens it. */
+.ed-reading a, .ed-reading .ob-wikilink {
+  color: var(--section-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+.ed-reading a:hover, .ed-reading .ob-wikilink:hover { text-decoration-color: currentColor; }
 .ed-reading ul, .ed-reading ol { margin: .6em 0; padding-left: 1.5em; }
 .ed-reading li { margin: .25em 0; }
 .ed-reading ul.task-list { list-style: none; padding-left: .25em; }
@@ -572,3 +584,104 @@
 /* Reading-view task checkboxes are clickable (write back to the source note). */
 .ed-reading .task-check { cursor: pointer; }
 .ed-reading .task-list-item { list-style: none; }
+
+/* In-app webview (external links opened inside the editor pane, instead of
+   navigating the shell away). Anchors to .ed-reading-wrap's position: relative. */
+.ed-webview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  z-index: 5;
+}
+.ed-webview-side {
+  /* split: pinned to the right edge, drag-resizable width (default half),
+     leaving the document visible on the left */
+  left: auto;
+  right: 0;
+  width: var(--webview-w, 50%);
+  border-left: 1px solid var(--accent-line);
+}
+/* Trailing external-link glyph (brand mark or generic arrow-out) emitted by
+   the markdown renderer. width/height attrs on the svg carry the base size so
+   the icon is sane on every renderMarkdown surface; this rule adds polish. */
+.md-linkico {
+  display: inline-block;
+  margin-left: 0.28em;
+  vertical-align: -0.08em;
+  opacity: 0.72;
+}
+/* Brand marks render in their OFFICIAL colors (simple-icons hexes), not the
+   link accent. Near-black logos (GitHub, X, Wikipedia, Medium, OpenAI,
+   Anthropic) fall back to the theme text color — that IS those brands'
+   dark-background treatment, and pure black would vanish on the console. */
+.md-linkico[data-brand] {
+  opacity: 0.9;
+  color: var(--color-text);
+}
+.md-linkico[data-brand="youtube"] { color: #ff0000; }
+.md-linkico[data-brand="facebook"] { color: #0866ff; }
+.md-linkico[data-brand="instagram"] { color: #ff0069; }
+.md-linkico[data-brand="linkedin"] { color: #0a66c2; }
+.md-linkico[data-brand="reddit"] { color: #ff4500; }
+.md-linkico[data-brand="stackoverflow"] { color: #f58025; }
+.md-linkico[data-brand="npm"] { color: #cb3837; }
+.md-linkico[data-brand="discord"] { color: #5865f2; }
+.md-linkico[data-brand="google"] { color: #4285f4; }
+.md-linkico[data-brand="databricks"] { color: #ff3621; }
+.md-linkico[data-brand="aws"] { color: #ff9900; }
+.md-linkico[data-brand="amazon"] { color: #ff9900; }
+.md-linkico[data-brand="shopee"] { color: #ee4d2d; }
+.md-linkico[data-brand="substack"] { color: #ff6719; }
+.md-linkico[data-brand="gumroad"] { color: #ff90e8; }
+.md-linkico[data-brand="humblebundle"] { color: #cc2929; }
+.md-linkico[data-brand="cloudflare"] { color: #f38020; }
+.md-linkico[data-brand="ycombinator"] { color: #f0652f; }
+.md-linkico[data-brand="firefox"] { color: #ff7139; }
+a:hover .md-linkico {
+  opacity: 1;
+}
+
+/* Drag handle on the side panel's left edge (mirrors .cms-resize). */
+.ed-webview-resize {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  z-index: 7;
+  cursor: col-resize;
+}
+.ed-webview-resize:hover {
+  background: var(--accent-line);
+}
+/* While dragging, let the document keep receiving mousemove even over the
+   iframe (frames otherwise swallow the event stream and stall the drag). */
+body.ed-webview-resizing .ed-webview-frame {
+  pointer-events: none;
+}
+.ed-webview-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(6px);
+}
+.ed-webview-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.ed-webview-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}

@@ -1,6 +1,6 @@
 ---
-latest_version: 0.1.5
-released: 2026-07-01
+latest_version: 0.1.6
+released: 2026-07-02
 ---
 
 # OneBrain WebUI Changelog
@@ -12,6 +12,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > For CLI binary changes, see [`onebrain-ai/onebrain-cli`](https://github.com/onebrain-ai/onebrain-cli/blob/main/CHANGELOG.md); for the vault-deployed plugin, see [`onebrain-ai/onebrain`](https://github.com/onebrain-ai/onebrain/blob/main/CHANGELOG.md).
 
 ## [Unreleased]
+
+## [0.1.6] — 2026-07-02
+
+### Added
+
+- **Internal webview.** Clicking an external web link in the markdown reading view now opens the site in an in-app iframe with a close (×) button that returns to the document, instead of leaving for a new tab. Two layouts — pane takeover, and a side split that keeps the document visible alongside — toggle from the webview header (the choice persists). Sites that refuse framing (`X-Frame-Options` / CSP `frame-ancestors`) fall back to a new tab after a confirmation dialog (which doubles as a fresh user gesture, so popup blockers can't eat the tab), as does an 8-second load-hang timer. Wikilinks, `#anchors`, and `mailto:` links are unaffected. Framability is decided by a daemon preflight (`GET /api/webview/preflight`); the iframe is sandboxed (`allow-scripts allow-forms allow-popups allow-same-origin`, `referrerpolicy=no-referrer`).
+- **External-link icons in the reading view.** Every external `http(s)` link now carries a small trailing glyph — a brand mark for recognised sites (Wikipedia, GitHub, YouTube, X, Reddit, Stack Overflow, npm, Discord, Google, OpenAI, Anthropic/Claude, …; path data vendored from simple-icons, drawn in each brand's official color) or a generic arrow-out — so external vs wikilink/internal is visible before clicking. Inline SVG only: rendering never fetches favicons (no third-party pings, no broken images behind DNS filters). Wikilinks, `mailto:`, and relative links are unmarked.
+- **Webview: in-frame back/forward, resizable side split, reload.** ← → header buttons walk the framed site's own navigation history (joint-session-history steering — the frame's cross-origin history can't be touched directly; depth is tracked via frame load events, with a safety valve against a no-op back). ⟳ remounts the frame back to the original page. The side split is drag-resizable from its left edge (width persists).
+- **Checkerboard ⇄ plain background toggle for transparent previews.** The rich-viewport toolbar (png/gif/svg/drawio/pptx) gains a pattern button next to the light/dark toggle — switch the transparency checkerboard off for a flat tone in the chosen shade. Persisted (`onebrain.previewPlainBg`).
 
 ## [0.1.5] — 2026-07-01
 

@@ -18,7 +18,14 @@ const ICON = {
   prev: SVG('<path d="M15 18l-6-6 6-6"/>'),
   next: SVG('<path d="M9 18l6-6-6-6"/>'),
   contrast: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'),
+  // All four squares are identical fills (two faint) — mixing stroked and
+  // filled rects reads lopsided because the stroke straddles the edge.
+  checker: SVG(
+    '<rect x="4" y="4" width="7" height="7" fill="currentColor" stroke="none"/><rect x="13" y="13" width="7" height="7" fill="currentColor" stroke="none"/><rect x="13" y="4" width="7" height="7" fill="currentColor" stroke="none" opacity=".35"/><rect x="4" y="13" width="7" height="7" fill="currentColor" stroke="none" opacity=".35"/>',
+  ),
 };
+
+const PLAIN_KEY = "onebrain.previewPlainBg";
 
 export interface NavOptions {
   prev(): void;
@@ -29,6 +36,13 @@ export interface ViewportHandle {
   refreshLabel(): void;
   destroy(): void;
 }
+
+// WebKit-prefixed fullscreen surface (Safari / WKWebView).
+type FsDoc = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => void;
+};
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => void };
 
 const MIN = 0.2;
 const MAX = 8;
@@ -52,10 +66,21 @@ export function mountViewport(
   // transparent assets (a light-mode logo / diagram) read against a light board.
   let bg: "dark" | "light" =
     document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  // Checkerboard pattern on/off (off = a flat tone in the chosen dark/light
+  // side). Persisted globally — a preference, not a per-file state.
+  let plain = false;
+  try {
+    plain = localStorage.getItem(PLAIN_KEY) === "1";
+  } catch {
+    /* v8 ignore start -- private-mode localStorage throw; not reliably reproducible across jsdom/CI envs */
+    plain = false;
+    /* v8 ignore stop */
+  }
   const applyBg = () => {
     if (!bgToggle) return;
     frame.classList.toggle("rich-bg-dark", bg === "dark");
     frame.classList.toggle("rich-bg-light", bg === "light");
+    frame.classList.toggle("rich-bg-plain", plain);
   };
   applyBg();
   let scale = 1;
@@ -110,7 +135,10 @@ export function mountViewport(
     btn("fit", ICON.fit, "Fit (0)") +
     btn("in", ICON.in, "Zoom in (+)") +
     sep +
-    (bgToggle ? btn("bg", ICON.contrast, "Toggle background (light / dark)") : "") +
+    (bgToggle
+      ? btn("bg", ICON.contrast, "Toggle background (light / dark)") +
+        btn("pattern", ICON.checker, "Toggle checkerboard / plain background")
+      : "") +
     btn("full", ICON.full, "Full screen (F)");
   frame.appendChild(bar);
 
@@ -121,20 +149,38 @@ export function mountViewport(
   };
   refreshLabel();
 
+  // Fullscreen with a WebKit fallback: Safari and embedded WKWebViews (the
+  // Studio surface, Obsidian's viewer, etc.) expose only the webkit-prefixed
+  // API, so the unprefixed calls silently no-op there — the button would
+  // "expand within the page" but never enter real screen fullscreen.
+  const fsElement = (): Element | null =>
+    document.fullscreenElement ?? (document as FsDoc).webkitFullscreenElement ?? null;
   const toggleFull = () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else frame.requestFullscreen?.();
+    if (fsElement()) {
+      const exit = document.exitFullscreen ?? (document as FsDoc).webkitExitFullscreen;
+      if (exit) exit.call(document);
+    } else {
+      const req = frame.requestFullscreen ?? (frame as FsEl).webkitRequestFullscreen;
+      if (req) req.call(frame);
+    }
   };
   const onFsChange = () => {
-    const on = document.fullscreenElement === frame;
+    const on = fsElement() === frame;
     frame.classList.toggle("is-full", on);
     /* v8 ignore start */
     if (fullBtn) fullBtn.innerHTML = on ? ICON.exit : ICON.full; // fullBtn always present
     /* v8 ignore stop */
-    // the frame just resized to / from the screen — re-fit to the new bounds
-    requestAnimationFrame(fit);
+    // The frame just resized to / from the screen — re-fit to the new bounds.
+    // Layout settles a beat AFTER the fullscreenchange event (especially on
+    // EXIT, where the frame shrinks back into the pane): a single rAF can still
+    // read the old fullscreen rect and "fit" to the wrong size, stranding the
+    // content zoomed past the pane. Fit on the next two frames AND after a
+    // settle timeout — fit() is idempotent, so the extra passes are free.
+    requestAnimationFrame(() => requestAnimationFrame(fit));
+    setTimeout(fit, 150);
   };
   document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
 
   bar.addEventListener("click", (e) => {
     const a = (e.target as HTMLElement).closest("button")?.dataset.a;
@@ -143,6 +189,15 @@ export function mountViewport(
     else if (a === "fit") fit();
     else if (a === "full") toggleFull();
     else if (a === "bg") { bg = bg === "dark" ? "light" : "dark"; applyBg(); }
+    else if (a === "pattern") {
+      plain = !plain;
+      try {
+        localStorage.setItem(PLAIN_KEY, plain ? "1" : "0");
+      } catch {
+        /* private mode — the toggle still applies in-session */
+      }
+      applyBg();
+    }
     else if (a === "prev") { nav?.prev(); refreshLabel(); }
     else if (a === "next") { nav?.next(); refreshLabel(); }
   });
@@ -221,13 +276,14 @@ export function mountViewport(
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onKeyUp);
       document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
       frame.removeEventListener("wheel", onWheel);
       // The toolbar + frame classes/attrs are imperative DOM — remove them
       // explicitly. Preact may REUSE the host div for the next file's branch
       // (e.g. an image's .ed-mediawrap reused as .ed-richwrap) rather than
       // unmounting it, which would otherwise strand the old toolbar.
       bar.remove();
-      frame.classList.remove("rich-vframe", "is-pannable", "is-grabbing", "is-full", "rich-bg-dark", "rich-bg-light");
+      frame.classList.remove("rich-vframe", "is-pannable", "is-grabbing", "is-full", "rich-bg-dark", "rich-bg-light", "rich-bg-plain");
       frame.removeAttribute("tabindex");
     },
   };

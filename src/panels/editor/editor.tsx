@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useMemo, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { EditorView, keymap, drawSelection, highlightActiveLine, lineNumbers } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
@@ -26,6 +26,8 @@ import { renderMathIn } from "../../core/katex";
 import { enhanceCodeBlocksIn } from "../../core/codeblock";
 import { formatCode } from "../../core/codeformat";
 import { Icon } from "../../ui/Icon";
+import { WebviewPanel } from "./WebviewPanel";
+import { openExternalLink, webviewOpen, closeWebview } from "./webview-store";
 import "./editor.css";
 
 /** Binary file types with no in-app preview — shown as an icon + Download button
@@ -157,11 +159,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   useEffect(() => {
     if (!path) return;
     // Each note starts clean — clear any prior note's save/conflict state so a
-    // stale toast/indicator can't carry over to a different note.
+    // stale toast/indicator can't carry over to a different note. A webview
+    // opened from note A's content must not survive into note B (wrong content,
+    // stale back button) — close it too.
     saveStatus.value = "idle";
     dirty.value = false;
     conflictRev.value = null;
     unpreviewable.value = false;
+    closeWebview();
     htmlInteractive.value = htmlAutorun.peek(); // follow the Settings "Run HTML scripts" toggle; "Run" overrides per-file
     let cancelled = false;
 
@@ -307,6 +312,14 @@ function Editor({ ctx }: { ctx: PanelContext }) {
     };
   }, [path]);
 
+  // Leaving reading mode (toggle to edit) unmounts the webview panel but must
+  // also reset webviewOpen — otherwise toggling back to reading resurrects the
+  // stale webview (re-arming its hang timer + reloading the iframe) instead of
+  // showing the plain reading view.
+  useEffect(() => {
+    if (!reading.value) closeWebview();
+  }, [reading.value]);
+
   // Image / SVG preview: mount the shared pan-zoom-fullscreen viewport on the frame.
   useEffect(() => {
     if (!(isSvg || isImage) || !mediaFrameRef.current || !mediaContentRef.current) return;
@@ -396,9 +409,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // (before the early return) so the effect's hook order stays stable.
   // renderFile picks markdown vs code-block by extension, so a .yml / .json /
   // .toml note renders verbatim (preserving its newlines) instead of being
-  // mangled by the markdown parser.
-  const readingHtml =
-    reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : "";
+  // mangled by the markdown parser. Memoized: this large component re-renders
+  // on many unrelated signals (save badge, wide toggle, theme), and a full
+  // markdown re-parse per incidental re-render is wasted work on big notes.
+  const readingHtml = useMemo(
+    () => (reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : ""),
+    [reading.value, path, isHtml, isBinary, docText.value],
+  );
   useEffect(() => {
     if (readingHost.current) {
       void renderMermaidIn(readingHost.current).then(() => {
@@ -514,6 +531,19 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         }
       }
       return;
+    }
+    // External http(s) links open in-app (preflighted, iframe-or-new-tab) instead
+    // of navigating the shell away. Wikilinks are spans with no href, and in-note
+    // "#anchor" / "mailto:" / relative links fall through to their own handling
+    // below (or the browser default), so only http(s) anchors are intercepted here.
+    const a = el.closest("a[href]") as HTMLAnchorElement | null;
+    if (a) {
+      const href = (/* v8 ignore next -- getAttribute always returns a string (we reached here via closest("a[href]")) */ a.getAttribute("href") ?? "");
+      if (/^https?:\/\//i.test(href)) {
+        e.preventDefault();
+        void openExternalLink(href, ctx.daemon);
+        return;
+      }
     }
     const wl = el.closest("[data-wikilink]");
     if (wl) {
@@ -704,7 +734,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
                 <button
                   class="ed-toggle"
                   title={wideView.value ? "Centred column" : "Full width"}
-                  aria-label={wideView.value ? "Centred column" : "Full width"}
+                  aria-label={wideView.value ? "Center — centred column" : "Wide — full width"}
                   onClick={() => { wideView.value = !wideView.value; }}
                 >
                   <Icon name={wideView.value ? "shrink-h" : "expand-h"} />
@@ -808,13 +838,19 @@ function Editor({ ctx }: { ctx: PanelContext }) {
         <>
           <Properties value={props.value} onChange={onProps} />
           {reading.value && (
-            <div
-              class={wideView.value ? "ed-reading is-wide" : "ed-reading"}
-              data-testid="ed-reading"
-              ref={readingHost}
-              onClick={onReadingClick}
-              dangerouslySetInnerHTML={{ __html: readingHtml }}
-            />
+            <div class="ed-reading-wrap">
+              <div
+                class={wideView.value ? "ed-reading is-wide" : "ed-reading"}
+                data-testid="ed-reading"
+                ref={readingHost}
+                onClick={onReadingClick}
+                dangerouslySetInnerHTML={{ __html: readingHtml }}
+              />
+              {/* reading host stays mounted (preserves scroll); webview overlays/splits
+                  over it. Conditional mount (not hidden) so the panel's hang-timer
+                  cleanup fires when the webview closes. */}
+              {webviewOpen.value && <WebviewPanel />}
+            </div>
           )}
           <div class={reading.value ? "ed ed-hidden" : "ed"} ref={host} />
         </>
