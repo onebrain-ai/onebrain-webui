@@ -18,8 +18,10 @@ const ICON = {
   prev: SVG('<path d="M15 18l-6-6 6-6"/>'),
   next: SVG('<path d="M9 18l6-6-6-6"/>'),
   contrast: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'),
+  // All four squares are identical fills (two faint) — mixing stroked and
+  // filled rects reads lopsided because the stroke straddles the edge.
   checker: SVG(
-    '<rect x="3" y="3" width="8" height="8" fill="currentColor" stroke="none"/><rect x="13" y="13" width="8" height="8" fill="currentColor" stroke="none"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/>',
+    '<rect x="4" y="4" width="7" height="7" fill="currentColor" stroke="none"/><rect x="13" y="13" width="7" height="7" fill="currentColor" stroke="none"/><rect x="13" y="4" width="7" height="7" fill="currentColor" stroke="none" opacity=".35"/><rect x="4" y="13" width="7" height="7" fill="currentColor" stroke="none" opacity=".35"/>',
   ),
 };
 

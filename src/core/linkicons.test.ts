@@ -40,6 +40,23 @@ describe("linkIconHtml", () => {
     );
   });
 
+  it("onebrain.run and getonebrain.com get the OneBrain mark with the brand gradient", () => {
+    const a = linkIconHtml("https://onebrain.run/docs");
+    const b = linkIconHtml("https://www.getonebrain.com");
+    for (const html of [a, b]) {
+      expect(html).toContain('data-brand="onebrain"');
+      expect(html).toContain('fill="url(#ob-brain-grad)"'); // real brand gradient (def lives in index.html)
+      expect(html).toContain('viewBox="0 0 433 466"'); // the logo's own coordinate space
+    }
+  });
+
+  it("the OneBrain mark (transform group + gradient fill) survives the DOMPurify pass", () => {
+    const { html } = renderMarkdown("[OneBrain](https://onebrain.run)");
+    expect(html).toContain('data-brand="onebrain"');
+    expect(html).toContain("ob-brain-grad"); // gradient reference kept by the sanitizer
+    expect(html).toContain("<g transform="); // the mirroring transform kept too
+  });
+
   it("returns the generic arrow-out icon for an unknown site", () => {
     const html = linkIconHtml("https://example.com/page");
     expect(html).toContain("md-linkico-generic");
