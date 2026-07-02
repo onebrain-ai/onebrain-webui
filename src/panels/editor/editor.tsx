@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useMemo, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { EditorView, keymap, drawSelection, highlightActiveLine, lineNumbers } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
@@ -409,9 +409,13 @@ function Editor({ ctx }: { ctx: PanelContext }) {
   // (before the early return) so the effect's hook order stays stable.
   // renderFile picks markdown vs code-block by extension, so a .yml / .json /
   // .toml note renders verbatim (preserving its newlines) instead of being
-  // mangled by the markdown parser.
-  const readingHtml =
-    reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : "";
+  // mangled by the markdown parser. Memoized: this large component re-renders
+  // on many unrelated signals (save badge, wide toggle, theme), and a full
+  // markdown re-parse per incidental re-render is wasted work on big notes.
+  const readingHtml = useMemo(
+    () => (reading.value && path && !isHtml && !isBinary ? renderFile(path, docText.value).html : ""),
+    [reading.value, path, isHtml, isBinary, docText.value],
+  );
   useEffect(() => {
     if (readingHost.current) {
       void renderMermaidIn(readingHost.current).then(() => {
@@ -730,7 +734,7 @@ function Editor({ ctx }: { ctx: PanelContext }) {
                 <button
                   class="ed-toggle"
                   title={wideView.value ? "Centred column" : "Full width"}
-                  aria-label={wideView.value ? "Centred column" : "Full width"}
+                  aria-label={wideView.value ? "Center — centred column" : "Wide — full width"}
                   onClick={() => { wideView.value = !wideView.value; }}
                 >
                   <Icon name={wideView.value ? "shrink-h" : "expand-h"} />
