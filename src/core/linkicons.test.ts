@@ -17,6 +17,22 @@ describe("linkIconHtml", () => {
     expect(linkIconHtml("https://claude.ai/chat")).toContain('data-brand="anthropic"');
   });
 
+  it("aws.amazon.com wins over amazon.com (entry-order specificity)", () => {
+    expect(linkIconHtml("https://aws.amazon.com/s3/")).toContain('data-brand="aws"');
+    expect(linkIconHtml("https://www.amazon.com/dp/B0ABC")).toContain('data-brand="amazon"');
+    expect(linkIconHtml("https://foo.amazonaws.com/bucket")).toContain('data-brand="aws"');
+  });
+
+  it("covers the newer brand additions", () => {
+    expect(linkIconHtml("https://www.microsoft.com/th-th")).toContain('data-brand="microsoft"');
+    expect(linkIconHtml("https://shopee.co.th/product/x")).toContain('data-brand="shopee"');
+    expect(linkIconHtml("https://someone.substack.com/p/post")).toContain('data-brand="substack"');
+    expect(linkIconHtml("https://developers.cloudflare.com/workers/")).toContain(
+      'data-brand="cloudflare"',
+    );
+    expect(linkIconHtml("https://www.apple.com/macbook")).toContain('data-brand="apple"');
+  });
+
   it("returns the generic arrow-out icon for an unknown site", () => {
     const html = linkIconHtml("https://example.com/page");
     expect(html).toContain("md-linkico-generic");

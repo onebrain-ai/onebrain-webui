@@ -620,6 +620,14 @@
 .md-linkico[data-brand="npm"] { color: #cb3837; }
 .md-linkico[data-brand="discord"] { color: #5865f2; }
 .md-linkico[data-brand="google"] { color: #4285f4; }
+.md-linkico[data-brand="databricks"] { color: #ff3621; }
+.md-linkico[data-brand="aws"] { color: #ff9900; }
+.md-linkico[data-brand="amazon"] { color: #ff9900; }
+.md-linkico[data-brand="shopee"] { color: #ee4d2d; }
+.md-linkico[data-brand="substack"] { color: #ff6719; }
+.md-linkico[data-brand="gumroad"] { color: #ff90e8; }
+.md-linkico[data-brand="humblebundle"] { color: #cc2929; }
+.md-linkico[data-brand="cloudflare"] { color: #f38020; }
 a:hover .md-linkico {
   opacity: 1;
 }
