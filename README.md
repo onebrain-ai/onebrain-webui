@@ -11,8 +11,8 @@
 <p align="center"><em>Your AI Thinking Partner</em></p>
 
 <p align="center">
-  <strong>The universal web surface for OneBrain — a 2D CMS shell for the <code>onebrain</code> daemon.</strong><br>
-  <sub>Preact + Vite · talks to the <code>onebrain serve</code> daemon · one build, every platform.</sub>
+  <strong>The web app for OneBrain — your whole vault, agent chat, and rich previews in the browser.</strong><br>
+  <sub>No Obsidian required · Preact + Vite · talks to the <code>onebrain serve</code> daemon · one build, every platform.</sub>
 </p>
 
 <p align="center">
@@ -21,6 +21,7 @@
   <a href="https://github.com/onebrain-ai/onebrain-webui/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/onebrain-ai/onebrain-webui?style=for-the-badge&color=00f3ff&logo=github"></a>
 </p>
 <p align="center">
+  <a href="https://github.com/onebrain-ai/onebrain-webui/releases/latest"><img alt="webui release" src="https://img.shields.io/github/v/release/onebrain-ai/onebrain-webui?style=for-the-badge&logo=github&color=ff2d92&label=webui"></a>
   <a href="https://github.com/onebrain-ai/onebrain-cli/releases/latest"><img alt="onebrain daemon" src="https://img.shields.io/github/v/release/onebrain-ai/onebrain-cli?include_prereleases&style=for-the-badge&logo=rust&color=cb3837&label=onebrain%20daemon"></a>
   <a href="https://preactjs.com"><img alt="Built with Preact + Vite" src="https://img.shields.io/badge/Preact%20%2B%20Vite-bc13fe?style=for-the-badge&logo=preact&logoColor=white"></a>
   <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-7c3aed?style=for-the-badge"></a>
@@ -30,10 +31,16 @@
 
 # OneBrain WebUI
 
-The **universal surface** for OneBrain — a 2D CMS shell that runs the OneBrain
-agent on any platform. The web is the universal
-surface; [OneBrain Studio](https://github.com/onebrain-ai) (Tauri) is the
-performance enhancement. Goal: an Obsidian replacement, one build everywhere.
+The **web app for OneBrain**, built for everyday ease of use: open a browser
+and your whole vault is there — notes, live agent chat, search, tasks, and
+rich previews — on any platform, one build everywhere.
+
+It **replaces and enhances Obsidian**: you don't need Obsidian installed to
+use OneBrain at full function. Everything the vault workflow needs lives
+here — reading and editing notes, wikilinks, an in-app webview for external
+links, PDF/Office/diagram previews, and the agent itself.
+[OneBrain Studio](https://github.com/onebrain-ai) (Tauri) wraps this same
+build as a native desktop app for extra performance.
 
 Built with **Preact + @preact/signals + Vite + TypeScript**. Talks to the
 **`onebrain` daemon** (`onebrain serve`) over a small JSON
