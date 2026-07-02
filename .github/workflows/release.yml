@@ -1,7 +1,7 @@
 name: release
 # Publishes the versioned dist tarball + sha256 as a GitHub Release — the single
 # prebuilt artifact every consumer uses. onebrain-cli's release workflow
-# DOWNLOADS this (pinned by version + sha256 in its `webui.pin`) instead of
+# DOWNLOADS this (pinned by version + sha256 in its Cargo.toml `[package.metadata.webui]`) instead of
 # rebuilding the webui from source, so the dist is built exactly once, here.
 #
 # Runs on every push to main: if package.json's version has no release yet,
@@ -81,7 +81,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "v$V" \
-            --notes "OneBrain WebUI v$V — prebuilt dist tarball (+sha256). Consumed by onebrain-cli's release workflow via its webui.pin. See CHANGELOG.md for details." \
+            --notes "OneBrain WebUI v$V — prebuilt dist tarball (+sha256). Consumed by onebrain-cli's release workflow via its Cargo.toml [package.metadata.webui] pin. See CHANGELOG.md for details." \
             "onebrain-webui-v${V}-dist.tar.gz" \
             "onebrain-webui-v${V}-dist.tar.gz.sha256"; then
             # Lost a create race (or re-run): fine as long as the release exists.
