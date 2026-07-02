@@ -11,6 +11,7 @@
 // containing `<script>` renders as literal text, not an injected element.
 
 import DOMPurify from "dompurify";
+import { linkIconHtml } from "./linkicons";
 
 export interface ParsedNote {
   /** Raw YAML frontmatter block (without the `---` fences), or null. */
@@ -109,10 +110,14 @@ function inline(text: string): string {
     return `<img data-vault-src="${clean.replace(/^\.?\//, "")}" alt="${a}" loading="lazy">`;
   });
   // Links [text](url). attrSafe strips any markup the passes above left in href.
+  // External http(s) links get a trailing glyph — a brand mark for recognised
+  // sites, a generic arrow-out otherwise — so external vs wikilink/internal is
+  // visible BEFORE clicking. mailto/relative links get no icon.
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, t, href) => {
     const clean = attrSafe(href);
     const safe = /^https?:|^mailto:|^\//.test(clean) ? clean : "#";
-    return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+    const ico = /^https?:/i.test(safe) ? linkIconHtml(safe) : "";
+    return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${t}${ico}</a>`;
   });
   // [[wikilink]], [[link|alias]], [[note#heading]] → a span the Preview wires for
   // navigation: data-wikilink = clean note path, data-heading = optional anchor.

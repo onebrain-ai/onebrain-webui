@@ -594,6 +594,19 @@
   width: var(--webview-w, 50%);
   border-left: 1px solid var(--accent-line);
 }
+/* Trailing external-link glyph (brand mark or generic arrow-out) emitted by
+   the markdown renderer. width/height attrs on the svg carry the base size so
+   the icon is sane on every renderMarkdown surface; this rule adds polish. */
+.md-linkico {
+  display: inline-block;
+  margin-left: 0.28em;
+  vertical-align: -0.08em;
+  opacity: 0.72;
+}
+a:hover .md-linkico {
+  opacity: 1;
+}
+
 /* Drag handle on the side panel's left edge (mirrors .cms-resize). */
 .ed-webview-resize {
   position: absolute;
