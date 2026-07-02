@@ -18,7 +18,12 @@ const ICON = {
   prev: SVG('<path d="M15 18l-6-6 6-6"/>'),
   next: SVG('<path d="M9 18l6-6-6-6"/>'),
   contrast: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'),
+  checker: SVG(
+    '<rect x="3" y="3" width="8" height="8" fill="currentColor" stroke="none"/><rect x="13" y="13" width="8" height="8" fill="currentColor" stroke="none"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/>',
+  ),
 };
+
+const PLAIN_KEY = "onebrain.previewPlainBg";
 
 export interface NavOptions {
   prev(): void;
@@ -52,10 +57,21 @@ export function mountViewport(
   // transparent assets (a light-mode logo / diagram) read against a light board.
   let bg: "dark" | "light" =
     document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  // Checkerboard pattern on/off (off = a flat tone in the chosen dark/light
+  // side). Persisted globally — a preference, not a per-file state.
+  let plain = false;
+  try {
+    plain = localStorage.getItem(PLAIN_KEY) === "1";
+  } catch {
+    /* v8 ignore start -- private-mode localStorage throw; not reliably reproducible across jsdom/CI envs */
+    plain = false;
+    /* v8 ignore stop */
+  }
   const applyBg = () => {
     if (!bgToggle) return;
     frame.classList.toggle("rich-bg-dark", bg === "dark");
     frame.classList.toggle("rich-bg-light", bg === "light");
+    frame.classList.toggle("rich-bg-plain", plain);
   };
   applyBg();
   let scale = 1;
@@ -110,7 +126,10 @@ export function mountViewport(
     btn("fit", ICON.fit, "Fit (0)") +
     btn("in", ICON.in, "Zoom in (+)") +
     sep +
-    (bgToggle ? btn("bg", ICON.contrast, "Toggle background (light / dark)") : "") +
+    (bgToggle
+      ? btn("bg", ICON.contrast, "Toggle background (light / dark)") +
+        btn("pattern", ICON.checker, "Toggle checkerboard / plain background")
+      : "") +
     btn("full", ICON.full, "Full screen (F)");
   frame.appendChild(bar);
 
@@ -143,6 +162,15 @@ export function mountViewport(
     else if (a === "fit") fit();
     else if (a === "full") toggleFull();
     else if (a === "bg") { bg = bg === "dark" ? "light" : "dark"; applyBg(); }
+    else if (a === "pattern") {
+      plain = !plain;
+      try {
+        localStorage.setItem(PLAIN_KEY, plain ? "1" : "0");
+      } catch {
+        /* private mode — the toggle still applies in-session */
+      }
+      applyBg();
+    }
     else if (a === "prev") { nav?.prev(); refreshLabel(); }
     else if (a === "next") { nav?.next(); refreshLabel(); }
   });
@@ -227,7 +255,7 @@ export function mountViewport(
       // (e.g. an image's .ed-mediawrap reused as .ed-richwrap) rather than
       // unmounting it, which would otherwise strand the old toolbar.
       bar.remove();
-      frame.classList.remove("rich-vframe", "is-pannable", "is-grabbing", "is-full", "rich-bg-dark", "rich-bg-light");
+      frame.classList.remove("rich-vframe", "is-pannable", "is-grabbing", "is-full", "rich-bg-dark", "rich-bg-light", "rich-bg-plain");
       frame.removeAttribute("tabindex");
     },
   };

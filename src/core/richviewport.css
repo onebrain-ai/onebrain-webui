@@ -96,6 +96,10 @@
   background-position: 0 0, 11px 11px;
   background-size: 22px 22px;
 }
+/* pattern toggle: plain (flat) background — same dark/light tone, no squares */
+.rich-vframe.rich-bg-plain {
+  background-image: none;
+}
 
 /* mermaid diagram in the reading view: hover reveals an "open full screen" button */
 .mermaid-zoomable {

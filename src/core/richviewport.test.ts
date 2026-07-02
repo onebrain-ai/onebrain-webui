@@ -3,11 +3,27 @@
 // getBoundingClientRect, requestAnimationFrame, and the fullscreen API so tests
 // run reliably in jsdom without a real layout engine.
 
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
 import { mountViewport } from "./richviewport";
 
 // CSS side-effect import — no content needed in tests
 vi.mock("./richviewport.css", () => ({}));
+
+// jsdom can run on an opaque origin where localStorage is absent (prod code
+// tolerates that via try/catch). In-memory shim so the pattern-toggle tests
+// can drive persistence — same pattern as chat-store.test.ts.
+beforeAll(() => {
+  if (typeof globalThis.localStorage === "undefined") {
+    const store = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, String(v)),
+      removeItem: (k: string) => void store.delete(k),
+      clear: () => store.clear(),
+    };
+  }
+});
 
 // ── geometry stubs ────────────────────────────────────────────────────────────
 
@@ -211,6 +227,49 @@ describe("mountViewport — toolbar buttons", () => {
     const handle = mountViewport(frame, content, { bgToggle: true });
     expect(frame.classList.contains("rich-bg-dark")).toBe(true);
     document.documentElement.removeAttribute("data-theme");
+    handle.destroy();
+  });
+
+  it("pattern button exists only with bgToggle, and toggles checkerboard → plain (persisted)", () => {
+    localStorage.removeItem("onebrain.previewPlainBg");
+    const bare = makeViewport();
+    const bareHandle = mountViewport(bare.frame, bare.content);
+    expect(bare.frame.querySelector('[data-a="pattern"]')).toBeNull();
+    bareHandle.destroy();
+
+    const { frame, content } = makeViewport();
+    const handle = mountViewport(frame, content, { bgToggle: true });
+    expect(frame.classList.contains("rich-bg-plain")).toBe(false); // checkerboard by default
+    frame.querySelector<HTMLButtonElement>('[data-a="pattern"]')!.click();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(true);
+    expect(localStorage.getItem("onebrain.previewPlainBg")).toBe("1");
+    frame.querySelector<HTMLButtonElement>('[data-a="pattern"]')!.click();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(false);
+    expect(localStorage.getItem("onebrain.previewPlainBg")).toBe("0");
+    handle.destroy();
+  });
+
+  it("a persisted plain preference applies on mount, and destroy removes the class", () => {
+    localStorage.setItem("onebrain.previewPlainBg", "1");
+    const { frame, content } = makeViewport();
+    const handle = mountViewport(frame, content, { bgToggle: true });
+    expect(frame.classList.contains("rich-bg-plain")).toBe(true);
+    handle.destroy();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(false);
+    localStorage.removeItem("onebrain.previewPlainBg");
+  });
+
+  it("pattern toggle still applies in-session when localStorage.setItem throws (private mode)", () => {
+    localStorage.removeItem("onebrain.previewPlainBg");
+    const { frame, content } = makeViewport();
+    const handle = mountViewport(frame, content, { bgToggle: true });
+    const orig = localStorage.setItem;
+    localStorage.setItem = () => {
+      throw new Error("blocked");
+    };
+    frame.querySelector<HTMLButtonElement>('[data-a="pattern"]')!.click();
+    expect(frame.classList.contains("rich-bg-plain")).toBe(true); // class applied despite persist failure
+    localStorage.setItem = orig;
     handle.destroy();
   });
 
