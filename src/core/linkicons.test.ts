@@ -31,6 +31,9 @@ describe("linkIconHtml", () => {
       'data-brand="cloudflare"',
     );
     expect(linkIconHtml("https://www.apple.com/macbook")).toContain('data-brand="apple"');
+    expect(linkIconHtml("https://news.ycombinator.com/item?id=1")).toContain(
+      'data-brand="ycombinator"',
+    );
   });
 
   it("returns the generic arrow-out icon for an unknown site", () => {
