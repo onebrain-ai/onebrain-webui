@@ -357,14 +357,25 @@ describe("mountViewport — fullscreen", () => {
     handle.destroy();
   });
 
-  it("fullscreen button is a no-op when no fullscreen API exists at all", () => {
+  it("fullscreen button is a no-op when no fullscreen API exists (both request and exit paths)", () => {
     const { frame, content } = makeViewport();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const f = frame as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = document as any;
     f.requestFullscreen = undefined;
     f.webkitRequestFullscreen = undefined;
     const handle = mountViewport(frame, content);
+    // request path: not in fullscreen, neither API → no-op, no throw
     expect(() => frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click()).not.toThrow();
+    // exit path: "in" fullscreen but neither exit API exists → `if (exit)` false branch
+    _fullscreenElement = frame;
+    const origExit = document.exitFullscreen;
+    d.exitFullscreen = undefined;
+    d.webkitExitFullscreen = undefined;
+    expect(() => frame.querySelector<HTMLButtonElement>('[data-a="full"]')!.click()).not.toThrow();
+    _fullscreenElement = null;
+    d.exitFullscreen = origExit;
     handle.destroy();
   });
 });
