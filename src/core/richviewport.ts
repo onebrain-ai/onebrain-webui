@@ -170,8 +170,14 @@ export function mountViewport(
     /* v8 ignore start */
     if (fullBtn) fullBtn.innerHTML = on ? ICON.exit : ICON.full; // fullBtn always present
     /* v8 ignore stop */
-    // the frame just resized to / from the screen — re-fit to the new bounds
-    requestAnimationFrame(fit);
+    // The frame just resized to / from the screen — re-fit to the new bounds.
+    // Layout settles a beat AFTER the fullscreenchange event (especially on
+    // EXIT, where the frame shrinks back into the pane): a single rAF can still
+    // read the old fullscreen rect and "fit" to the wrong size, stranding the
+    // content zoomed past the pane. Fit on the next two frames AND after a
+    // settle timeout — fit() is idempotent, so the extra passes are free.
+    requestAnimationFrame(() => requestAnimationFrame(fit));
+    setTimeout(fit, 150);
   };
   document.addEventListener("fullscreenchange", onFsChange);
   document.addEventListener("webkitfullscreenchange", onFsChange);
